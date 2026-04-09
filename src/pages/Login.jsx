@@ -1,165 +1,156 @@
 import { useState } from "react";
-import { login } from "../services/authService";
-import './LoginPage.css';
+import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
-function Login() {
-  const [form, setForm] = useState({ 
-    email: "", 
-    password: "",
-    rememberMe: false 
-  });
-  const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
+export default function Login() {
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const navigate = useNavigate();
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
-    setForm(prev => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }));
-    setError(""); // Clear error on input
-  };
-
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setIsLoading(true);
     setError("");
-    
+
     try {
-      const res = await login(form);
-      localStorage.setItem("token", res.data.token);
-      localStorage.setItem("user", JSON.stringify(res.data.user));
-      
-      // Redirect or show success (add your logic here)
-      console.log("Login successful!");
-      window.location.href = "/dashboard"; // or use react-router
-      
+      const res = await axios.post("http://localhost:5000/login", {
+        email,
+        password,
+      });
+
+      if (res.data.success) {
+        localStorage.setItem("token", res.data.token);
+        navigate("/dashboard");
+      } else {
+        setError(res.data.message);
+      }
     } catch (err) {
-      setError("Invalid credentials. Please try again.");
-    } finally {
-      setIsLoading(false);
+      setError("Server error, please try again");
     }
   };
 
   return (
-    <div className="login-container">
-      {/* Animated Background */}
-      <div className="background-shapes">
-        <div className="shape shape-1"></div>
-        <div className="shape shape-2"></div>
-        <div className="shape shape-3"></div>
-        <div className="shape shape-4"></div>
+    <div className="min-h-screen flex flex-col md:flex-row">
+
+      {/* LEFT PANEL */}
+      <div
+        className="w-full md:w-1/2 flex items-center justify-center relative py-12 md:py-0"
+        style={{
+          backgroundImage: "url('/images/haryanamap.png')",
+          backgroundSize: "contain",
+          backgroundPosition: "center",
+          backgroundRepeat: "no-repeat",
+        }}
+      >
+        {/* Overlay */}
+        <div className="absolute inset-0 bg-blue-100/80"></div>
+
+        {/* Content */}
+        <div className="relative z-10 max-w-xl text-center px-6 md:px-10">
+
+          <h1 className="text-3xl md:text-5xl font-bold mb-4 text-gray-900">
+            MSME GIS Platform
+          </h1>
+
+          <p className="text-base md:text-lg text-gray-800 mb-6 md:mb-8 leading-relaxed">
+            Find the best land locations, analyze infrastructure, and make smarter
+            investment decisions with powerful GIS insights.
+          </p>
+
+          {/* Features */}
+          <div className="grid grid-cols-2 gap-3 md:gap-4 text-sm md:text-base font-medium text-gray-900 text-left">
+
+            <div>📍 Location Search</div>
+            <div>🗺️ GIS Map</div>
+            <div>🏭 Industrial Zones</div>
+            <div>⚡ Infrastructure</div>
+            <div>📊 Data Analysis</div>
+            <div>📄 Reports</div>
+
+          </div>
+
+          {/* Highlight */}
+          <div className="mt-6 md:mt-8 bg-white/80 backdrop-blur-md p-4 md:p-5 rounded-xl shadow-lg">
+            <p className="text-sm md:text-base text-gray-800">
+              Make <span className="font-semibold text-blue-700">data-driven</span>{" "}
+              investment decisions with full transparency.
+            </p>
+          </div>
+
+        </div>
       </div>
 
-      <div className="login-wrapper">
-        {/* Left Side - Branding */}
-        <div className="login-branding">
-          <div className="brand-logo">
-            <div className="logo-circle">
-              <span className="logo-icon">🔐</span>
+      {/* RIGHT PANEL */}
+      <div className="w-full md:w-1/2 flex justify-center items-center p-6 md:p-12 bg-gray-50">
+
+        <div className="w-full max-w-md bg-white shadow-xl rounded-xl p-6 md:p-10">
+
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-6 md:mb-8 text-gray-800">
+            Login to Your Account
+          </h2>
+
+          {error && (
+            <div className="bg-red-100 text-red-700 p-2 rounded mb-4 text-center text-sm">
+              {error}
             </div>
-          </div>
-          <h1 className="brand-title">Welcome Back</h1>
-          <p className="brand-subtitle">
-            Sign in to your account to continue
-          </p>
-        </div>
+          )}
 
-        {/* Right Side - Login Form */}
-        <div className="login-form-container">
-          <div className="form-header">
-            <h2>Sign In</h2>
-            <p>Enter your credentials below</p>
-            {error && <div className="error-message">{error}</div>}
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-4 md:space-y-5">
 
-          <form onSubmit={handleLogin} className="login-form">
-            <div className="input-group">
-              <label htmlFor="email">Email Address</label>
-              <div className="input-wrapper">
-                <svg className="input-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M20 4H4c-1.1 0-1.99.9-1.99 2L2 18c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z" fill="currentColor"/>
-                </svg>
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  value={form.email}
-                  onChange={handleChange}
-                  placeholder="Enter your email"
-                  required
-                  disabled={isLoading}
-                />
-              </div>
-            </div>
-
-            <div className="input-group">
-              <label htmlFor="password">Password</label>
-              <div className="input-wrapper">
-                <svg className="input-icon" viewBox="0 0 24 24" fill="none">
-                  <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z" fill="currentColor"/>
-                </svg>
-                <input
-                  id="password"
-                  name="password"
-                  type={showPassword ? "text" : "password"}
-                  value={form.password}
-                  onChange={handleChange}
-                  placeholder="Enter your password"
-                  required
-                  disabled={isLoading}
-                />
-                <button
-                  type="button"
-                  className="password-toggle"
-                  onClick={() => setShowPassword(!showPassword)}
-                  disabled={isLoading}
-                >
-                  {showPassword ? "🙈" : "👁️"}
-                </button>
-              </div>
-            </div>
-
-            <div className="form-options">
-              <label className="checkbox-container">
-                <input
-                  type="checkbox"
-                  name="rememberMe"
-                  checked={form.rememberMe}
-                  onChange={handleChange}
-                />
-                <span className="checkmark"></span>
-                Remember me
+            <div>
+              <label className="block mb-1 font-medium text-gray-700 text-sm md:text-base">
+                Email
               </label>
-              <a href="#" className="forgot-password">
-                Forgot Password?
-              </a>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                className="w-full border border-gray-300 p-2.5 md:p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
+                placeholder="example@mail.com"
+              />
             </div>
 
-            <button 
-              type="submit" 
-              className="login-btn" 
-              disabled={isLoading}
+            <div>
+              <label className="block mb-1 font-medium text-gray-700 text-sm md:text-base">
+                Password
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                className="w-full border border-gray-300 p-2.5 md:p-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm md:text-base"
+                placeholder="Your password"
+              />
+            </div>
+
+            <button
+              type="submit"
+              className="w-full bg-blue-600 text-white py-2.5 md:py-3 rounded-lg hover:bg-blue-700 transition-all font-semibold text-sm md:text-base"
             >
-              {isLoading ? (
-                <>
-                  <div className="spinner"></div>
-                  Signing In...
-                </>
-              ) : (
-                "Sign In"
-              )}
+              Login
             </button>
 
-            <div className="signup-link">
-              Don't have an account? <a href="/register">Sign up here</a>
-            </div>
           </form>
+
+          <p className="text-sm text-center mt-5 md:mt-6 text-gray-600">
+            Don't have an account?{" "}
+            <span
+              className="text-blue-600 font-medium cursor-pointer hover:underline"
+              onClick={() => navigate("/signup")}
+            >
+              Sign Up
+            </span>
+          </p>
+
+          <p className="text-xs text-center mt-3 md:mt-4 text-gray-400">
+            © 2026 MSME Finder
+          </p>
+
         </div>
       </div>
     </div>
   );
 }
 
-export default Login;

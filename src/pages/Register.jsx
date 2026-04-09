@@ -1,196 +1,100 @@
-import React, { useState } from 'react';
-import './RegisterPage.css';
+import React from "react";
 
-const Register = () => {
-  const [formData, setFormData] = useState({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    phone: ''
-  });
-
-  const [errors, setErrors] = useState({});
-  const [isLoading, setIsLoading] = useState(false);
-
-  const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value
-    });
-  };
-
-  const validateForm = () => {
-    const newErrors = {};
-
-    if (!formData.firstName.trim()) newErrors.firstName = 'First name is required';
-    if (!formData.lastName.trim()) newErrors.lastName = 'Last name is required';
-    if (!formData.email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
-      newErrors.email = 'Email is invalid';
-    }
-    if (!formData.password) {
-      newErrors.password = 'Password is required';
-    } else if (formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
-    }
-    if (formData.confirmPassword !== formData.password) {
-      newErrors.confirmPassword = 'Passwords do not match';
-    }
-    if (!formData.phone.trim()) {
-      newErrors.phone = 'Phone number is required';
-    } else if (!/^\d{10}$/.test(formData.phone.replace(/\D/g, ''))) {
-      newErrors.phone = 'Phone number must be 10 digits';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
-    if (!validateForm()) return;
-
-    setIsLoading(true);
-    
-    // Simulate API call
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      console.log('Registration successful:', formData);
-      alert('Registration successful!');
-      // Reset form or redirect
-    } catch (error) {
-      console.error('Registration failed:', error);
-      alert('Registration failed. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+export default function Register() {
   return (
-    <div className="register-container">
-      <div className="register-card">
-        <div className="register-header">
-          <h1>Create Account</h1>
-          <p>Join us today and get started</p>
+    <div className="min-h-screen flex">
+      
+      {/* LEFT SIDE */}
+      <div className="hidden md:flex w-1/2 bg-blue-800 text-white flex-col justify-between p-12">
+        <h1 className="text-4xl font-semibold leading-snug max-w-md">
+          Your one-stop digital marketplace for all your industrial needs
+        </h1>
+
+        <div className="text-lg font-semibold opacity-80">
+          JSW ONE MSME
         </div>
+      </div>
 
-        <form onSubmit={handleSubmit} className="register-form">
-          <div className="input-group">
-            <div className="input-row">
-              <div className="input-field">
-                <input
-                  type="text"
-                  name="firstName"
-                  placeholder="First Name"
-                  value={formData.firstName}
-                  onChange={handleChange}
-                  className={errors.firstName ? 'error' : ''}
-                />
-                {errors.firstName && <span className="error-text">{errors.firstName}</span>}
-              </div>
-              <div className="input-field">
-                <input
-                  type="text"
-                  name="lastName"
-                  placeholder="Last Name"
-                  value={formData.lastName}
-                  onChange={handleChange}
-                  className={errors.lastName ? 'error' : ''}
-                />
-                {errors.lastName && <span className="error-text">{errors.lastName}</span>}
-              </div>
-            </div>
-          </div>
+      {/* RIGHT SIDE */}
+      <div className="w-full md:w-1/2 bg-gray-100 flex items-center justify-center">
+        <div className="bg-gray-100 w-full max-w-md p-8 relative">
 
-          <div className="input-group">
-            <div className="input-field">
-              <input
-                type="email"
-                name="email"
-                placeholder="Email Address"
-                value={formData.email}
-                onChange={handleChange}
-                className={errors.email ? 'error' : ''}
-              />
-              {errors.email && <span className="error-text">{errors.email}</span>}
-            </div>
-          </div>
-
-          <div className="input-group">
-            <div className="input-field">
-              <input
-                type="tel"
-                name="phone"
-                placeholder="Phone Number"
-                value={formData.phone}
-                onChange={handleChange}
-                className={errors.phone ? 'error' : ''}
-              />
-              {errors.phone && <span className="error-text">{errors.phone}</span>}
-            </div>
-          </div>
-
-          <div className="input-group">
-            <div className="input-row">
-              <div className="input-field">
-                <input
-                  type="password"
-                  name="password"
-                  placeholder="Password"
-                  value={formData.password}
-                  onChange={handleChange}
-                  className={errors.password ? 'error' : ''}
-                />
-                {errors.password && <span className="error-text">{errors.password}</span>}
-              </div>
-              <div className="input-field">
-                <input
-                  type="password"
-                  name="confirmPassword"
-                  placeholder="Confirm Password"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className={errors.confirmPassword ? 'error' : ''}
-                />
-                {errors.confirmPassword && <span className="error-text">{errors.confirmPassword}</span>}
-              </div>
-            </div>
-          </div>
-
-          <div className="form-options">
-            <label className="checkbox-container">
-              <input type="checkbox" />
-              <span className="checkmark"></span>
-              I agree to the Terms of Service and Privacy Policy
-            </label>
-          </div>
-
-          <button 
-            type="submit" 
-            className="register-btn"
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <>
-                <div className="spinner"></div>
-                Creating Account...
-              </>
-            ) : (
-              'Create Account'
-            )}
+          {/* Close Button */}
+          <button className="absolute top-4 right-4 text-2xl text-gray-600">
+            ×
           </button>
-        </form>
 
-        <div className="register-footer">
-          <p>Already have an account? <a href="/login">Sign in</a></p>
+          {/* Heading */}
+          <h2 className="text-3xl font-semibold text-gray-800">
+            Register Now
+          </h2>
+          <p className="text-gray-500 mb-6">
+            Create your JSW One MSME account
+          </p>
+
+          {/* Form */}
+          <form className="space-y-4">
+            
+            <input
+              type="text"
+              placeholder="Full name *"
+              className="w-full px-4 py-3 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            <input
+              type="text"
+              placeholder="Mobile number *"
+              className="w-full px-4 py-3 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            <input
+              type="text"
+              placeholder="GSTIN *"
+              className="w-full px-4 py-3 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            <input
+              type="email"
+              placeholder="Company email address *"
+              className="w-full px-4 py-3 border rounded-lg bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            {/* Checkbox */}
+            <div className="flex items-start gap-2 text-sm text-gray-600">
+              <input type="checkbox" className="mt-1" />
+              <p>
+                I agree to JSW One MSME’s{" "}
+                <span className="text-blue-600 cursor-pointer">
+                  Terms and conditions
+                </span>
+              </p>
+            </div>
+
+            {/* Button */}
+            <button
+              type="submit"
+              className="w-full py-3 rounded-lg bg-gray-400 text-white font-medium cursor-not-allowed"
+              disabled
+            >
+              Next
+            </button>
+          </form>
+
+          {/* Login Link */}
+          <p className="text-center text-gray-500 mt-6">
+            Already have an account?{" "}
+            <span className="text-blue-600 cursor-pointer font-medium">
+              Login
+            </span>
+          </p>
+
+          {/* Footer */}
+          <p className="text-center text-sm text-gray-400 mt-10">
+            Call us at <span className="font-semibold text-gray-600">7208055523</span> for assistance
+          </p>
+
         </div>
       </div>
     </div>
   );
-};
-
-export default Register;
+}
