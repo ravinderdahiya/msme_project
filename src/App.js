@@ -3,6 +3,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./routes/ProtectedRoute";
 //import { Dashboard } from "./pages/Dashboard";
+import HomePage from "./pages/HomePage";
 import logo from './logo.svg';
 import './App.css';
 
@@ -15,9 +16,19 @@ function App() {
         <Route
           path="/dashboard"
           element={
-            <ProtectedRoute>
+            // <ProtectedRoute>
               <Dashboard />
-            </ProtectedRoute>
+            // </ProtectedRoute>
+
+          }
+        />
+         <Route
+          path="/HomePage"
+          element={
+            // <ProtectedRoute>
+              <HomePage />
+            // </ProtectedRoute>
+
           }
         />
       </Routes>
