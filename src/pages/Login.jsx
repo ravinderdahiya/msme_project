@@ -29,6 +29,15 @@ export default function Login() {
     }
   };
 
+  const handleDemoUser = () => {
+    localStorage.setItem("token", "demo-token");
+    localStorage.setItem(
+      "user",
+      JSON.stringify({ name: "Demo User", role: "demo" })
+    );
+    navigate("/demo-map");
+  };
+
   return (
     <div className="min-h-screen flex flex-col md:flex-row">
 
@@ -132,6 +141,14 @@ export default function Login() {
               Login
             </button>
 
+            <button
+              type="button"
+              onClick={handleDemoUser}
+              className="w-full border border-gray-300 bg-gray-100 text-gray-800 py-2.5 md:py-3 rounded-lg hover:bg-gray-200 transition-all font-semibold text-sm md:text-base"
+            >
+              demoUser
+            </button>
+
           </form>
 
           <p className="text-sm text-center mt-5 md:mt-6 text-gray-600">
@@ -153,4 +170,3 @@ export default function Login() {
     </div>
   );
 }
-

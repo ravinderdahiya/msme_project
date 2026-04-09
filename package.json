@@ -11,18 +11,19 @@
     "axios": "^1.14.0",
     "chart.js": "^4.5.1",
     "framer-motion": "^12.38.0",
+    "leaflet": "^1.9.4",
     "lucide-react": "^1.7.0",
     "react": "^19.2.4",
     "react-chartjs-2": "^5.3.1",
     "react-dom": "^19.2.4",
-    "react-router-dom": "^7.14.0",
+    "react-leaflet": "^4.2.1",
+    "react-router-dom": "^6.28.2",
     "react-scripts": "^5.0.1",
     "recharts": "^3.8.1",
-    "tailwindcss": "^4.2.2",
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "react-scripts start",
+    "start": "HOST=127.0.0.1 DANGEROUSLY_DISABLE_HOST_CHECK=true react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -47,6 +48,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.2.2",
+    "ajv": "^8.18.0",
     "autoprefixer": "^10.4.27",
     "postcss": "^8.5.9",
     "tailwindcss": "^3.4.19"
