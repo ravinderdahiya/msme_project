@@ -3,7 +3,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import Register from "./pages/Register";
 import ProtectedRoute from "./routes/ProtectedRoute";
-//import { Dashboard } from "./pages/Dashboard";
+//import Register from './components/Register';
 import logo from './logo.svg';
 import './App.css';
 
