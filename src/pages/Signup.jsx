@@ -1,15 +1,15 @@
 import React, { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom"; // 👈 ADD THIS
 
-const Login = () => {
-  const navigate = useNavigate();
+const Signup = () => {
+  const navigate = useNavigate(); // 👈 INIT
 
   const [form, setForm] = useState({
     username: "",
     password: "",
   });
 
-  // 🔥 SAME SLIDER IMAGES
+  // 🔥 SLIDER IMAGES
   const slides = [
     "/images/image1.png",
     "/images/image2.jpeg",
@@ -34,11 +34,11 @@ const Login = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // 🔥 FAKE LOGIN (API yaha lagega)
+    // 🔥 FAKE SUCCESS LOGIN (tu API laga sakta hai yaha)
     if (form.username && form.password) {
-      navigate("/dashboard"); // 👈 login ke baad
+      navigate("/login"); // 👈 REDIRECT
     } else {
-      alert("Enter username & password");
+      alert("Please fill all fields");
     }
   };
 
@@ -52,32 +52,37 @@ const Login = () => {
       {/* CARD */}
       <div className="w-[95%] max-w-5xl bg-white/10 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row items-stretch">
 
-        {/* LEFT SIDE - LOGIN FORM */}
+        {/* LEFT SIDE */}
         <div className="w-full md:w-1/2 flex items-center justify-center p-6">
           <div className="bg-[#0b2230]/70 backdrop-blur-2xl p-6 rounded-2xl w-full border border-white/10 shadow-[0_0_40px_rgba(0,255,150,0.25)]">
 
             <div className="flex justify-center mb-4">
               <div className="w-14 h-14 rounded-full bg-green-500 flex items-center justify-center">
-                🔐
+                📍
               </div>
             </div>
 
             <h2 className="text-xl font-semibold text-center mb-1 text-white">
-              Login to Your Account
+              Create Your Account
             </h2>
 
             <p className="text-xs text-center text-gray-300 mb-5">
-              Access your investment dashboard
+              Start exploring the best investment opportunities
             </p>
 
             <form onSubmit={handleSubmit} className="space-y-3">
-
               <input
                 type="text"
                 name="username"
-                placeholder="Username / Email"
+                placeholder="Full Name"
                 value={form.username}
                 onChange={handleChange}
+                className="w-full p-3 rounded-lg bg-[#06141d] text-white border border-white/10"
+              />
+
+              <input
+                type="email"
+                placeholder="Email Address"
                 className="w-full p-3 rounded-lg bg-[#06141d] text-white border border-white/10"
               />
 
@@ -90,31 +95,31 @@ const Login = () => {
                 className="w-full p-3 rounded-lg bg-[#06141d] text-white border border-white/10"
               />
 
+              <input
+                type="password"
+                placeholder="Confirm Password"
+                className="w-full p-3 rounded-lg bg-[#06141d] text-white border border-white/10"
+              />
+
               <button className="w-full py-3 rounded-lg font-semibold bg-green-500 hover:bg-green-600 transition">
-                Login →
+                Sign Up →
               </button>
             </form>
 
-            {/* LINKS */}
-            <p className="text-xs text-center mt-4 text-gray-400 cursor-pointer"
-              onClick={() => navigate("/forgot-password")}
-            >
-              Forgot Password?
-            </p>
-
+            {/* 👇 LOGIN LINK */}
             <p
-              onClick={() => navigate("/signup")}
-              className="text-xs text-center mt-2 text-gray-400 cursor-pointer"
+              onClick={() => navigate("/login")}
+              className="text-xs text-center mt-4 text-gray-400 cursor-pointer"
             >
-              Don’t have an account?{" "}
-              <span className="text-green-400">Sign Up</span>
+              Already have an account?{" "}
+              <span className="text-green-400">Log in</span>
             </p>
 
           </div>
         </div>
 
         {/* RIGHT SIDE - SLIDER */}
-        <div className="w-full  border-black border-2 border md:w-1/2 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center  relative overflow-hidden">
+        <div className="w-full  md:w-1/2 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center relative overflow-hidden">
 
           <img
             src={slides[current]}
@@ -128,4 +133,4 @@ const Login = () => {
   );
 };
 
-export default Login;
+export default Signup;
