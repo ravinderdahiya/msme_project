@@ -9,7 +9,6 @@ const Login = () => {
     password: "",
   });
 
-  // 🔥 SAME SLIDER IMAGES
   const slides = [
     "/images/image1.png",
     "/images/image2.jpeg",
@@ -18,7 +17,6 @@ const Login = () => {
 
   const [current, setCurrent] = useState(0);
 
-  // 🔁 AUTO SLIDE
   useEffect(() => {
     const interval = setInterval(() => {
       setCurrent((prev) => (prev + 1) % slides.length);
@@ -34,12 +32,20 @@ const Login = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // 🔥 FAKE LOGIN (API yaha lagega)
     if (form.username && form.password) {
-      navigate("/dashboard"); // 👈 login ke baad
+      navigate("/dashboard");
     } else {
       alert("Enter username & password");
     }
+  };
+
+  const handleDemoUser = () => {
+    localStorage.setItem("token", "demo-token");
+    localStorage.setItem(
+      "user",
+      JSON.stringify({ name: "Demo User", role: "demo" })
+    );
+    navigate("/demo-map");
   };
 
   return (
@@ -49,12 +55,11 @@ const Login = () => {
         backgroundImage: "url('/images/haryanamap.png')",
       }}
     >
-      {/* CARD */}
-      <div className="w-[95%] max-w-5xl bg-white/10 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row items-stretch">
+      <div className="w-[95%] max-w-5xl bg-white/10 backdrop-blur-md rounded-xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
 
-        {/* LEFT SIDE - LOGIN FORM */}
+        {/* LEFT */}
         <div className="w-full md:w-1/2 flex items-center justify-center p-6">
-          <div className="bg-[#0b2230]/70 backdrop-blur-2xl p-6 rounded-2xl w-full border border-white/10 shadow-[0_0_40px_rgba(0,255,150,0.25)]">
+          <div className="bg-[#0b2230]/70 backdrop-blur-2xl p-6 rounded-2xl w-full border border-white/10">
 
             <div className="flex justify-center mb-4">
               <div className="w-14 h-14 rounded-full bg-green-500 flex items-center justify-center">
@@ -62,13 +67,9 @@ const Login = () => {
               </div>
             </div>
 
-            <h2 className="text-xl font-semibold text-center mb-1 text-white">
+            <h2 className="text-xl text-white text-center mb-2">
               Login to Your Account
             </h2>
-
-            <p className="text-xs text-center text-gray-300 mb-5">
-              Access your investment dashboard
-            </p>
 
             <form onSubmit={handleSubmit} className="space-y-3">
 
@@ -90,14 +91,25 @@ const Login = () => {
                 className="w-full p-3 rounded-lg bg-[#06141d] text-white border border-white/10"
               />
 
-              <button className="w-full py-3 rounded-lg font-semibold bg-green-500 hover:bg-green-600 transition">
+              <button className="w-full py-3 bg-green-500 rounded-lg">
                 Login →
               </button>
+
+              {/* DEMO USER */}
+              <button
+                type="button"
+                onClick={handleDemoUser}
+                className="w-full border border-gray-300 bg-gray-100 text-gray-800 py-2 rounded-lg"
+              >
+                Demo User
+              </button>
+
             </form>
 
             {/* LINKS */}
-            <p className="text-xs text-center mt-4 text-gray-400 cursor-pointer"
+            <p
               onClick={() => navigate("/forgot-password")}
+              className="text-xs text-center mt-4 text-gray-400 cursor-pointer"
             >
               Forgot Password?
             </p>
@@ -113,9 +125,8 @@ const Login = () => {
           </div>
         </div>
 
-        {/* RIGHT SIDE - SLIDER */}
-        <div className="w-full  border-black border-2 border md:w-1/2 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center  relative overflow-hidden">
-
+        {/* RIGHT */}
+        <div className="w-full md:w-1/2 bg-gradient-to-br from-blue-200 to-blue-400 flex items-center justify-center overflow-hidden">
           <img
             src={slides[current]}
             alt="slide"
