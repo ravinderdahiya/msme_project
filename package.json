@@ -17,11 +17,10 @@
     "react-dom": "^19.2.4",
     "react-router-dom": "^7.14.0",
     "react-scripts": "^5.0.1",
-<<<<<<< HEAD
+
     "recharts": "^3.8.1",
     "tailwindcss": "^4.2.2",
-=======
->>>>>>> 8ff7b8e054af622ab9954d669bd359bb97f87d26
+
     "web-vitals": "^2.1.4"
   },
   "scripts": {

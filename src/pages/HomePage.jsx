@@ -1,59 +1,152 @@
+// App.js
 import React from "react";
 import "./HomePage.css";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <div className="home-container">
+    <>
+      <div className="home">
 
-      {/* ===== TOP GOVT HEADER ===== */}
-      <header className="gov-header">
+        {/* Navbar */}
+        <nav className="navbar">
+          <div className="logo">MSME</div>
 
-        {/* TOP STRIP */}
+          <ul className="nav-links">
+            <li>Home</li>
+            <li>About</li>
+            <li>Features</li>
+            <li className="login-btn">Login</li>
+          </ul>
+
+          <button className="signup">Sign Up</button>
+        </nav>
+        {/* Top Info Strip */}
         <div className="top-strip">
-          <span>Government of India | Ministry of MSME</span>
-    <span>MSME Support Helpline: 1800-180-6763</span>
-    <span>MSME Portal | Digital India Initiative</span>
-        </div>
-
-        {/* MAIN HEADER */}
-        <div className="main-header">
-          <img src="/harsac-logo.png" className="logo left" />
-
-          <div className="title">
-            <h2>सूक्ष्म, लघु एवं मध्यम उद्यम मंत्रालय</h2>
-      <h3>Ministry of Micro, Small & Medium Enterprises</h3>
-      <p>Government Monitoring & Economic Vulnerability Dashboard</p>
+          <div className="strip-left">
+            <img src="/har_govt.png" alt="logo" />
           </div>
 
-          <img src="/har_govt.png" className="logo right" />
+          <div className="strip-center">
+            <p>
+              Discover the best land for your industrial & commercial projects
+            </p>
+          </div>
+
+          <div className="strip-right">
+            <img src="/logo-hewp.png" alt="logo" />
+          </div>
+        </div>
+        <div className="center-cta-section">
+          <div className="center-cta">
+            <h3>Unlock Powerful GIS Tools</h3>
+            <p>Login to explore interactive GIS map</p>
+            <button className="cta-btn">Login to Unlock</button>
+          </div>
         </div>
 
-        {/* NAVBAR */}
-        <nav className="menu-bar">
-          <ul>
-           <li>HOME</li>
-      <li>MSME DASHBOARD</li>
-      <li>STATE ANALYTICS</li>
-      <li>ECONOMIC TRACKER</li>
-      <li>REPORTS</li>
-      <li>DATA & INSIGHTS</li>
-      <li>CONTACT</li>
-          </ul>
-        </nav>
+       
+        <section className="slider">
+          <div className="slide-track">
 
-      </header>
+            {[...Array(2)].map((_, i) => (
+              <React.Fragment key={i}>
+                <div className="card">
+                  <img src="/landicon.jpg" alt="" />
+                  <h3>Find Land</h3>
+                  <p>Search location-based properties</p>
+                </div>
 
-      {/* ===== CENTER CONTENT ===== */}
-      <div className="hero-content">
-      <h1>MSME Monitoring Dashboard</h1>
-<p>
-Government Analytics Platform for MSME Growth, Risk Assessment
-and Economic Activity Monitoring
-</p>
-        <button className="explore-btn">Login</button>
+                <div className="card">
+                  <img src="/insight.png" alt="" />
+                  <h3>Get Insights</h3>
+                  <p>Analyze GIS data layers</p>
+                </div>
+
+                <div className="card">
+                  <img src="/desicion.png" alt="" />
+                  <h3>Make Decisions</h3>
+                  <p>Download land reports</p>
+                </div>
+
+                <div className="card">
+                  <img src="/zone.png" alt="" />
+                  <h3>Industrial Zones</h3>
+                  <p>Zone analysis</p>
+                </div>
+
+                <div className="card">
+                  <img src="/road.png" alt="" />
+                  <h3>Road Network</h3>
+                  <p>Connectivity insights</p>
+                </div>
+              </React.Fragment>
+            ))}
+
+          </div>
+        </section>
+
+       
       </div>
+      <footer className="footer">
 
-    </div>
+        <div className="footer-container">
+
+          {/* About Project */}
+          <div className="footer-section">
+            <h2>About Project</h2>
+            <p>
+              यह प्रोजेक्ट एक GIS आधारित वेब प्लेटफॉर्म है, जिसका उद्देश्य निवेशकों को
+              उपयुक्त भूमि खोजने और उसका विश्लेषण करने में मदद करना है।
+            </p>
+          </div>
+
+          {/* Objectives */}
+          <div className="footer-section">
+            <h2>🎯 उद्देश्य</h2>
+            <ul>
+              <li>सही लोकेशन पर भूमि उपलब्ध कराना</li>
+              <li>लोकेशन आधारित डेटा एनालिसिस</li>
+              <li>सही निर्णय लेने में सहायता</li>
+            </ul>
+          </div>
+
+          {/* GIS Layers */}
+          <div className="footer-section">
+            <h2>🗺️ GIS Layers</h2>
+            <ul>
+              <li>🏭 Industrial Zones</li>
+              <li>🛣️ Road Network</li>
+              <li>🚰 Water Supply</li>
+              <li>⚡ Electricity Grid</li>
+              <li>🏥 Nearby Facilities</li>
+              <li>🌱 Environmental Data</li>
+            </ul>
+          </div>
+
+          {/* Features */}
+          <div className="footer-section">
+            <h2>🔍 Features</h2>
+            <ul>
+              <li>📍 Location-based Search</li>
+              <li>🗺️ Interactive Map</li>
+              <li>🎛️ Layer Control</li>
+              <li>📊 Data Visualization</li>
+              <li>📄 Reports</li>
+            </ul>
+          </div>
+
+        </div>
+
+        {/* Bottom */}
+        <div className="footer-bottom">
+          © 2024 InvestSmart | Government GIS Platform
+        </div>
+
+      </footer>
+    </>
+
+
 
   );
-}
+};
+
