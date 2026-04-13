@@ -28,6 +28,17 @@
   color: #61dafb;
 }
 
+.app-loading-state {
+  display: grid;
+  place-items: center;
+  min-height: 100vh;
+  background: linear-gradient(145deg, #08141d 0%, #122637 48%, #19324a 100%);
+  color: #f8fafc;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);

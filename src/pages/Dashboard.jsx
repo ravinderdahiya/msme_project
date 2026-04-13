@@ -2,9 +2,13 @@ import React from "react";
 import "./Dashboard.css";
 
 export default function Dashboard() {
+  const storedUser = localStorage.getItem("user");
+  const user = storedUser
+    ? JSON.parse(storedUser)
+    : { name: "User", role: "guest" };
+
   return (
     <div className="dashboard">
-
       {/* HEADER */}
       <div className="header">
         <h1>MSME’s STATEWIDE VULNERABILITY TRACKER</h1>
@@ -19,6 +23,12 @@ export default function Dashboard() {
         ARE THE MOST VULNERABLE
       </p>
 
+      {/* Optional User Info */}
+      <div className="user-info">
+        <p>Welcome, {user.name}</p>
+        <p>Role: {user.role}</p>
+      </div>
+
       {/* FILTERS */}
       <div className="filters">
         <select>
@@ -31,25 +41,19 @@ export default function Dashboard() {
       </div>
 
       <div className="content">
-
         {/* LEFT MAP */}
         <div className="map-section">
-          <img
-            src="/map.png"
-            alt="India Map"
-            className="map-img"
-          />
+          <img src="/map.png" alt="India Map" className="map-img" />
 
           <div className="legend">
-            <span className="high"></span> High Vulnerability
-            <span className="medium"></span> Medium Vulnerability
-            <span className="low"></span> Low Vulnerability
+            <div><span className="high"></span> High Vulnerability</div>
+            <div><span className="medium"></span> Medium Vulnerability</div>
+            <div><span className="low"></span> Low Vulnerability</div>
           </div>
         </div>
 
         {/* RIGHT PANEL */}
         <div className="right-panel">
-
           <h2>Delhi - Urban</h2>
 
           <div className="score-card">
@@ -105,7 +109,6 @@ export default function Dashboard() {
             <span>% of Migrants</span>
             <div className="bar orange" style={{ width: "60%" }}></div>
           </div>
-
         </div>
       </div>
     </div>
