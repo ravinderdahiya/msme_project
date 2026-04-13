@@ -1,6 +1,6 @@
 import { lazy, Suspense } from "react";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
-import Login from "./pages/Login";
+import AuthPage from "./pages/AuthPage";
 import Dashboard from "./pages/Dashboard";
 import Register from "./pages/Register";
 import ProtectedRoute from "./routes/ProtectedRoute";
@@ -18,10 +18,9 @@ function App() {
     >
       <Suspense fallback={<div className="app-loading-state">Loading map workspace...</div>}>
         <Routes>
-          <Route path="/" element={<Navigate to="/login" replace />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/signup" element={<Navigate to="/register" replace />} />
+          <Route path="/login" element={<AuthPage/>} />
+          <Route path="/signup" element={<AuthPage />} />
+
           <Route
             path="/dashboard"
             element={
