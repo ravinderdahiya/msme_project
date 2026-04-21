@@ -1,0 +1,208 @@
+.zone-page-container {
+    padding: 20px 30px;
+    color: white;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Header Styling */
+.zone-header-utility {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 25px;
+    color: #94a3b8;
+    font-size: 0.85rem;
+}
+
+.user-profile-nav {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.user-capsule {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    padding: 4px 12px;
+    border-radius: 20px;
+    color: white;
+}
+
+.nav-avatar {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+}
+
+/* Action Row */
+.title-action-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.add-zone-btn {
+    background: linear-gradient(to right, #2b5a9e, #4a8df3);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    font-weight: 500;
+}
+
+/* Glass Card */
+.zone-glass-card {
+    background: rgba(15, 23, 42, 0.5);
+    backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding-bottom: 15px;
+}
+
+/* Tabs */
+.zone-tabs {
+    display: flex;
+    gap: 20px;
+    padding: 20px 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tab-btn {
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    padding: 8px 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    position: relative;
+}
+
+.tab-btn.active {
+    color: #22d3ee;
+}
+
+.tab-btn.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: #22d3ee;
+    box-shadow: 0 0 10px #22d3ee;
+}
+
+/* Table Filters */
+.table-filter-bar {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px 25px;
+    align-items: center;
+}
+
+.inner-add-btn {
+    background: transparent;
+    color: #cbd5e1;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.inner-search {
+    background: rgba(0,0,0,0.2);
+    padding: 6px 12px;
+    border-radius: 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #94a3b8;
+}
+
+.inner-search input {
+    background: transparent;
+    border: none;
+    color: white;
+    outline: none;
+    font-size: 0.85rem;
+}
+
+/* Table UI */
+.industrial-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.industrial-table th {
+    text-align: left;
+    padding: 15px 25px;
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+.industrial-table td {
+    padding: 15px 25px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+}
+
+.row-id { color: #f1f5f9; }
+
+.status-pill {
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+}
+
+.status-pill.updated { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+.status-pill.pending { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+
+.action-btns {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+}
+
+.icon-btn-glass {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color: #94a3b8;
+    padding: 6px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Footer & Pagination */
+.zone-footer {
+    display: flex;
+    justify-content: space-between;
+    padding: 15px 25px;
+}
+
+.page-arrow {
+    background: rgba(255,255,255,0.05);
+    border: none;
+    color: #94a3b8;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    margin-right: 5px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+    .zone-page-container { padding: 15px; }
+    .title-action-row { flex-direction: column; align-items: flex-start; gap: 15px; }
+    .zone-table-wrapper { overflow-x: auto; }
+    .zone-tabs { overflow-x: auto; white-space: nowrap; }
+}

@@ -1,0 +1,180 @@
+.manage-page-wrapper {
+    min-height: 100vh;
+    padding: 20px 40px;
+    background: transparent; /* Kyunki background image Admin.jsx mein hai */
+    color: white;
+    font-family: 'Inter', sans-serif;
+}
+
+/* Header & Utility Bar */
+.top-utility-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+}
+
+.search-container {
+    display: flex;
+    align-items: center;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 8px 15px;
+    border-radius: 8px;
+    width: 250px;
+}
+
+.top-search-input {
+    background: transparent;
+    border: none;
+    color: white;
+    outline: none;
+    margin-left: 10px;
+    font-size: 0.9rem;
+}
+
+.user-actions {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.profile-img-small img {
+    width: 35px;
+    height: 35px;
+    border-radius: 50%;
+    border: 2px solid #22d3ee;
+}
+
+.action-icon {
+    color: #9ca3af;
+    cursor: pointer;
+}
+
+.action-icon.logout:hover { color: #ef4444; }
+
+/* Main Title Section */
+.content-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.main-title {
+    font-size: 1.8rem;
+    font-weight: 500;
+}
+
+.add-location-btn {
+    background: linear-gradient(to right, #1d4ed8, #2563eb);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+}
+
+/* Table Design */
+.table-glass-container {
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 0 0 20px 0;
+    overflow: hidden;
+}
+
+.location-data-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.location-data-table th {
+    text-align: left;
+    color: #94a3b8;
+    font-weight: 400;
+    font-size: 0.85rem;
+    padding: 18px 25px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.location-data-table td {
+    padding: 18px 25px;
+    font-size: 0.9rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    color: #cbd5e1;
+}
+
+.location-name { font-weight: 500; color: #f1f5f9; }
+
+.status-badge-active {
+    background: rgba(16, 185, 129, 0.15);
+    color: #10b981;
+    padding: 6px 15px;
+    border-radius: 6px;
+    font-size: 0.8rem;
+    border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.action-cell {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+}
+
+.row-btn {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #94a3b8;
+    padding: 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.row-btn:hover { background: rgba(255, 255, 255, 0.1); color: white; }
+
+/* Pagination Styling */
+.table-footer-pagination {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px 25px;
+}
+
+.pagination-left, .pagination-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.nav-btn {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    color: white;
+    padding: 5px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.page-num.active {
+    background: rgba(34, 211, 238, 0.1);
+    color: #22d3ee;
+    padding: 2px 12px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Responsive Logic */
+@media (max-width: 1024px) {
+    .manage-page-wrapper { padding: 20px; }
+    .table-responsive { overflow-x: auto; }
+}
+
+@media (max-width: 600px) {
+    .content-header { flex-direction: column; align-items: flex-start; gap: 15px; }
+    .top-utility-bar { flex-direction: column-reverse; gap: 20px; align-items: flex-start; }
+}

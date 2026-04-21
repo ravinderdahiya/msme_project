@@ -39,9 +39,9 @@ function App() {
           <Route
             path="/Admin"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <Admin />
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           />
 
@@ -74,9 +74,9 @@ function App() {
           <Route
             path="/demo-map"
             element={
-              <ProtectedRoute>
+              // <ProtectedRoute>
                 <HaryanaDemoMap />
-              </ProtectedRoute>
+              // </ProtectedRoute>
             }
           />
          

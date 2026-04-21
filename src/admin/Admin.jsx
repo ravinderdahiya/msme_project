@@ -2,7 +2,11 @@ import React, { useState } from 'react';
 import Sidebar from './Sidebar';
 // import TopHeader from './TopHeader';
 import Dashboard from './Dashboard';
-// import ManageLocations from './ManageLocations';
+import Location from './Location';
+import IndustrialZones from './IndustrialZone';
+import InfrastructureData from './InfrastructureData';
+import Report from './Report';
+import Users from './User';
 import './Admin.css';
 
 const Admin = () => {
@@ -20,7 +24,11 @@ const Admin = () => {
         <main className="main-viewport">
           {/* Conditional Rendering: Bina URL change kiye page badalna */}
           {activeTab === 'dashboard' && <Dashboard />}
-          {/* {activeTab === 'locations' && <ManageLocations />} */}
+          {activeTab === 'locations' && <Location />}
+           {activeTab === 'zones' && <IndustrialZones />}
+            {activeTab === 'data' && <InfrastructureData />}
+             {activeTab === 'users' && <Users />}
+             {activeTab === 'reports' && <Report />}
         </main>
       </div>
     </div>

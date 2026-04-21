@@ -67,7 +67,7 @@ const locations = [
     return (
         <>    
         
-        <header className="top-header">
+        {/* <header className="top-header">
             <div className="header-left">
                 <button className="menu-toggle">
                     <Menu size={20} />
@@ -100,7 +100,7 @@ const locations = [
                     <Settings size={18} />
                 </div>
             </div>
-        </header>
+        </header> */}
 
 
             <div className="stats-grid">
