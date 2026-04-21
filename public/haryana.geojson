@@ -1,0 +1,51 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+
+    {
+      "type": "Feature",
+      "properties": { "district": "Sonipat" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[77.00,28.80],[77.20,28.80],[77.20,29.05],[77.00,29.05],[77.00,28.80]]]
+      }
+    },
+
+    {
+      "type": "Feature",
+      "properties": { "district": "Panipat" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[76.80,29.20],[77.05,29.20],[77.05,29.45],[76.80,29.45],[76.80,29.20]]]
+      }
+    },
+
+    {
+      "type": "Feature",
+      "properties": { "district": "Rohtak" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[76.55,28.85],[76.80,28.85],[76.80,29.10],[76.55,29.10],[76.55,28.85]]]
+      }
+    },
+
+    {
+      "type": "Feature",
+      "properties": { "district": "Hisar" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[75.40,28.90],[75.90,28.90],[75.90,29.40],[75.40,29.40],[75.40,28.90]]]
+      }
+    },
+
+    {
+      "type": "Feature",
+      "properties": { "district": "Karnal" },
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [[[76.90,29.40],[77.30,29.40],[77.30,29.80],[76.90,29.80],[76.90,29.40]]]
+      }
+    }
+
+  ]
+}

@@ -1,0 +1,336 @@
+.demo-map-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at top left, rgba(245, 158, 11, 0.16), transparent 24%),
+    linear-gradient(180deg, #071218 0%, #0f1720 100%);
+  color: #f8fafc;
+}
+
+.demo-map-topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 22px;
+  background: rgba(8, 19, 27, 0.82);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(10px);
+}
+
+.demo-map-brand {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.demo-map-brand__seal {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  /*background: radial-gradient(circle at 30% 30%, #fde68a, #f59e0b 58%, #b45309 100%);*/
+  color: #102031;
+  font-weight: 900;
+}
+
+.demo-map-brand__title,
+.demo-map-brand__subtitle {
+  margin: 0;
+}
+
+.demo-map-brand__title {
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+
+.demo-map-brand__subtitle {
+  color: #cbd5e1;
+  font-size: 0.95rem;
+}
+
+.demo-map-topbar__actions {
+  display: flex;
+  gap: 10px;
+}
+
+.demo-map-topbar__link,
+.demo-map-topbar__button {
+  /*min-height: 42px;*/
+  padding: 0 16px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(15, 23, 42, 0.55);
+  color: #f8fafc;
+  text-decoration: none;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.demo-map-shell {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  min-height: calc(100vh - 73px);
+}
+
+.demo-map-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 16px;
+  background: rgba(4, 10, 15, 0.7);
+  border-right: 1px solid rgba(255, 255, 255, 0.06);
+  overflow: auto;
+}
+
+.demo-map-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.52);
+}
+
+.demo-map-panel__eyebrow {
+  margin: 0;
+  color: #fbbf24;
+  font-size: 0.77rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.demo-map-search {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+}
+
+.demo-map-search::placeholder {
+  color: #cbd5e1;
+}
+
+.demo-map-list,
+.demo-map-zones {
+  display: grid;
+  gap: 8px;
+  max-height: 230px;
+  overflow: auto;
+}
+
+.demo-map-list button,
+.demo-map-zones button {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  padding: 10px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
+  color: #f8fafc;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+}
+
+.demo-map-list button:hover,
+.demo-map-list button.is-active,
+.demo-map-zones button:hover,
+.demo-map-zones button.is-active {
+  border-color: rgba(251, 191, 36, 0.92);
+  background: rgba(251, 191, 36, 0.14);
+  transform: translateY(-1px);
+}
+
+.demo-map-list span,
+.demo-map-zones span,
+.demo-map-panel label,
+.demo-map-panel p,
+.demo-map-meta span {
+  color: #dbe4ee;
+  line-height: 1.45;
+}
+
+.demo-map-panel label {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.demo-map-panel h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.demo-map-meta {
+  display: grid;
+  gap: 6px;
+  font-size: 0.93rem;
+}
+
+.demo-map-stage {
+  position: relative;
+  padding: 12px 12px 22px;
+}
+
+.demo-map-canvas {
+  width: 100%;
+  height: calc(100vh - 122px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.35);
+}
+
+.demo-map-controls {
+  position: absolute;
+  left: 12px;
+  top: 12px;
+  z-index: 1000;
+  display: grid;
+  gap: 8px;
+}
+
+.demo-map-controls button {
+  width: 54px;
+  min-height: 42px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.92);
+  color: #0f172a;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.demo-map-controls button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.demo-map-overlay {
+  position: absolute;
+  z-index: 1000;
+}
+
+.demo-map-overlay--top-right {
+  top: 14px;
+  right: 14px;
+}
+
+.demo-map-overlay--bottom-right {
+  right: 20px;
+  bottom: 52px;
+}
+
+.demo-map-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  background: rgba(13, 18, 27, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(8px);
+}
+
+.demo-map-toolbar__title {
+  color: #fbbf24;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.demo-map-toolbar button {
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  cursor: pointer;
+}
+
+.demo-map-grid-chip {
+  display: grid;
+  place-items: center;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #16a34a, #38bdf8);
+  color: white;
+  font-weight: 900;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+.demo-map-footer {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  padding: 10px 16px;
+  background: rgba(0, 0, 0, 0.76);
+  color: #f8fafc;
+  font-style: italic;
+  text-align: center;
+  z-index: 999;
+}
+
+.demo-map-label {
+  color: #fbbf24;
+  font-weight: 800;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.9),
+    1px 0 0 rgba(0, 0, 0, 0.9),
+    0 -1px 0 rgba(0, 0, 0, 0.9),
+    -1px 0 0 rgba(0, 0, 0, 0.9);
+}
+
+.demo-map-pin {
+  display: grid;
+  place-items: center;
+}
+
+.demo-map-pin__core {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #22c55e;
+  border: 3px solid #f8fafc;
+  box-shadow: 0 0 0 5px rgba(34, 197, 94, 0.22);
+}
+
+@media (max-width: 1024px) {
+  .demo-map-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .demo-map-sidebar {
+    max-height: none;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  }
+
+  .demo-map-canvas {
+    height: 70vh;
+  }
+}
+
+@media (max-width: 640px) {
+  .demo-map-topbar {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .demo-map-topbar__actions {
+    width: 100%;
+  }
+
+  .demo-map-topbar__link,
+  .demo-map-topbar__button {
+    flex: 1;
+    display: grid;
+    place-items: center;
+  }
+
+  .demo-map-footer {
+    font-size: 0.84rem;
+  }
+
+}

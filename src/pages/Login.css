@@ -1,0 +1,322 @@
+.page-wrapper {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  min-height: 100vh; /* Full screen height */
+  
+  /* Full Page Background Image */
+  background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+              url('../../public/login\ image.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed; /* Image scroll nahi hogi, fix rahegi */
+  display: flex;
+  flex-direction: column;
+}
+
+/* Header ko transparent rakha hai taaki background dikhe */
+.transparent-header {
+  width: 100%;
+  padding: 20px 0;
+  background: transparent; 
+}
+
+.header-container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 50px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+}
+
+.logo-section {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.gov-logo {
+  height: 60px;
+}
+
+.logo-text {
+  display: flex;
+  flex-direction: column;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+}
+
+.header-title h1 {
+  font-size: 26px;
+  font-weight: 600;
+  text-transform: none;
+}
+
+.hepc-logo {
+  height: 50px;
+}
+
+/* --- Responsive Design --- */
+@media (max-width: 1024px) {
+  .header-container {
+    padding: 0 20px;
+  }
+  .header-title h1 {
+    font-size: 20px;
+  }
+}
+
+@media (max-width: 768px) {
+  .header-container {
+    flex-direction: column;
+    text-align: center;
+    gap: 20px;
+  }
+  .page-wrapper {
+      background-attachment: scroll; /* Mobile par performance ke liye scroll theek rehta hai */
+  }
+}
+/* Container jo content ko center aur space deta hai */
+.hero-container {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 80px;
+  color: white;
+}
+
+.hero-content {
+  display: flex;
+  width: 100%;
+  max-width: 1300px;
+  justify-content: space-between;
+  align-items: center;
+  gap: 40px;
+}
+
+/* --- Left Side Styling --- */
+.left-section {
+  flex: 1;
+  max-width: 600px;
+}
+
+.hero-title {
+  font-size: 42px;
+  font-weight: 700;
+  margin-bottom: 25px;
+  line-height: 1.2;
+}
+
+.hero-description {
+  font-size: 18px;
+  line-height: 1.6;
+  margin-bottom: 35px;
+  color: #e0e0e0;
+}
+
+.features-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.feature-item {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  font-size: 17px;
+}
+
+.check-badge {
+  background-color: #14b8a6; /* Greenish Teal color */
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-weight: bold;
+  font-size: 14px;
+}
+
+/* --- Right Side (Login Card) Styling --- */
+.right-section {
+  flex: 1;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.login-card {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 12px;
+  padding: 40px;
+  width: 100%;
+  max-width: 420px;
+  text-align: center;
+}
+
+.card-emblem {
+  height: 70px;
+  margin-bottom: 15px;
+}
+
+.login-card h2 {
+  font-size: 24px;
+  margin-bottom: 30px;
+  font-weight: 500;
+}
+
+.input-field {
+  position: relative;
+  margin-bottom: 18px;
+}
+
+.input-field i {
+  position: absolute;
+  left: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #4b5563;
+}
+
+.input-field input {
+  width: 100%;
+  padding: 12px 12px 12px 45px;
+  border-radius: 6px;
+  border: none;
+  background-color: #cbd5e1;
+  color: #1f2937;
+  font-size: 16px;
+  outline: none;
+}
+
+.form-options {
+  text-align: left;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.login-button {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(to right, #004d7a, #008793);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 18px;
+  cursor: pointer;
+  margin-bottom: 20px;
+  transition: opacity 0.3s;
+}
+
+.forgot-link {
+  color: #ddd;
+  text-decoration: none;
+  font-size: 14px;
+  display: block;
+  margin-bottom: 20px;
+}
+
+.signup-text {
+  font-size: 14px;
+}
+
+.signup-text a {
+  color: #4ade80;
+  text-decoration: none;
+  font-weight: bold;
+}
+/* ... baki puraani CSS same rahegi ... */
+
+.signup-text span {
+  color: #4ade80;
+  text-decoration: none;
+  font-weight: bold;
+  cursor: pointer; /* Hath ka nishan banega */
+  transition: 0.3s;
+}
+
+.signup-text a:hover {
+  text-decoration: underline;
+  color: #22c55e;
+}
+
+/* Extra field icon style */
+.input-field i.fa-user-tag {
+  font-size: 14px;
+}
+
+/* Form animation (Optional: smooth feel ke liye) */
+.login-card {
+  animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Checkbox alignment fix */
+.checkbox-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+/* Link ko anchor tag jaisa dikhane ke liye */
+.toggle-link {
+    color: #4ade80; /* Light green color as per your theme */
+    font-weight: bold;
+    cursor: pointer;
+    margin-left: 5px;
+    transition: all 0.3s ease;
+}
+
+.toggle-link:hover {
+    text-decoration: underline;
+    opacity: 0.8;
+}
+
+/* Signup mode mein transition effect */
+.login-form {
+    transition: all 0.4s ease-in-out;
+}
+
+/* Extra field ke icon ke liye padding adjustment agar zaroorat ho */
+.input-field i.fa-user-tag {
+    font-size: 14px;
+}
+
+
+/* --- Responsiveness --- */
+
+/* Tablet & Smaller Desktop */
+@media (max-width: 1024px) {
+  .hero-container { padding: 40px; }
+  .hero-title { font-size: 32px; }
+  .hero-content { gap: 20px; }
+}
+
+/* Mobile View */
+@media (max-width: 768px) {
+  .hero-content {
+    flex-direction: column;
+    text-align: center;
+  }
+  .left-section {
+    margin-bottom: 40px;
+  }
+  .right-section {
+    justify-content: center;
+  }
+  .feature-item {
+    justify-content: center;
+  }
+}

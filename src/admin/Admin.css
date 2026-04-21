@@ -1,0 +1,32 @@
+.admin-layout {
+  display: flex;
+  min-height: 100vh;
+  /* Login page wali image ka path yahan dein */
+ background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)), 
+              url('../../public/login\ image.png');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed; /* Taaki scroll karne par image wahi rahe */
+  color: #ffffff;
+}
+
+.admin-content {
+  flex-grow: 1;
+  /* Sidebar ki width ke hisaab se margin adjust karein */
+  margin-left: 260px; 
+  padding: 30px;
+  overflow-y: auto;
+  /* Glassmorphism effect ke liye halka blur (optional) */
+  backdrop-filter: blur(5px);
+}
+
+/* Jab sidebar closed ho (agar aapne state handle ki hai) */
+.admin-layout.sidebar-closed .admin-content {
+  margin-left: 80px;
+}
+
+@media (max-width: 768px) {
+  .admin-content {
+    margin-left: 0;
+  }
+}
