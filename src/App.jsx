@@ -13,6 +13,7 @@ import Haryana_map from "./components/Haryana_map";
 import Header from "./components/Header.jsx"
 import Sidebar from "../src/components/Sidebar"
 import { useState } from "react";
+import MSMEMapPage from "./pages/MSMEMapPage.jsx";
 
 //import Main from "./Main";
 
@@ -45,31 +46,7 @@ function App() {
             }
           />
 
-          <Route path="msme-gis-map"  element={
-              <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>
-                    
-                    <Header />
-
-                    <div style={{ flex: 1, display: "flex" }}>
-                      
-                      {/* ✅ Sidebar (20%) */}
-                      <Sidebar filters={filters} setFilters={setFilters} />
-                      {/* <div className="location-wrapper">
-                        <LocationTools
-                          filters={filters}
-                          setFilters={setFilters}
-                        />
-                      </div> */}
-
-                      {/* ✅ Map (80%) */}
-                      <div style={{ width: "95%", height: "100%" }}>
-                        <Haryana_map filters={filters} />
-                      </div>
-
-                    </div>
-                  </div> } >
-
-          </Route>
+        <Route path="/msme-gis-map" element={<MSMEMapPage />} />
 
           <Route
             path="/demo-map"

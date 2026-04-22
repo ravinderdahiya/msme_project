@@ -1,385 +1,482 @@
-import React, { useState } from "react";
-import  "../css/Sidebar.css"
+import ResultsFlyout from './ResultsFlyout.jsx'
 
-const hierarchyData = {
-  india: {
-    haryana: {
-      Ambala: ["Village A1", "Village A2"],
-      Bhiwani: ["Village B1", "Village B2"],
-      "Charkhi Dadri": ["Village C1", "Village C2"],
-      Faridabad: ["Village F1", "Village F2"],
-      Fatehabad: ["Village FA1", "Village FA2"],
-      Gurugram: ["Village G1", "Village G2"],
-      Hisar: ["Village H1", "Village H2"],
-      Jhajjar: ["Village JH1", "Village JH2"],
-      Jind: ["Village JI1", "Village JI2"],
-      Kaithal: ["Village K1", "Village K2"],
-      Karnal: ["Village KR1", "Village KR2"],
-      Kurukshetra: ["Village KU1", "Village KU2"],
-      Mahendragarh: ["Village M1", "Village M2"],
-      Nuh: ["Village N1", "Village N2"],
-      Palwal: ["Village PA1", "Village PA2"],
-      Panchkula: ["Village PAN1", "Village PAN2"],
-      Panipat: ["Village PNP1", "Village PNP2"],
-      Rewari: ["Village R1", "Village R2"],
-      Rohtak: ["Village RO1", "Village RO2"],
-      Sirsa: ["Village S1", "Village S2"],
-      Sonipat: ["Village SO1", "Village SO2"],
-      Yamunanagar: ["Village Y1", "Village Y2"],
-    },
-  },
-};
-
-function Sidebar({ filters, setFilters }) {
-  const [manualCoords, setManualCoords] = useState("");
-  const [locationInfo, setLocationInfo] = useState({
-    lat: "",
-    lng: "",
-    accuracy: null,
-    address: "",
-    status: "idle",
-  });
-  const [searchingPlace, setSearchingPlace] = useState(false);
-
-  const forwardGeocode = async (query) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(
-          query
-        )}&limit=1`
-      );
-      const data = await response.json();
-
-      if (data.length > 0) {
-        return {
-          lat: parseFloat(data[0].lat),
-          lng: parseFloat(data[0].lon),
-          display_name: data[0].display_name,
-        };
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Geocoding failed:", error);
-      return null;
-    }
-  };
-
-  const reverseGeocode = async (lat, lng) => {
-    try {
-      const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`
-      );
-      const data = await response.json();
-      return data.display_name || "Unknown address";
-    } catch (error) {
-      return "Address unavailable";
-    }
-  };
-
-  const handleChange = (e) => {
-    const { name, value } = e.target;
-
-    setFilters((prev) => {
-      const updated = { ...prev, [name]: value };
-
-      if (name === "country") {
-        updated.state = "";
-        updated.district = "";
-        updated.village = "";
-      }
-
-      if (name === "state") {
-        updated.district = "";
-        updated.village = "";
-      }
-
-      if (name === "district") {
-        updated.village = "";
-      }
-
-      return updated;
-    });
-  };
-
-  const handleCurrentLocation = async () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation not supported");
-      return;
-    }
-
-    setLocationInfo((prev) => ({ ...prev, status: "fetching" }));
-
-    navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
-        const address = await reverseGeocode(latitude, longitude);
-
-        setLocationInfo({
-          lat: latitude.toFixed(6),
-          lng: longitude.toFixed(6),
-          accuracy: accuracy.toFixed(0),
-          address,
-          status: "success",
-        });
-
-        setFilters((prev) => ({
-          ...prev,
-          currentLocation: `${latitude},${longitude}`,
-          locationAccuracy: accuracy,
-          locationAddress: address,
-        }));
-      },
-      (error) => {
-        setLocationInfo((prev) => ({ ...prev, status: "error" }));
-        alert("GPS Error: " + error.message);
-      },
-      { enableHighAccuracy: true, timeout: 15000 }
-    );
-  };
-
-  const handleManualLocation = async () => {
-    const query = manualCoords.trim();
-    if (!query) {
-      alert("Enter place name or coordinates");
-      return;
-    }
-
-    setSearchingPlace(true);
-    let coords = await forwardGeocode(query);
-
-    if (!coords) {
-      const parts = query.split(",").map((s) => s.trim());
-      if (parts.length === 2) {
-        const [lat, lng] = parts.map(Number);
-        if (!isNaN(lat) && !isNaN(lng)) {
-          coords = {
-            lat,
-            lng,
-            display_name: query,
-          };
-        }
-      }
-    }
-
-    setSearchingPlace(false);
-
-    if (coords) {
-      setFilters((prev) => ({
-        ...prev,
-        currentLocation: `${coords.lat},${coords.lng}`,
-        locationAddress: coords.display_name,
-      }));
-
-      setLocationInfo({
-        lat: coords.lat.toFixed(6),
-        lng: coords.lng.toFixed(6),
-        address: coords.display_name,
-        status: "manual",
-      });
-    } else {
-      alert("Place not found");
-    }
-  };
-
-  const states = filters.country
-    ? Object.keys(hierarchyData[filters.country] || {})
-    : [];
-
-  const districts =
-    filters.country && filters.state
-      ? Object.keys(hierarchyData[filters.country][filters.state] || {})
-      : [];
-
-  const villages =
-    filters.country && filters.state && filters.district
-      ? hierarchyData[filters.country][filters.state][filters.district] || []
-      : [];
-
+export default function Sidebar({ t }) {
   return (
-    <div style={styles.sidebar}>
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>Administrative</h3>
-
-        <select
-          name="country"
-          value={filters.country || ""}
-          onChange={handleChange}
-          style={styles.select}
-        >
-          <option value="">Country</option>
-          <option value="india">India</option>
-        </select>
-
-        <select
-          name="state"
-          value={filters.state || ""}
-          onChange={handleChange}
-          style={styles.select}
-        >
-          <option value="">State</option>
-          {states.map((state) => (
-            <option key={state} value={state}>
-              {state.charAt(0).toUpperCase() + state.slice(1)}
-            </option>
-          ))}
-        </select>
-
-        <select
-          name="district"
-          value={filters.district || ""}
-          onChange={handleChange}
-          style={styles.select}
-        >
-          <option value="">District</option>
-          {districts.map((district) => (
-            <option key={district} value={district}>
-              {district}
-            </option>
-          ))}
-        </select>
-
-        <select
-          name="village"
-          value={filters.village || ""}
-          onChange={handleChange}
-          style={styles.select}
-        >
-          <option value="">Village</option>
-          {villages.map((village) => (
-            <option key={village} value={village}>
-              {village}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div style={styles.section}>
-        <h3 style={styles.sectionTitle}>My Location</h3>
-
-        <button style={styles.btnPrimary} onClick={handleCurrentLocation}>
-          Get GPS Location
-        </button>
-
-        {locationInfo.status !== "idle" && (
-          <div style={styles.locationInfo}>
-            {locationInfo.lat && (
-              <div>
-                <div>
-                  {locationInfo.lat}, {locationInfo.lng}
-                </div>
-                <div>{locationInfo.address}</div>
-              </div>
-            )}
-          </div>
-        )}
-
-        <div style={styles.inputRow}>
-          <input
-            style={styles.input}
-            placeholder="Taj Mahal or 28.7041,77.1025"
-            value={manualCoords}
-            onChange={(e) => setManualCoords(e.target.value)}
-          />
-          <button
-            style={styles.btnSecondary}
-            onClick={handleManualLocation}
-            disabled={searchingPlace}
-          >
-            {searchingPlace ? "..." : "Go"}
-          </button>
+    <>
+      <header
+        id="appHeader"
+        // style={{
+        //   justifyContent: 'flex-start',
+        //   background: 'linear-gradient(90deg, #1e3c72, #2a5298)',
+        //   color: '#fff',
+        //   padding: '15px 18px',
+        // }}
+      >
+        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
+          <h2 style={{ margin: 0, color: '#fff', fontSize: '28px', fontWeight: 600 }}>
+            GIS Dashboard
+          </h2>
         </div>
-      </div>
+      </header>
 
-      <button style={styles.btnRed} onClick={() => setFilters({})}>
-        Clear All Filters
-      </button>
-    </div>
-  );
+      <aside
+        id="spatialPanel"
+        className="spatial-panel collapsed"
+        aria-hidden="true"
+        aria-labelledby="spatialPanelTitle"
+      >
+        <div className="sp-head">
+          <div className="ap-head-row">
+            <h2 id="spatialPanelTitle">{t('spatialTitle')}</h2>
+            <button type="button" className="ap-close" id="btnSpatialClose" title={t('closePanel')}>
+              ×
+            </button>
+          </div>
+          <p className="sp-intro">{t('spatialIntro')}</p>
+        </div>
+        <div className="sp-scroll">
+          <div id="spatialToolbar" aria-label={t('spatialToolbarAria')}>
+            <div className="st-tabs" role="tablist">
+              <button type="button" className="tab active" data-panel="pA" role="tab">
+                {t('spatialTabBuffer')}
+              </button>
+              <button type="button" className="tab" data-panel="pB" role="tab">
+                {t('spatialTabProximity')}
+              </button>
+              <button type="button" className="tab" data-panel="pC" role="tab">
+                {t('spatialTabIntersect')}
+              </button>
+              <button type="button" className="tab" data-panel="pD" role="tab">
+                {t('spatialTabMulti')}
+              </button>
+              <button type="button" className="tab" data-panel="pE" role="tab">
+                {t('spatialTabSuit')}
+              </button>
+            </div>
+
+            <div className="st-panels">
+              <div id="pA" className="panel active" role="tabpanel">
+                <div className="buffer-mark-row">
+                  <button type="button" className="btn-secondary" id="btnBufferMarkPoint">
+                    {t('bufferMark')}
+                  </button>
+                  <button type="button" className="btn-ghost" id="btnBufferClearMark">
+                    {t('bufferClearMark')}
+                  </button>
+                </div>
+                <div className="row">
+                  <span className="lbl">{t('bufferQueryRadius')}</span>
+                  <input type="range" id="bufMarkQueryRadius" min="1000" max="15000" step="500" defaultValue="5000" />
+                  <span className="val" id="bufMarkQueryRadiusVal">5000</span>
+                </div>
+                <div className="row">
+                  <span className="lbl">{t('bufferRoadSource')}</span>
+                  <select id="bufRoadLayer" className="sm" title={t('bufRoadLayerTitle')} defaultValue="4">
+                    <option value="4">{t('bufRoadOptLine')}</option>
+                    <option value="0">{t('bufRoadOptAir')}</option>
+                  </select>
+                  <span className="lbl">{t('bufferDistance')}</span>
+                  <input type="range" id="bufDist" min="100" max="5000" step="100" defaultValue="1000" />
+                  <span className="val" id="bufDistVal">1000</span>
+                  <button type="button" className="btn-run" id="runBuffer">
+                    {t('runBuffer')}
+                  </button>
+                </div>
+                <p className="panel-hint">{t('bufferHint')}</p>
+              </div>
+
+              <div id="pB" className="panel" role="tabpanel">
+                <div className="row">
+                  <label>
+                    <input type="checkbox" id="proxCheckAll" /> {t('proximitySelectPoi')}
+                  </label>
+                  <span className="lbl">{t('proximityMaxDist')}</span>
+                  <input type="range" id="proxDist" min="100" max="10000" step="100" defaultValue="2000" />
+                  <span className="val" id="proxDistVal">2000</span>
+                  <button type="button" className="btn-run" id="runProximity">
+                    {t('proximityRun')}
+                  </button>
+                </div>
+                <div id="proxCheckboxes" className="chk-grid"></div>
+                <p className="panel-hint">{t('proximityHint')}</p>
+              </div>
+
+              <div id="pC" className="panel" role="tabpanel">
+                <div className="row">
+                  <label>
+                    <input type="checkbox" id="intCheckAll" /> {t('intersectSelectLayers')}
+                  </label>
+                  <button type="button" className="btn-run" id="runIntersect">
+                    {t('intersectRun')}
+                  </button>
+                </div>
+                <div id="intCheckboxes" className="chk-grid"></div>
+                <p className="panel-hint">{t('intersectHint')}</p>
+              </div>
+
+              <div id="pD" className="panel" role="tabpanel">
+                <div className="row">
+                  <label>
+                    <input type="checkbox" id="multiCheckAll" /> {t('multiSelectUtility')}
+                  </label>
+                  <span className="lbl">{t('multiDistance')}</span>
+                  <input type="range" id="multiDist" min="100" max="8000" step="100" defaultValue="2000" />
+                  <span className="val" id="multiDistVal">2000</span>
+                  <button type="button" className="btn-run" id="runMulti">
+                    {t('multiRun')}
+                  </button>
+                </div>
+                <div className="row">
+                  <label className="lbl">{t('multiIncludeRoadsLabel')}</label>
+                  <input type="checkbox" id="multiIncRoads" defaultChecked />
+                </div>
+                <div id="multiCheckboxes" className="chk-grid"></div>
+                <p className="panel-hint">{t('multiHint')}</p>
+              </div>
+
+              <div id="pE" className="panel" role="tabpanel">
+                <div className="row">
+                  <span className="lbl">{t('suitNearRoad')}</span>
+                  <input type="range" id="suitDist" min="500" max="10000" step="100" defaultValue="2000" />
+                  <span className="val" id="suitDistVal">2000</span>
+                  <button type="button" className="btn-run" id="runSuitability">
+                    {t('suitRun')}
+                  </button>
+                </div>
+                <p className="panel-hint">{t('suitHint')}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <aside id="rail">
+        <button type="button" className="rail-btn" id="btnOpenSpatial" title={t('railTitleSpatial')}>
+          ⧉
+        </button>
+        <span className="rail-tip">{t('railAnalysis')}</span>
+
+        <button type="button" className="rail-btn" id="btnOpenNav" title={t('railTitleAoi')}>
+          ⌖
+        </button>
+        <span className="rail-tip">{t('railAoi')}</span>
+
+        <button type="button" className="rail-btn active" id="btnTogglePanel" title={t('railTitleLayers')}>
+          ☰
+        </button>
+        <span className="rail-tip">{t('railLayers')}</span>
+
+        <button
+          type="button"
+          className="rail-btn"
+          id="btnSelectTool"
+          title={t('railTitleSelect')}
+          aria-pressed="false"
+        >
+          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
+            <path fill="currentColor" d="M4 2l2 18 3.5-7 7-3.5L4 2z" />
+          </svg>
+        </button>
+        <span className="rail-tip">{t('railSelect')}</span>
+
+        <button
+          type="button"
+          className="rail-btn"
+          id="btnMapMultiSelect"
+          title={t('railTitleMultiSelect')}
+          aria-pressed="false"
+        >
+          +
+        </button>
+        <span className="rail-tip">{t('railMultiSelect')}</span>
+
+        <button type="button" className="rail-btn" id="btnMapSelToAnalysis" title={t('railTitleMapSelAnalysis')}>
+          ⚙
+        </button>
+        <span className="rail-tip">{t('railMapSelAnalysis')}</span>
+      </aside>
+
+      <aside id="toolsPanel">
+        <div className="tp-head">
+          <h2>{t('layersTitle')}</h2>
+          <p>{t('layersIntro')}</p>
+        </div>
+        <div className="tp-scroll">
+          <div id="layerListContainer"></div>
+          <div id="status"></div>
+        </div>
+      </aside>
+
+      <aside
+        id="aoiPanel"
+        className="aoi-panel collapsed"
+        aria-hidden="true"
+        role="complementary"
+        aria-labelledby="aoiModalTitle"
+      >
+        <div className="ap-head">
+          <div className="ap-head-row">
+            <h2 id="aoiModalTitle">{t('aoiLandTitle')}</h2>
+            <button type="button" className="ap-close" id="btnNavClose" title={t('closePanel')}>
+              ×
+            </button>
+          </div>
+          <div className="modal-tabs" role="tablist">
+            <button type="button" className="active" id="tabAoi" data-mpanel="mpAoi">
+              {t('tabAoi')}
+            </button>
+            <button type="button" id="tabCad" data-mpanel="mpCad">
+              {t('tabCad')}
+            </button>
+            <button type="button" id="tabHsvp" data-mpanel="mpHsvp">
+              {t('tabHsvp')}
+            </button>
+          </div>
+        </div>
+
+        <div className="ap-scroll">
+          <div id="mpAoi" className="modal-panel active">
+            <section className="aoi-card">
+              <h3 className="aoi-card-title">{t('aoiSectionAdmin')}</h3>
+              <p className="aoi-card-desc">{t('aoiHelpAdmin')}</p>
+
+              <label>{t('state')}</label>
+              <select id="stateSelect" disabled>
+                <option>HARYANA</option>
+              </select>
+
+              <label>{t('district')}</label>
+              <select id="districtSelect">
+                <option value="">{t('placeholderDistrict')}</option>
+              </select>
+
+              <label>{t('tehsil')}</label>
+              <select id="tehsilSelect" disabled>
+                <option value="">{t('placeholderTehsil')}</option>
+              </select>
+
+              <label>{t('village')}</label>
+              <select id="villageSelect" disabled>
+                <option value="">{t('placeholderVillage')}</option>
+              </select>
+
+              <div className="actions">
+                <button type="button" className="btn-go" id="btnNavApply">
+                  {t('applyZoom')}
+                </button>
+                <button type="button" className="btn-clear" id="btnNavClear">
+                  {t('clear')}
+                </button>
+                     <div className="actions">
+                     <button type="button" className="btn-clear" id="btnRouteFromCurrentToAoi">
+                          Route 
+                     </button>
+                     </div>
+              </div>
+            </section>
+          </div>
+
+          <div id="mpCad" className="modal-panel">
+            <section className="aoi-card">
+              <h3 className="aoi-card-title">{t('aoiSectionCad')}</h3>
+              <p className="aoi-card-desc">{t('cadIntro')}</p>
+
+              <label>{t('cadDistrict')}</label>
+              <select id="cadDistrictSelect">
+                <option value="">{t('placeholderDistrict')}</option>
+              </select>
+
+              <label>{t('cadTehsil')}</label>
+              <select id="cadTehsilSelect" disabled>
+                <option value="">{t('placeholderTehsil')}</option>
+              </select>
+
+              <label>{t('cadVillage')}</label>
+              <select id="cadVillageSelect" disabled>
+                <option value="">{t('placeholderVillage')}</option>
+              </select>
+
+              <label>{t('cadMuraba')}</label>
+              <select id="cadMurabaSelect" disabled>
+                <option value="">{t('placeholderMuraba')}</option>
+              </select>
+
+              <label>{t('cadKhasra')}</label>
+              <select id="cadKhasraSelect" disabled>
+                <option value="">{t('placeholderParcel')}</option>
+              </select>
+
+              <label>{t('cadRadius')}</label>
+              <input
+                type="range"
+                id="cadNearM"
+                min="200"
+                max="10000"
+                step="100"
+                defaultValue="2000"
+                style={{ width: '100%' }}
+              />
+              <div className="cad-radius-val">
+                <span id="cadNearMVal">2000</span> m
+              </div>
+
+              <label className="cad-near-label">{t('cadFeatures')}</label>
+              <div id="cadNearChecks" className="chk-grid cad-near-grid"></div>
+
+              <label className="cad-near-all">
+                <input type="checkbox" id="cadNearAll" /> {t('cadSelectAll')}
+              </label>
+
+              <div className="actions actions-spaced">
+                <button type="button" className="btn-go" id="btnCadShow">
+                  {t('cadShow')}
+                </button>
+                <button type="button" className="btn-go btn-go-accent" id="btnCadNearby">
+                  {t('cadNearby')}
+                </button>
+              </div>
+
+              <div className="actions">
+                <button type="button" className="btn-clear" id="btnCadRoute" title={t('cadRoute')}>
+                  {t('cadRoute')}
+                </button>
+                <button type="button" className="btn-clear" id="btnCadClear">
+                  {t('cadClear')}
+                </button>
+              </div>
+
+              <div id="cadResults" className="cad-results"></div>
+            </section>
+          </div>
+
+          <div id="mpHsvp" className="modal-panel">
+            <section className="aoi-card">
+              <h3 className="aoi-card-title">{t('hsvpTitle')}</h3>
+              <p className="aoi-card-desc">{t('hsvpIntro')}</p>
+
+              <label>{t('district')}</label>
+              <select id="hsvpDistrictSelect">
+                <option value="">{t('placeholderDistrict')}</option>
+              </select>
+
+              <label>{t('hsvpPlot')}</label>
+              <select id="hsvpPlotSelect" disabled>
+                <option value="">{t('placeholderHsvpPlot')}</option>
+              </select>
+
+              <div className="actions">
+                <button type="button" className="btn-go btn-go-accent" id="btnHsvpApply">
+                  {t('hsvpApply')}
+                </button>
+              </div>
+            </section>
+          </div>
+        </div>
+      </aside>
+
+      <aside
+        id="selectToolsPanel"
+        className="select-tools-panel collapsed"
+        aria-hidden="true"
+        role="complementary"
+        aria-labelledby="selectToolsTitle"
+      >
+        <div className="stools-head">
+          <div className="ap-head-row">
+            <h2 id="selectToolsTitle">{t('selectToolsLabel')}</h2>
+            <button type="button" className="ap-close" id="btnSelectToolsClose" title={t('closePanel')}>
+              ×
+            </button>
+          </div>
+          <p className="stools-intro">{t('selectToolsIntro')}</p>
+        </div>
+
+        <div className="stools-body" role="toolbar" aria-label={t('selectToolsLabel')}>
+          <div className="stools-grid">
+            <button
+              type="button"
+              className="stools-btn"
+              title={t('selectIdentify')}
+              onClick={() => window.msmeGisActivateIdentifyMode && window.msmeGisActivateIdentifyMode()}
+            >
+              <span className="stools-ico" aria-hidden>⌖</span>
+              <span className="stools-txt">{t('selectIdentify')}</span>
+            </button>
+
+            <button
+              type="button"
+              className="stools-btn"
+              title={t('selectSketchPoint')}
+              onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('point')}
+            >
+              <span className="stools-ico" aria-hidden>·</span>
+              <span className="stools-txt">{t('selectSketchPoint')}</span>
+            </button>
+
+            <button
+              type="button"
+              className="stools-btn"
+              title={t('selectSketchLine')}
+              onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('polyline')}
+            >
+              <span className="stools-ico" aria-hidden>╱</span>
+              <span className="stools-txt">{t('selectSketchLine')}</span>
+            </button>
+
+            <button
+              type="button"
+              className="stools-btn"
+              title={t('selectSketchPoly')}
+              onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('polygon')}
+            >
+              <span className="stools-ico" aria-hidden>⬡</span>
+              <span className="stools-txt">{t('selectSketchPoly')}</span>
+            </button>
+
+            <button
+              type="button"
+              className="stools-btn"
+              title={t('selectSketchRect')}
+              onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('rectangle')}
+            >
+              <span className="stools-ico" aria-hidden>▭</span>
+              <span className="stools-txt">{t('selectSketchRect')}</span>
+            </button>
+
+            <button
+              type="button"
+              className="stools-btn"
+              title={t('selectSketchCircle')}
+              onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('circle')}
+            >
+              <span className="stools-ico" aria-hidden>○</span>
+              <span className="stools-txt">{t('selectSketchCircle')}</span>
+            </button>
+
+            <button
+              type="button"
+              className="stools-btn"
+              title={t('selectSketchFree')}
+              onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('free')}
+            >
+              <span className="stools-ico" aria-hidden>✎</span>
+              <span className="stools-txt">{t('selectSketchFree')}</span>
+            </button>
+
+            <button
+              type="button"
+              className="stools-btn stools-btn--ghost"
+              title={t('selectClear')}
+              onClick={() => window.msmeGisClearMapSelection && window.msmeGisClearMapSelection()}
+            >
+              <span className="stools-ico" aria-hidden>⌧</span>
+              <span className="stools-txt">{t('selectClear')}</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+
+      <ResultsFlyout />
+    </>
+  )
 }
-
-export default Sidebar;
-
-const styles = {
-  sidebar: {
-    width: "320px",
-    background: "linear-gradient(180deg, #0f172a 0%, #1e293b 100%)",
-    color: "white",
-    height: "100vh",
-    overflowY: "auto",
-    padding: "20px",
-    boxShadow: "4px 0 20px rgba(0,0,0,0.3)",
-  },
-  section: {
-    marginBottom: "25px",
-    paddingBottom: "20px",
-    borderBottom: "1px solid #334155",
-  },
-  sectionTitle: {
-    fontSize: "16px",
-    fontWeight: "bold",
-    margin: "0 0 15px 0",
-    color: "#f8fafc",
-  },
-  select: {
-    width: "100%",
-    padding: "12px",
-    marginBottom: "10px",
-    background: "#1e293b",
-    color: "white",
-    border: "1px solid #475569",
-    borderRadius: "8px",
-    fontSize: "14px",
-  },
-  btnPrimary: {
-    width: "100%",
-    padding: "12px",
-    background: "#3b82f6",
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    fontSize: "14px",
-    cursor: "pointer",
-    marginBottom: "10px",
-  },
-  btnSecondary: {
-    padding: "12px 16px",
-    background: "#10b981",
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-  },
-  btnRed: {
-    width: "100%",
-    padding: "12px",
-    background: "#ef4444",
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontWeight: "bold",
-  },
-  inputRow: {
-    display: "flex",
-    gap: "8px",
-    marginBottom: "10px",
-  },
-  input: {
-    flex: 1,
-    padding: "12px",
-    background: "#1e293b",
-    color: "white",
-    border: "1px solid #475569",
-    borderRadius: "8px",
-    fontSize: "14px",
-  },
-  locationInfo: {
-    background: "#1e40af",
-    padding: "12px",
-    borderRadius: "8px",
-    marginBottom: "10px",
-    fontSize: "13px",
-    wordBreak: "break-word",
-  },
-};
