@@ -66,7 +66,7 @@
   color: #ffffff;
 }
 
-.nav-item.active {
+.nav-item.active1 {
   background-color: rgba(37, 99, 235, 0.1); /* Subtle blue bg */
   color: #60a5fa; /* Active blue color */
   border-right: 4px solid #2563eb;
@@ -153,4 +153,61 @@
     width: 240px;
     transform: translateX(0);
   }
+}
+/* Appearance Layout */
+.appearance-body-grid {
+    display: grid;
+    grid-template-columns: 1fr 1.2fr; /* Desktop par two columns */
+    gap: 40px;
+    margin-top: 20px;
+}
+
+.setting-block { margin-bottom: 25px; }
+.block-title { font-size: 14px; color: #cbd5e1; display: block; margin-bottom: 12px; }
+
+/* Theme Cards */
+.theme-options { display: flex; gap: 15px; }
+.theme-card {
+    flex: 1; background: rgba(15, 23, 42, 0.4); border: 1px solid #334155;
+    border-radius: 8px; padding: 15px; text-align: center; cursor: pointer;
+    transition: 0.3s;
+}
+.active-theme { border-color: #3b82f6; background: rgba(59, 130, 246, 0.1); }
+.theme-icon-circle { width: 40px; height: 40px; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; }
+.dark-bg { background: #0f172a; }
+.light-bg { background: #f8fafc; color: #000; }
+
+/* Sidebar Radio Styles */
+.sidebar-style-options { display: flex; gap: 20px; }
+.radio-container { display: flex; align-items: center; gap: 8px; cursor: pointer; color: #94a3b8; font-size: 14px; }
+.radio-container input { accent-color: #3b82f6; width: 16px; height: 16px; }
+
+/* Color Palette */
+.color-palette { display: flex; gap: 12px; }
+.color-swatch { 
+    width: 28px; height: 28px; border-radius: 50%; cursor: pointer; 
+    display: flex; align-items: center; justify-content: center; font-size: 12px; color: white;
+}
+.blue { background: #3b82f6; } .green { background: #22c55e; } .purple { background: #a855f7; }
+.orange { background: #f97316; } .pink { background: #ec4899; } .cyan { background: #06b6d4; }
+.active-swatch { outline: 2px solid #fff; outline-offset: 2px; }
+
+/* Pattern Grid */
+.pattern-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+.pattern-box { 
+    aspect-ratio: 1; border: 1px solid #334155; border-radius: 4px; cursor: pointer;
+    background-size: cover; display: flex; align-items: center; justify-content: center; font-size: 10px;
+}
+.active-pattern { border-color: #3b82f6; background-color: rgba(59, 130, 246, 0.2); }
+
+/* Apply Button */
+.appearance-footer { display: flex; justify-content: flex-end; border-top: 1px solid rgba(255, 255, 255, 0.05); padding-top: 20px; }
+.apply-btn { background: #2563eb; color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; }
+
+/* --- MOBILE RESPONSIVE --- */
+@media (max-width: 850px) {
+    .appearance-body-grid { grid-template-columns: 1fr; gap: 20px; }
+    .theme-options { flex-direction: row; }
+    .pattern-grid { grid-template-columns: repeat(3, 1fr); }
+    .appearance-footer .apply-btn { width: 100%; }
 }

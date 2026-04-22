@@ -83,11 +83,11 @@
     position: relative;
 }
 
-.tab-btn.active {
+.tab-btn.active1 {
     color: #22d3ee;
 }
 
-.tab-btn.active::after {
+.tab-btn.active1::after {
     content: '';
     position: absolute;
     bottom: -1px;

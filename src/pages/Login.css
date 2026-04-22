@@ -58,6 +58,21 @@
 .hepc-logo {
   height: 50px;
 }
+.left-logo{
+  display: flex;
+  justify-content: center;
+}
+.hero-content h1{
+  font-size: clamp(2.5rem, 5vw, 4rem);
+    margin-bottom: 1rem;
+    font-weight: 800;
+}
+.hero-content p{
+     font-size: 1.3rem;
+    margin-bottom: 2rem;
+    opacity: 0.95;
+}
+
 
 /* --- Responsive Design --- */
 @media (max-width: 1024px) {
@@ -106,7 +121,7 @@
 
 .hero-title {
   font-size: 42px;
-  font-weight: 700;
+  font-weight: 800;
   margin-bottom: 25px;
   line-height: 1.2;
 }
@@ -188,7 +203,7 @@
 
 .input-field input {
   width: 100%;
-  padding: 12px 12px 12px 45px;
+  padding: 12px;
   border-radius: 6px;
   border: none;
   background-color: #cbd5e1;

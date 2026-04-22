@@ -15,7 +15,7 @@ const InfrastructureData = () => {
       <div className="glass-form-card">
         {/* Navigation Tabs */}
         <div className="form-tabs">
-          <button className="tab-item active">Road Network</button>
+          <button className="tab-item active1">Road Network</button>
           <button className="tab-item">Water Supply</button>
           <button className="tab-item">Electricity</button>
           <div className="tab-search">

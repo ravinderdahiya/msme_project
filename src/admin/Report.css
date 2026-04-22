@@ -24,9 +24,9 @@
   width: 45px; height: 45px; border-radius: 10px; background: rgba(255,255,255,0.03);
   display: flex; align-items: center; justify-content: center;
 }
-.stat-label { color: #94a3b8; font-size: 0.85rem; }
+.stat-label { color:white;font-size: 0.85rem; }
 .stat-value { font-size: 1.6rem; margin: 5px 0; }
-.stat-subtext { color: #64748b; font-size: 0.75rem; }
+.stat-subtext { color:white;font-size: 0.75rem; }
 
 /* Filter Bar */
 .reports-filter-bar {

@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import ProtectedRoute from "./routes/ProtectedRoute";
 import Admin from "./admin/Admin";
+
 import "./App.css";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"
@@ -44,6 +45,7 @@ function App() {
               // </ProtectedRoute>
             }
           />
+        
 
           <Route path="msme-gis-map"  element={
               <div style={{ height: "100vh", display: "flex", flexDirection: "column" }}>

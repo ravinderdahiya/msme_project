@@ -108,7 +108,7 @@ export default function Signup() {
                         {/* Right Side: Login Card */}
                         <div className="right-section">
                             <div className="login-card">
-                                <div className="card-header">
+                                {/* <div className="card-header"> */}
                                     <div className="left-logo">
                                         <img src="/har_govt.png" alt="logo" />
                                     </div>
@@ -116,7 +116,7 @@ export default function Signup() {
                                     <h2>Sign Up to Your Account</h2>
 
 
-                                </div>
+                                {/* </div> */}
                                 <form className="login-form" onSubmit={signup}>
                                     <div className="input-field">
                                         <i className="fa-solid fa-user"></i>

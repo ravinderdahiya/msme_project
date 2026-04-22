@@ -3,8 +3,8 @@ import './Dashboard.css';
 import { Menu, Search, Bell, Settings, User } from 'lucide-react';
 import { MapPin, Landmark, Users, FileBarChart } from 'lucide-react';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
-import {  ChevronDown } from 'lucide-react';
-import {  Download, ExternalLink, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
+import { Download, ExternalLink, ChevronLeft, ChevronRight, FileText } from 'lucide-react';
 
 const Dashboard = ({ pageTitle = "Dashboard" }) => {
 
@@ -48,26 +48,26 @@ const Dashboard = ({ pageTitle = "Dashboard" }) => {
         { name: 'NOV 2023', value: 500 },
     ];
     const reports = [
-    { name: 'Gurugram Industrial Zone Analysis', date: 'April 10, 2024', size: '1.0 MB' },
-    { name: 'Faridabad Land Availability', date: 'April 10, 2024', size: '1.0 MB' },
-    { name: 'Monthly Usage Report', date: 'March 28, 2024', size: '1.0 MB' },
-    { name: 'Electrical Infrastructure Status', date: 'March 20, 2024', size: '1.0 MB' },
-  ];
-const locations = [
-    { name: 'Gurgaon', district: 'Gurgaon', area: '250 Acre' },
-    { name: 'Faridabad', district: 'Faridabad', area: '180 Acre' },
-    { name: 'Panipat', district: 'Panipat', area: '300 Acre' },
-    { name: 'Sonipat', district: 'Sonipat', area: '220 Acre' },
-    { name: 'Ambala', district: 'Ambala', area: '150 Acre' },
-  ];
+        { name: 'Gurugram Industrial Zone Analysis', date: 'April 10, 2024', size: '1.0 MB' },
+        { name: 'Faridabad Land Availability', date: 'April 10, 2024', size: '1.0 MB' },
+        { name: 'Monthly Usage Report', date: 'March 28, 2024', size: '1.0 MB' },
+        { name: 'Electrical Infrastructure Status', date: 'March 20, 2024', size: '1.0 MB' },
+    ];
+    const locations = [
+        { name: 'Gurgaon', district: 'Gurgaon', area: '250 Acre' },
+        { name: 'Faridabad', district: 'Faridabad', area: '180 Acre' },
+        { name: 'Panipat', district: 'Panipat', area: '300 Acre' },
+        { name: 'Sonipat', district: 'Sonipat', area: '220 Acre' },
+        { name: 'Ambala', district: 'Ambala', area: '150 Acre' },
+    ];
 
 
 
 
     return (
-        <>    
-        
-        {/* <header className="top-header">
+        <>
+
+            {/* <header className="top-header">
             <div className="header-left">
                 <button className="menu-toggle">
                     <Menu size={20} />
@@ -135,7 +135,13 @@ const locations = [
                                     </linearGradient>
                                 </defs>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#374151" vertical={false} />
-                                <XAxis dataKey="name" stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} />
+                                <XAxis
+                                    dataKey="name"
+                                    stroke="#ffffff"
+                                    tick={{ fill: "#ffffff", fontSize: 10 }}
+                                    tickLine={false}
+                                    axisLine={false}
+                                />
                                 <YAxis stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} />
                                 <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }} />
                                 <Area type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={3} fillOpacity={1} fill="url(#colorVal)" />
@@ -177,90 +183,90 @@ const locations = [
                 </div>
             </div>
             <div className="dashboard-bottom-container">
-      {/* Left Table: Recent Locations */}
-      <div className="table-glass-card">
-        <div className="table-top-bar">
-          <h3 className="table-heading">Recent Locations</h3>
-          <div className="table-search-box">
-            <span>Search</span>
-            <Search size={14} />
-          </div>
-        </div>
-        <div className="responsive-table-holder">
-          <table className="admin-custom-table">
-            <thead>
-              <tr>
-                <th>Location Name</th>
-                <th>District</th>
-                <th>Area</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {locations.map((loc, index) => (
-                <tr key={index}>
-                  <td>{loc.name}</td>
-                  <td>{loc.district}</td>
-                  <td>{loc.area}</td>
-                  <td>
-                    <button className="icon-action-btn">
-                      <ExternalLink size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+                {/* Left Table: Recent Locations */}
+                <div className="table-glass-card">
+                    <div className="table-top-bar">
+                        <h3 className="table-heading">Recent Locations</h3>
+                        <div className="table-search-box">
+                            <span>Search</span>
+                            <Search size={14} />
+                        </div>
+                    </div>
+                    <div className="responsive-table-holder">
+                        <table className="admin-custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Location Name</th>
+                                    <th>District</th>
+                                    <th>Area</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {locations.map((loc, index) => (
+                                    <tr key={index}>
+                                        <td>{loc.name}</td>
+                                        <td>{loc.district}</td>
+                                        <td>{loc.area}</td>
+                                        <td>
+                                            <button className="icon-action-btn">
+                                                <ExternalLink size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
 
-      {/* Right Table: Recent Reports with Pagination */}
-      <div className="table-glass-card">
-        <div className="table-top-bar">
-          <h3 className="table-heading">Recent Reports</h3>
-          <div className="table-search-box search-with-icon">
-            <Search size={14} />
-            <input type="text" placeholder="Search..." className="table-input" />
-            <ChevronLeft size={14} className="input-arrow" />
-          </div>
-        </div>
-        <div className="responsive-table-holder">
-          <table className="admin-custom-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Date</th>
-                <th>Size</th>
-                <th>Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {reports.map((report, index) => (
-                <tr key={index}>
-                  <td className="text-truncate">{report.name}</td>
-                  <td>{report.date}</td>
-                  <td>{report.size}</td>
-                  <td>
-                    <button className="icon-action-btn download-btn">
-                      <Download size={14} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {/* Pagination Bar from Image */}
-        <div className="pagination-footer">
-          <div className="page-nav">
-            <ChevronLeft size={16} className="nav-arrow disabled" />
-            <span className="current-page">1</span>
-            <ChevronRight size={16} className="nav-arrow" />
-          </div>
-          <div className="total-badge">Total</div>
-        </div>
-      </div>
-    </div>
+                {/* Right Table: Recent Reports with Pagination */}
+                <div className="table-glass-card">
+                    <div className="table-top-bar">
+                        <h3 className="table-heading">Recent Reports</h3>
+                        <div className="table-search-box search-with-icon">
+                            <Search size={14} />
+                            <input type="text" placeholder="Search..." className="table-input" />
+                            <ChevronLeft size={14} className="input-arrow" />
+                        </div>
+                    </div>
+                    <div className="responsive-table-holder">
+                        <table className="admin-custom-table">
+                            <thead>
+                                <tr>
+                                    <th>Name</th>
+                                    <th>Date</th>
+                                    <th>Size</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reports.map((report, index) => (
+                                    <tr key={index}>
+                                        <td className="text-truncate">{report.name}</td>
+                                        <td>{report.date}</td>
+                                        <td>{report.size}</td>
+                                        <td>
+                                            <button className="icon-action-btn download-btn">
+                                                <Download size={14} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
+                    {/* Pagination Bar from Image */}
+                    <div className="pagination-footer">
+                        <div className="page-nav">
+                            <ChevronLeft size={16} className="nav-arrow disabled" />
+                            <span className="current-page">1</span>
+                            <ChevronRight size={16} className="nav-arrow" />
+                        </div>
+                        <div className="total-badge">Total</div>
+                    </div>
+                </div>
+            </div>
         </>
 
     );
