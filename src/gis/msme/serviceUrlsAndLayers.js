@@ -1,7 +1,18 @@
-/** MSME_HARSAC MapServer roots. During `vite dev`, route requests through the local proxy. */
+/** MSME_HARSAC MapServer root selection.
+ * Priority:
+ * 1) VITE_ARCGIS_SERVICE_ROOT (explicit override)
+ * 2) Dev proxy root only when VITE_ARCGIS_USE_PROXY=true
+ * 3) Direct public ArcGIS root (default for prod and local fallback)
+ */
+const DEFAULT_DIRECT_ROOT = 'https://hsacggm.in/server/rest/services'
+const DEV_PROXY_ROOT = '/arcgis/server/rest/services'
+const USE_DEV_PROXY =
+  import.meta.env.DEV &&
+  String(import.meta.env.VITE_ARCGIS_USE_PROXY || '').toLowerCase() === 'true'
+
 const SERVICE_ROOT =
   import.meta.env.VITE_ARCGIS_SERVICE_ROOT ||
-  (import.meta.env.DEV ? '/arcgis/server/rest/services' : 'https://hsacggm.in/server/rest/services')
+  (USE_DEV_PROXY ? DEV_PROXY_ROOT : DEFAULT_DIRECT_ROOT)
 
 export const BASE_MS = `${SERVICE_ROOT}/MSME_HARSAC/Base_Reference_Layers/MapServer`
 export const ADMIN_MS = `${SERVICE_ROOT}/MSME_HARSAC/Administrative_Boundaries/MapServer`
