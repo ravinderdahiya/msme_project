@@ -144,6 +144,13 @@ export function applyMsmeGisUiStrings(next) {
 export function initMsmeWebGis() {
 "use strict";
 
+if (typeof window !== "undefined") {
+  if (window.__msmeGisInitInProgress || window.__msmeGisInitialized) {
+    return;
+  }
+  window.__msmeGisInitInProgress = true;
+}
+
 /** Tear down previous MapView (React Strict Mode remount / navigation) before creating a new one. */
 if (typeof window !== "undefined" && typeof window.__msmeGisCleanup === "function") {
   try {
@@ -510,6 +517,105 @@ function compactPathCoords(pathCoords) {
   return out;
 }
 
+function buildRoutePinDataUrl(primaryHex, secondaryHex) {
+  var svg =
+    "<svg xmlns='http://www.w3.org/2000/svg' width='56' height='72' viewBox='0 0 56 72'>" +
+    "<defs>" +
+    "<linearGradient id='pinGrad' x1='0' y1='0' x2='0' y2='1'>" +
+    "<stop offset='0%' stop-color='" + primaryHex + "'/>" +
+    "<stop offset='100%' stop-color='" + secondaryHex + "'/>" +
+    "</linearGradient>" +
+    "<filter id='pinShadow' x='-50%' y='-50%' width='200%' height='200%'>" +
+    "<feDropShadow dx='0' dy='2' stdDeviation='2' flood-color='rgba(0,0,0,0.35)'/>" +
+    "</filter>" +
+    "</defs>" +
+    "<g filter='url(#pinShadow)'>" +
+    "<path d='M28 3c-11.6 0-21 9.4-21 21c0 16.8 21 44.5 21 44.5S49 40.8 49 24C49 12.4 39.6 3 28 3z' fill='url(#pinGrad)' stroke='#ffffff' stroke-width='2'/>" +
+    "<circle cx='28' cy='24' r='8.3' fill='#ffffff'/>" +
+    "<circle cx='28' cy='24' r='4.3' fill='" + secondaryHex + "' fill-opacity='0.9'/>" +
+    "</g>" +
+    "</svg>";
+  return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+}
+
+var routeStartMarkerUrl = buildRoutePinDataUrl("#34d399", "#059669");
+var routeEndMarkerUrl = buildRoutePinDataUrl("#fb7185", "#e11d48");
+
+function addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, routeGeom) {
+  if (!routeLineLayer || !fromWgs || !toWgs) return;
+
+  function toWgsFromVertex(vertex, sr) {
+    if (!vertex) return null;
+    var x = Number(vertex[0] != null ? vertex[0] : vertex.x);
+    var y = Number(vertex[1] != null ? vertex[1] : vertex.y);
+    if (!isFinite(x) || !isFinite(y)) return null;
+    var w = wkidValue(sr);
+    if (w === 4326) {
+      return isValidWgsLatLon(y, x) ? { lat: y, lon: x } : null;
+    }
+    try {
+      var p = new Point({ x: x, y: y, spatialReference: sr || SR_WEB });
+      var pWgs = projection.project(p, SR4326);
+      if (pWgs && isValidWgsLatLon(Number(pWgs.y), Number(pWgs.x))) {
+        return { lat: Number(pWgs.y), lon: Number(pWgs.x) };
+      }
+    } catch (e0) {}
+    return null;
+  }
+
+  var startWgs = fromWgs;
+  var endWgs = toWgs;
+  try {
+    if (routeGeom && routeGeom.type === "polyline" && routeGeom.paths && routeGeom.paths.length) {
+      var firstPath = null;
+      var lastPath = null;
+      routeGeom.paths.forEach(function (p) {
+        if (p && p.length) {
+          if (!firstPath) firstPath = p;
+          lastPath = p;
+        }
+      });
+      if (firstPath && lastPath) {
+        var routeStart = toWgsFromVertex(firstPath[0], routeGeom.spatialReference);
+        var routeEnd = toWgsFromVertex(lastPath[lastPath.length - 1], routeGeom.spatialReference);
+        if (routeStart) startWgs = routeStart;
+        if (routeEnd) endWgs = routeEnd;
+      }
+    }
+  } catch (e1) {}
+
+  if (!isValidWgsLatLon(Number(startWgs.lat), Number(startWgs.lon))) return;
+  if (!isValidWgsLatLon(Number(endWgs.lat), Number(endWgs.lon))) return;
+
+  function pointGraphic(wgs, label, isStart) {
+    return new Graphic({
+      geometry: {
+        type: "point",
+        longitude: Number(wgs.lon),
+        latitude: Number(wgs.lat),
+        spatialReference: SR4326
+      },
+      symbol: {
+        type: "picture-marker",
+        url: isStart ? routeStartMarkerUrl : routeEndMarkerUrl,
+        width: "28px",
+        height: "36px",
+        yoffset: "18px"
+      },
+      attributes: {
+        routeEndpoint: isStart ? "start" : "end",
+        label: label || (isStart ? "Start" : "Destination")
+      },
+      popupTemplate: {
+        title: (label || (isStart ? "Start" : "Destination")) + (isStart ? " (Start)" : " (End)")
+      }
+    });
+  }
+
+  routeLineLayer.add(pointGraphic(startWgs, fromLabel, true));
+  routeLineLayer.add(pointGraphic(endWgs, toLabel, false));
+}
+
 function drawOsrmFallbackRouteLine(fromWgs, toWgs, opts) {
   opts = opts || {};
   var fromLabel = opts.fromLabel || "Start";
@@ -542,6 +648,7 @@ function drawOsrmFallbackRouteLine(fromWgs, toWgs, opts) {
         geometry: lineWeb,
         symbol: new SimpleLineSymbol({ color: [230, 128, 36, 0.98], width: 3.5 })
       }));
+      addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, lineWeb);
 
       var km = Number(route.distance || 0) / 1000;
       var mins = Math.max(1, Math.round(Number(route.duration || 0) / 60));
@@ -642,6 +749,7 @@ function drawRoadNetworkFallbackLine(fromWgs, toWgs, opts) {
         geometry: lineWeb,
         symbol: new SimpleLineSymbol({ color: [230, 128, 36, 0.98], width: 3 })
       }));
+      addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, lineWeb);
 
       var routeM = path.distanceM + startNode.snapMeters + endNode.snapMeters;
       var km = routeM / 1000;
@@ -687,6 +795,7 @@ function drawApproxRouteLine(fromWgs, toWgs, opts) {
       geometry: lineWeb,
       symbol: new SimpleLineSymbol({ color: [230, 128, 36, 0.95], width: 3, style: "short-dash" })
     }));
+    addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, lineWeb);
     return view.goTo(lineWeb, { padding: getUiZoomPadding() });
   }).catch(function (e1) {
     console.warn("[routing] fallback line draw/zoom issue", e1);
@@ -1032,6 +1141,7 @@ function routeFromCurrentLocationToAoi() {
           geometry: gLine,
           symbol: new SimpleLineSymbol({ color: [0, 92, 230, 1], width: 4 })
         }));
+        addRouteEndpointMarkers(fromWgs, toWgs, "Current Location", destLabel, gLine);
 
         return view.goTo(gLine, { padding: getUiZoomPadding() });
       }).then(function () {
@@ -1853,6 +1963,7 @@ function refreshMapViewPadding() {
  * After side panels open/close, the map container size changes. MapView has no resize() in 4.30;
  * DOMContainer provides forceDOMReadyCycle() to remeasure. Fallback for older API copies.
  */
+var __msmeLastLayoutNotifyMs = 0;
 function notifyViewLayoutChanged() {
   if (!view) return;
   try {
@@ -1860,13 +1971,17 @@ function notifyViewLayoutChanged() {
   } catch (e0) {
     return;
   }
-  if (typeof view.forceDOMReadyCycle === "function") {
-    view.forceDOMReadyCycle();
+  var now = Date.now();
+  if (now - __msmeLastLayoutNotifyMs < 220) return;
+  __msmeLastLayoutNotifyMs = now;
+
+  // forceDOMReadyCycle can feel like a map reload on frequent sidebar clicks.
+  // Use lightweight refresh; MapView already tracks container size in modern versions.
+  if (typeof view.requestRender === "function") {
+    view.requestRender();
     return;
   }
-  if (typeof view.resize === "function") {
-    view.resize();
-  }
+  if (typeof view.resize === "function") view.resize();
 }
 
 window.msmeGisSetResultsFlyoutInset = function (leftPx) {
@@ -3383,6 +3498,7 @@ if (btnCadRoute) btnCadRoute.addEventListener("click", function () {
           geometry: gLine,
           symbol: new SimpleLineSymbol({ color: [0, 92, 230, 1], width: 4 })
         }));
+        addRouteEndpointMarkers(centerWgs, poiWgs, "Parcel centre", "Nearest POI", gLine);
         return view.goTo(gLine, { padding: getUiZoomPadding() });
       }).then(function () {
         var lines = [];
@@ -3991,18 +4107,28 @@ msmeBind("runBuffer", "click", function () {
   }, geometryToQueryParams(qg))).then(function (data) {
     if (!data.features || !data.features.length) { alertNoData("features in area"); return; }
     var n = 0;
+    var skipped = 0;
     data.features.forEach(function (f) {
-      var g = toEngineSR(geomFromJSON(f.geometry));
+      var raw = geomFromJSON(f.geometry);
+      // Query responses often keep SR only at top-level; assume requested outSR (32643) when missing.
+      coerceMissingSpatialReference(raw, SR_METER);
+      var g = toEngineSR(raw);
       if (!g) return;
       var buf = geometryEngine.buffer(g, distM, "meters");
       if (buf) {
         resultsLayer.add(new Graphic({ geometry: projection.project(buf, SR_WEB), symbol: symBuffer, attributes: f.attributes }));
         n++;
+      } else {
+        skipped++;
       }
     });
-    if (!n) alertNoData("buffer");
+    if (!n) {
+      setStatus("Buffer could not be created from selected features. Try another road source or zoom area.");
+      alertNoData("buffer");
+    }
     else {
       var msg = "Buffer: " + n + " feature(s), " + distM + " m.";
+      if (skipped) msg += " (" + skipped + " skipped invalid geometry)";
       setStatus(msg);
       publishAnalysisToolResult("buffer", msg, { count: n, distanceM: distM });
     }
@@ -4842,6 +4968,8 @@ view.on("click", function (event) {
 /** Full teardown for React remount / HMR: widgets + sketch VM, then MapView (partial destroy left tools broken). */
 if (typeof window !== "undefined") {
   window.__msmeGisCleanup = function () {
+    window.__msmeGisInitialized = false;
+    window.__msmeGisInitInProgress = false;
     try {
       document.removeEventListener("keydown", msmeGisKeydownEsc);
     } catch (eK) {}
@@ -4885,9 +5013,17 @@ projection.load().then(function () {
     refreshMapViewPadding();
     initSketchViewModel();
   });
+  if (typeof window !== "undefined" && window.__msmeGisBootId === myBootId) {
+    window.__msmeGisInitialized = true;
+    window.__msmeGisInitInProgress = false;
+  }
   setStatus("Ready. Haryana administrative boundaries are loaded; open Layers to load additional map services.");
 }).catch(function (e) {
   if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
+  if (typeof window !== "undefined" && window.__msmeGisBootId === myBootId) {
+    window.__msmeGisInitialized = false;
+    window.__msmeGisInitInProgress = false;
+  }
   console.error(e);
   if (isGateway502Error(e)) {
     setStatus("Load error: ArcGIS service/proxy unreachable (502). Check server/proxy.");
