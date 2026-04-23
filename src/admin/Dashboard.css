@@ -1,6 +1,6 @@
-.top-header {
+.top-header1 {
     height: 60px;
-    /* background: rgba(17, 24, 39, 0.8); */
+    background: rgba(17, 24, 39, 0.8);
     backdrop-filter: blur(10px);
     display: flex;
     justify-content: space-between;
@@ -191,13 +191,28 @@
     justify-content: space-between;
     align-items: center;
     margin-bottom: 20px;
+    
 }
 
-.card-title {
+.card-title1 {
     color: #ffffff;
     font-size: 1.1rem;
-    font-weight: bold
+    font-weight: bold;
+    background: linear-gradient(to right, #0f3c5c, #1f5f8b);
+    padding: 14px;
+    
 }
+/* .card-title {
+  width: 100%;
+  padding: 14px;
+  text-align: center;
+  color: white;
+  font-weight: 600;
+  font-size: 15px;
+  margin-top: 10px;
+
+  background: linear-gradient(to right, #0f3c5c, #1f5f8b);
+} */
 
 .card-subtitle {
     color: #ffffff;
@@ -355,7 +370,7 @@
 }
 
 .admin-custom-table th {
-    color: #6b7280;
+    color:white;
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -364,7 +379,7 @@
 }
 
 .admin-custom-table td {
-    color: #d1d5db;
+    color: white;
     font-size: 0.85rem;
     padding: 15px 10px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.02);

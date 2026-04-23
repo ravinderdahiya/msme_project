@@ -67,7 +67,7 @@ const Dashboard = ({ pageTitle = "Dashboard" }) => {
     return (
         <>
 
-            {/* <header className="top-header">
+            <header className="top-header1">
             <div className="header-left">
                 <button className="menu-toggle">
                     <Menu size={20} />
@@ -100,7 +100,7 @@ const Dashboard = ({ pageTitle = "Dashboard" }) => {
                     <Settings size={18} />
                 </div>
             </div>
-        </header> */}
+        </header>
 
 
             <div className="stats-grid">
@@ -121,7 +121,7 @@ const Dashboard = ({ pageTitle = "Dashboard" }) => {
                 <div className="glass-card graph-container">
                     <div className="card-header">
                         <div>
-                            <h3 className="card-title">Statistics Overview</h3>
+                            <h3 className="card-title1">Statistics Overview</h3>
                             <p className="card-subtitle">Investment Growth | Over Time</p>
                         </div>
                     </div>
@@ -142,7 +142,7 @@ const Dashboard = ({ pageTitle = "Dashboard" }) => {
                                     tickLine={false}
                                     axisLine={false}
                                 />
-                                <YAxis stroke="#9ca3af" fontSize={10} tickLine={false} axisLine={false} />
+                                <YAxis stroke="white" fontSize={10} tickLine={false} axisLine={false} />
                                 <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: 'none', borderRadius: '8px', color: '#fff' }} />
                                 <Area type="monotone" dataKey="value" stroke="#22d3ee" strokeWidth={3} fillOpacity={1} fill="url(#colorVal)" />
                             </AreaChart>
@@ -153,7 +153,7 @@ const Dashboard = ({ pageTitle = "Dashboard" }) => {
                 {/* Right: Recent Reports List */}
                 <div className="glass-card reports-container">
                     <div className="card-header border-none">
-                        <h3 className="card-title">Recent Reports</h3>
+                        <h3 className="card-title1">Recent Reports</h3>
                         <div className="search-dropdown">
                             <span>Search</span>
                             <ChevronDown size={14} />
@@ -186,7 +186,7 @@ const Dashboard = ({ pageTitle = "Dashboard" }) => {
                 {/* Left Table: Recent Locations */}
                 <div className="table-glass-card">
                     <div className="table-top-bar">
-                        <h3 className="table-heading">Recent Locations</h3>
+                        <h3 className="card-title1">Recent Locations</h3>
                         <div className="table-search-box">
                             <span>Search</span>
                             <Search size={14} />
@@ -223,7 +223,7 @@ const Dashboard = ({ pageTitle = "Dashboard" }) => {
                 {/* Right Table: Recent Reports with Pagination */}
                 <div className="table-glass-card">
                     <div className="table-top-bar">
-                        <h3 className="table-heading">Recent Reports</h3>
+                        <h3 className="card-title1">Recent Reports</h3>
                         <div className="table-search-box search-with-icon">
                             <Search size={14} />
                             <input type="text" placeholder="Search..." className="table-input" />
@@ -257,13 +257,17 @@ const Dashboard = ({ pageTitle = "Dashboard" }) => {
                         </table>
                     </div>
                     {/* Pagination Bar from Image */}
-                    <div className="pagination-footer">
-                        <div className="page-nav">
-                            <ChevronLeft size={16} className="nav-arrow disabled" />
-                            <span className="current-page">1</span>
-                            <ChevronRight size={16} className="nav-arrow" />
+                    <div className="table-footer-pagination">
+                        <div className="pagination-left">
+                            <button className="nav-btn disabled"><ChevronLeft size={16} /></button>
+                            <span className="page-num active">1</span>
+                            <button className="nav-btn"><ChevronRight size={16} /></button>
                         </div>
-                        <div className="total-badge">Total</div>
+                        {/* <div className="pagination-right">
+                            <button className="nav-btn"><ChevronLeft size={16} /></button>
+                            <span className="total-label">Meal</span>
+                            <button className="nav-btn"><ChevronRight size={16} /></button>
+                        </div> */}
                     </div>
                 </div>
             </div>

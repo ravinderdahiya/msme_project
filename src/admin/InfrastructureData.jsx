@@ -1,10 +1,20 @@
 import React from 'react';
-import { Search, ChevronDown, MapPin, Save, X } from 'lucide-react';
+import { Search, ChevronDown, MapPin, Save, X,Settings } from 'lucide-react';
 import './InfrastructureData.css';
 
 const InfrastructureData = () => {
   return (
     <div className="form-page-container">
+       <div className="users-nav-header">
+        <div className="breadcrumb">Dashboard {'>'} Industrial Data</div>
+        <div className="top-right-actions">
+          <div className="user-info-pill">
+            <img src="/avatar.jpg" alt="User" className="small-avatar" />
+            <span>Anil Kumar</span>
+          </div>
+          <Settings size={18} className="header-icon" />
+        </div>
+      </div>
       {/* Header Section */}
       <div className="form-header">
         <h1 className="form-title">Add Industrial Zone</h1>
