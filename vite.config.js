@@ -5,6 +5,7 @@ import dns from 'node:dns'
 // Prefer IPv4 on local dev proxy to avoid IPv6-first gateway failures on some networks.
 dns.setDefaultResultOrder('ipv4first')
 
+
 export default defineConfig({
   plugins: [react()],
 

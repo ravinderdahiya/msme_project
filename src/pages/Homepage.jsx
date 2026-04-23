@@ -206,8 +206,8 @@ export default function HomePage() {
 
                             <button
                                 className="login-btn"
-                            // onClick={() => setShowModal(true)}
-                            onClick={() => navigate("/Login")}
+                                // onClick={() => setShowModal(true)}
+                                onClick={() => navigate("/Login")}
                             >
                                 Login to search location
                             </button>
@@ -218,7 +218,7 @@ export default function HomePage() {
                 {/* RIGHT VIDEO */}
                 <div className="info-video">
                     <video autoPlay loop muted playsInline>
-                        <source src="/videos/gis-video.mp4" type="video/mp4" />
+                        <source src="/videos/har.mp4" type="video/mp4" />
                     </video>
                 </div>
 

@@ -7,7 +7,7 @@ import { identify } from "@arcgis/core/rest/identify.js";
 import IdentifyParameters from "@arcgis/core/rest/support/IdentifyParameters.js";
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine.js";
 import * as jsonUtils from "@arcgis/core/geometry/support/jsonUtils.js";
-import * as projection from "@arcgis/core/geometry/projection.js";
+import * as projection from "@arcgis/core/geometry/projection";
 import SpatialReference from "@arcgis/core/geometry/SpatialReference.js";
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer.js";
 import Graphic from "@arcgis/core/Graphic.js";
@@ -30,6 +30,7 @@ import Point from "@arcgis/core/geometry/Point.js";
 import Polyline from "@arcgis/core/geometry/Polyline.js";
 import Extent from "@arcgis/core/geometry/Extent.js";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel.js";
+import "@arcgis/core/assets/esri/themes/light/main.css";
 
 import { SR_METER, SR_WEB, SR4326, defaultStudyExtent32643 } from "./msme/spatialRefs.js";
 import {

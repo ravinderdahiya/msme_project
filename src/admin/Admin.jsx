@@ -7,6 +7,7 @@ import IndustrialZones from './IndustrialZone';
 import InfrastructureData from './InfrastructureData';
 import Report from './Report';
 import Users from './User';
+import Setting from './Setting';
 import './Admin.css';
 
 const Admin = () => {
@@ -29,6 +30,7 @@ const Admin = () => {
             {activeTab === 'data' && <InfrastructureData />}
              {activeTab === 'users' && <Users />}
              {activeTab === 'reports' && <Report />}
+               {activeTab === 'settings' && <Setting />}
         </main>
       </div>
     </div>

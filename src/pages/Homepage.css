@@ -425,10 +425,10 @@
   justify-content: center;
 }
 
-/* VIDEO SIZE CONTROL */
+
 .info-video video {
   width: 100%;
-  height: 700px;   /* 👈 height choti kar di */
+  height: 700px;  
   object-fit: cover;
   border-radius: 10px;
 }

@@ -54,7 +54,7 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
               /* Click hone par setActiveTab call hoga */
               onClick={() => setActiveTab(item.id)}
               /* Active class check karne ka logic */
-              className={`nav-item ${activeTab === item.id ? 'active' : ''}`}
+              className={`nav-item ${activeTab === item.id ? 'active1' : ''}`}
             >
               <div className="nav-icon">{item.icon}</div>
               {isOpen && <span className="nav-text">{item.name}</span>}

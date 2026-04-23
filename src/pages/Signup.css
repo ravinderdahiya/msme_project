@@ -58,7 +58,10 @@
 .hepc-logo {
   height: 50px;
 }
-
+.left-logo{
+  display: flex;
+  justify-content: center;
+}
 /* --- Responsive Design --- */
 @media (max-width: 1024px) {
   .header-container {

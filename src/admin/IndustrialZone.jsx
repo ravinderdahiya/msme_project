@@ -42,7 +42,7 @@ const IndustrialZones = () => {
                     {['Road Network', 'Water Supply', 'Electricity'].map((tab) => (
                         <button
                             key={tab}
-                            className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
+                            className={`tab-btn ${activeTab === tab ? 'active1' : ''}`}
                             onClick={() => setActiveTab(tab)}
                         >
                             {tab}

@@ -113,7 +113,7 @@ export default function Login() {
                         {/* Right Side: Login Card */}
                         <div className="right-section">
                             <div className="login-card">
-                                <div className="card-header">
+                                {/* <div className="card-header"> */}
                                     <div className="left-logo">
                                         <img src="/har_govt.png" alt="logo" />
                                     </div>
@@ -121,10 +121,10 @@ export default function Login() {
                                     <h2>Login to Your Account</h2>
 
 
-                                </div>
+                                {/* </div> */}
                                 <form className="login-form"  onSubmit={loginForm}>
                                     <div className="input-field">
-                                        <i className="fa-solid fa-user"></i>
+                                        {/* <i className="fa-solid fa-user"></i> */}
                                         <input 
                                         type="email" 
                                         name="email"
@@ -134,25 +134,14 @@ export default function Login() {
                                     </div>
 
                                     <div className="input-field">
-                                        <i className="fa-solid fa-lock"></i>
+                                        {/* <i className="fa-solid fa-lock"></i> */}
                                         <input 
                                         type={type}
                                         name="password"
                                         onChange={handleInput}
                                          placeholder="Password"
                                          required />
-                                         
-                                           <div className="absolute top-11 right-6" >
-                                        <button type="button" onClick={()=>setType(type === "password"? "text" : "password")} >
-                                            {
-                                                type === "password" ? 
-                                                <i className="ri-eye-off-line text-lg hover:text-blue-500"/>
-                                                :
-                                                <i className="ri-eye-line text-lg hover:text-blue-500"/>
-
-                                            }
-                                            </button>
-                                        </div>
+                                   
                                     </div>
 
                                     <div className="form-options">

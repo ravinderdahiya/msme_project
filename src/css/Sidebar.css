@@ -113,6 +113,8 @@
 
 .active {
   background: #f1c40f !important;
+
+  
   color: black;
   font-weight: bold;
 }

@@ -140,9 +140,10 @@
 
 .stat-label {
     font-size: 0.85rem;
-    color: #9ca3af;
+    color: #ffffff;
     margin: 4px 0 0 0;
     white-space: nowrap;
+    font-weight: bold;
 }
 
 /* Specific Card Colors as per Image */
@@ -195,13 +196,14 @@
 .card-title {
     color: #ffffff;
     font-size: 1.1rem;
-    font-weight: 500;
+    font-weight: bold
 }
 
 .card-subtitle {
-    color: #9ca3af;
+    color: #ffffff;
     font-size: 0.75rem;
     margin-top: 4px;
+     font-weight:500
 }
 
 /* Graph Area */
