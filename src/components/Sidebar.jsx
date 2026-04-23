@@ -152,20 +152,36 @@ export default function Sidebar({ t }) {
 
       <aside id="rail">
         <button type="button" className="rail-btn" id="btnOpenSpatial" title={t('railTitleSpatial')}>
-          ⧉
+          <span className="rail-ico-wrap" aria-hidden>
+            <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
+              <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M4 19h16" />
+              <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M6 15l3-3 3 2 5-6 2 2" />
+              <circle cx="6" cy="15" r="1.2" fill="currentColor" />
+              <circle cx="12" cy="14" r="1.2" fill="currentColor" />
+              <circle cx="17" cy="8" r="1.2" fill="currentColor" />
+            </svg>
+          </span>
         </button>
         <span className="rail-tip">{t('railAnalysis')}</span>
-
         <button type="button" className="rail-btn" id="btnOpenNav" title={t('railTitleAoi')}>
-          ⌖
+          <span className="rail-ico-wrap" aria-hidden>
+            <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
+              <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 4v10l-7 4-7-4V7l7-4z" />
+              <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M12 8v8M8 12h8" />
+            </svg>
+          </span>
         </button>
         <span className="rail-tip">{t('railAoi')}</span>
-
         <button type="button" className="rail-btn active" id="btnTogglePanel" title={t('railTitleLayers')}>
-          ☰
+          <span className="rail-ico-wrap" aria-hidden>
+            <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
+              <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 4l8 4-8 4-8-4 8-4z" />
+              <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M20 12l-8 4-8-4" />
+              <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M20 16l-8 4-8-4" />
+            </svg>
+          </span>
         </button>
         <span className="rail-tip">{t('railLayers')}</span>
-
         <button
           type="button"
           className="rail-btn"
@@ -173,12 +189,14 @@ export default function Sidebar({ t }) {
           title={t('railTitleSelect')}
           aria-pressed="false"
         >
-          <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" focusable="false">
-            <path fill="currentColor" d="M4 2l2 18 3.5-7 7-3.5L4 2z" />
-          </svg>
+          <span className="rail-ico-wrap" aria-hidden>
+            <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
+              <path fill="currentColor" d="M4 2l2 18 3.5-7 7-3.5L4 2z" />
+              <circle cx="18" cy="18" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+            </svg>
+          </span>
         </button>
         <span className="rail-tip">{t('railSelect')}</span>
-
         <button
           type="button"
           className="rail-btn"
@@ -186,12 +204,23 @@ export default function Sidebar({ t }) {
           title={t('railTitleMultiSelect')}
           aria-pressed="false"
         >
-          +
+          <span className="rail-ico-wrap" aria-hidden>
+            <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
+              <rect x="4" y="4" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+              <rect x="4" y="13" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+              <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M16 8h4M18 6v4" />
+              <rect x="13" y="13" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+            </svg>
+          </span>
         </button>
         <span className="rail-tip">{t('railMultiSelect')}</span>
-
         <button type="button" className="rail-btn" id="btnMapSelToAnalysis" title={t('railTitleMapSelAnalysis')}>
-          ⚙
+          <span className="rail-ico-wrap" aria-hidden>
+            <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
+              <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 3l1.2 2.5 2.7.4-1.9 1.9.5 2.7-2.5-1.3-2.5 1.3.5-2.7L8.1 5.9l2.7-.4L12 3z" />
+              <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M4 19h10M4 15h14M4 11h8" />
+            </svg>
+          </span>
         </button>
         <span className="rail-tip">{t('railMapSelAnalysis')}</span>
       </aside>
@@ -267,11 +296,22 @@ export default function Sidebar({ t }) {
                 <button type="button" className="btn-clear" id="btnNavClear">
                   {t('clear')}
                 </button>
-                     <div className="actions">
-                     <button type="button" className="btn-clear" id="btnRouteFromCurrentToAoi">
-                          Route 
-                     </button>
-                     </div>
+                <button type="button" className="btn-clear btn-route" id="btnRouteFromCurrentToAoi">
+                  Tracking
+                </button>
+              </div>
+
+              <div id="aoiRoutePanel" className="aoi-route-panel" aria-live="polite">
+                <div className="aoi-route-head">
+                  <strong>Route details</strong>
+                  <button type="button" className="aoi-route-close" id="btnAoiRouteClose">
+                    Hide
+                  </button>
+                </div>
+                <div id="aoiRouteSummary" className="aoi-route-summary">
+                  Select AOI and click Route to view directions.
+                </div>
+                <ol id="aoiRouteSteps" className="aoi-route-steps"></ol>
               </div>
             </section>
           </div>
@@ -320,8 +360,10 @@ export default function Sidebar({ t }) {
                 <span id="cadNearMVal">2000</span> m
               </div>
 
-              <label className="cad-near-label">{t('cadFeatures')}</label>
-              <div id="cadNearChecks" className="chk-grid cad-near-grid"></div>
+              <details className="cad-near-dropdown">
+                <summary className="cad-near-summary">{t('cadFeatures')}</summary>
+                <div id="cadNearChecks" className="chk-grid cad-near-grid"></div>
+              </details>
 
               <label className="cad-near-all">
                 <input type="checkbox" id="cadNearAll" /> {t('cadSelectAll')}
@@ -332,7 +374,7 @@ export default function Sidebar({ t }) {
                   {t('cadShow')}
                 </button>
                 <button type="button" className="btn-go btn-go-accent" id="btnCadNearby">
-                  {t('cadNearby')}
+                  {t('Features near me')}
                 </button>
               </div>
 
@@ -399,77 +441,107 @@ export default function Sidebar({ t }) {
               title={t('selectIdentify')}
               onClick={() => window.msmeGisActivateIdentifyMode && window.msmeGisActivateIdentifyMode()}
             >
-              <span className="stools-ico" aria-hidden>⌖</span>
+              <span className="stools-ico" aria-hidden>
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                  <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M12 3v3M12 18v3M3 12h3M18 12h3" />
+                </svg>
+              </span>
               <span className="stools-txt">{t('selectIdentify')}</span>
             </button>
-
             <button
               type="button"
               className="stools-btn"
               title={t('selectSketchPoint')}
               onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('point')}
             >
-              <span className="stools-ico" aria-hidden>·</span>
+              <span className="stools-ico" aria-hidden>
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <circle cx="12" cy="12" r="2.8" fill="currentColor" />
+                  <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" strokeWidth="1.6" opacity="0.45" />
+                </svg>
+              </span>
               <span className="stools-txt">{t('selectSketchPoint')}</span>
             </button>
-
             <button
               type="button"
               className="stools-btn"
               title={t('selectSketchLine')}
               onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('polyline')}
             >
-              <span className="stools-ico" aria-hidden>╱</span>
+              <span className="stools-ico" aria-hidden>
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" d="M5 17L19 7" />
+                  <circle cx="5" cy="17" r="1.9" fill="currentColor" />
+                  <circle cx="19" cy="7" r="1.9" fill="currentColor" />
+                </svg>
+              </span>
               <span className="stools-txt">{t('selectSketchLine')}</span>
             </button>
-
             <button
               type="button"
               className="stools-btn"
               title={t('selectSketchPoly')}
               onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('polygon')}
             >
-              <span className="stools-ico" aria-hidden>⬡</span>
+              <span className="stools-ico" aria-hidden>
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" d="M6 5h11l2 8-7 6-8-5z" />
+                </svg>
+              </span>
               <span className="stools-txt">{t('selectSketchPoly')}</span>
             </button>
-
             <button
               type="button"
               className="stools-btn"
               title={t('selectSketchRect')}
               onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('rectangle')}
             >
-              <span className="stools-ico" aria-hidden>▭</span>
+              <span className="stools-ico" aria-hidden>
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <rect x="5" y="7" width="14" height="10" rx="1.8" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              </span>
               <span className="stools-txt">{t('selectSketchRect')}</span>
             </button>
-
             <button
               type="button"
               className="stools-btn"
               title={t('selectSketchCircle')}
               onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('circle')}
             >
-              <span className="stools-ico" aria-hidden>○</span>
+              <span className="stools-ico" aria-hidden>
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <circle cx="12" cy="12" r="6.7" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                </svg>
+              </span>
               <span className="stools-txt">{t('selectSketchCircle')}</span>
             </button>
-
             <button
               type="button"
               className="stools-btn"
               title={t('selectSketchFree')}
               onClick={() => window.msmeGisStartSketch && window.msmeGisStartSketch('free')}
             >
-              <span className="stools-ico" aria-hidden>✎</span>
+              <span className="stools-ico" aria-hidden>
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M5 17l.8 2.2L8 20l8.9-8.9-3-3L5 17zM12.9 6.1l3 3" />
+                </svg>
+              </span>
               <span className="stools-txt">{t('selectSketchFree')}</span>
             </button>
-
             <button
               type="button"
               className="stools-btn stools-btn--ghost"
               title={t('selectClear')}
               onClick={() => window.msmeGisClearMapSelection && window.msmeGisClearMapSelection()}
             >
-              <span className="stools-ico" aria-hidden>⌧</span>
+              <span className="stools-ico" aria-hidden>
+                <svg viewBox="0 0 24 24" focusable="false">
+                  <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M6 15l6-6 6 6-3 3H9l-3-3z" />
+                  <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M4 19h16" />
+                </svg>
+              </span>
               <span className="stools-txt">{t('selectClear')}</span>
             </button>
           </div>

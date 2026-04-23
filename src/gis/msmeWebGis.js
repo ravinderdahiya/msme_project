@@ -28,6 +28,7 @@ import RouteParameters from "@arcgis/core/rest/support/RouteParameters.js";
 import FeatureSet from "@arcgis/core/rest/support/FeatureSet.js";
 import Point from "@arcgis/core/geometry/Point.js";
 import Polyline from "@arcgis/core/geometry/Polyline.js";
+import Extent from "@arcgis/core/geometry/Extent.js";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel.js";
 import "@arcgis/core/assets/esri/themes/light/main.css";
 
@@ -107,7 +108,7 @@ var GIS_UI_DEFAULTS = {
   village: "Village",
   muraba: "Muraba",
   parcel: "Parcel",
-  cadKhasraPlaceholder: "Select khasra (optional — or zoom muraba only)",
+  cadKhasraPlaceholder: "Select khasra (optional ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â or zoom muraba only)",
   allTehsils: "All tehsils",
   allVillages: "All villages",
   mapPopupTitle: "Features at this location",
@@ -143,6 +144,13 @@ export function applyMsmeGisUiStrings(next) {
 export function initMsmeWebGis() {
 "use strict";
 
+if (typeof window !== "undefined") {
+  if (window.__msmeGisInitInProgress || window.__msmeGisInitialized) {
+    return;
+  }
+  window.__msmeGisInitInProgress = true;
+}
+
 /** Tear down previous MapView (React Strict Mode remount / navigation) before creating a new one. */
 if (typeof window !== "undefined" && typeof window.__msmeGisCleanup === "function") {
   try {
@@ -157,12 +165,15 @@ var myBootId = typeof window !== "undefined" ? window.__msmeGisBootId : 1;
 if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ARCGIS_API_KEY) {
   esriConfig.apiKey = import.meta.env.VITE_ARCGIS_API_KEY;
 }
+if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ARCGIS_ROUTE_SERVICE_URL) {
+  esriConfig.routeServiceUrl = import.meta.env.VITE_ARCGIS_ROUTE_SERVICE_URL;
+}
 
 function readLandReportDomContext() {
   function tx(id) {
     var el = document.getElementById(id);
-    if (!el || !el.selectedOptions || !el.selectedOptions[0]) return "—";
-    return String(el.selectedOptions[0].text || "").trim() || "—";
+    if (!el || !el.selectedOptions || !el.selectedOptions[0]) return "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
+    return String(el.selectedOptions[0].text || "").trim() || "ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â";
   }
   return {
     administrative: {
@@ -185,7 +196,7 @@ function readLandReportDomContext() {
   };
 }
 
-/** AOI / dropdown-driven report (admin + cad context) — separate from map identify & analysis. */
+/** AOI / dropdown-driven report (admin + cad context) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â separate from map identify & analysis. */
 var lastAoiLandReportSnapshot = null;
 function publishAoiLandReportSnapshot(payload) {
   lastAoiLandReportSnapshot = payload;
@@ -196,7 +207,7 @@ function publishAoiLandReportSnapshot(payload) {
   } catch (e0) {}
 }
 
-/** Map click / sketch identify — separate from AOI and from analysis summaries. */
+/** Map click / sketch identify ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â separate from AOI and from analysis summaries. */
 var lastMapSelectionReportSnapshot = null;
 function publishMapSelectionReportSnapshot(payload) {
   lastMapSelectionReportSnapshot = payload;
@@ -223,6 +234,7 @@ window.msmeGisShowCurrentLocation = function () {
     async function (position) {
       var lat = position.coords.latitude;
       var lng = position.coords.longitude;
+      lastCurrentLocationWgs = { lat: lat, lon: lng };
 
       try {
         if (currentLocationGraphic) {
@@ -238,12 +250,10 @@ window.msmeGisShowCurrentLocation = function () {
           },
           symbol: {
             type: "simple-marker",
-            size: 12,
-            color: [0, 102, 255, 0.9],
-            outline: {
-              color: [255, 255, 255, 1],
-              width: 2
-            }
+            style: "circle",
+            size: 11,
+            color: [0, 122, 255, 0.95],
+            outline: { color: [255, 255, 255, 0.95], width: 1.5 }
           },
           attributes: {
             label: "Current Location"
@@ -301,91 +311,927 @@ window.msmeGisShowCurrentLocation = function () {
     }
   );
 };
-function routeFromCurrentLocationToAoi() {
-  if (!lastCurrentLocationWgs || !lastAoiLocationWgs) {
-    setStatus("Set current location and select an AOI first.");
-    return;
+
+function getEsriRouteSolveUrl() {
+  var base = (esriConfig.routeServiceUrl || "https://route-api.arcgis.com/arcgis/rest/services/World/Route/NAServer/Route_World").replace(/\/$/, "");
+  return base.indexOf("solve") !== -1 ? base : base + "/solve";
+}
+
+function hasArcGisRoutingApiKey() {
+  return !!(esriConfig && esriConfig.apiKey);
+}
+
+function routeServiceNeedsApiKey(solveUrl) {
+  var u = String(solveUrl || "").toLowerCase();
+  return u.indexOf("route-api.arcgis.com") >= 0;
+}
+
+function isRoutingAuthError(err) {
+  if (!err) return false;
+  try {
+    var d = err.details || {};
+    var hs = Number(d.httpStatus || d.status || d.code);
+    if (hs === 401 || hs === 403 || hs === 498 || hs === 499) return true;
+  } catch (e0) {}
+  var m = String((err && err.message) || "");
+  return /api\s*key|token required|unauthorized|forbidden|not authorized|status:?\s*(401|403|498|499)/i.test(m);
+}
+
+function isValidWgsLatLon(lat, lon) {
+  return isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
+}
+
+function coerceLocationToWgs(loc) {
+  if (!loc) return Promise.resolve(null);
+  var lat = Number(loc.lat);
+  var lon = Number(loc.lon);
+  if (isValidWgsLatLon(lat, lon)) return Promise.resolve({ lat: lat, lon: lon });
+
+  return projection.load().then(function () {
+    var tries = [];
+    if (isFinite(lon) && isFinite(lat)) {
+      tries.push(new Point({ x: lon, y: lat, spatialReference: SR_METER }));
+      tries.push(new Point({ x: lat, y: lon, spatialReference: SR_METER }));
+      tries.push(new Point({ x: lon, y: lat, spatialReference: SR_WEB }));
+      tries.push(new Point({ x: lat, y: lon, spatialReference: SR_WEB }));
+    }
+    for (var i = 0; i < tries.length; i++) {
+      var p = projection.project(tries[i], SR4326);
+      if (!p) continue;
+      if (isValidWgsLatLon(Number(p.y), Number(p.x))) {
+        return { lat: Number(p.y), lon: Number(p.x) };
+      }
+    }
+    return null;
+  }).catch(function () {
+    return null;
+  });
+}
+
+function planarDistanceMeters(ax, ay, bx, by) {
+  var dx = Number(bx) - Number(ax);
+  var dy = Number(by) - Number(ay);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+
+function buildRoadGraph(features, mergeToleranceM) {
+  var tol = Number(mergeToleranceM) > 0 ? Number(mergeToleranceM) : 8;
+  var nodesByKey = {};
+  var keys = [];
+
+  function keyForXY(x, y) {
+    return Math.round(x / tol) + "|" + Math.round(y / tol);
   }
 
-  var base = (esriConfig.routeServiceUrl || "https://route-api.arcgis.com/arcgis/rest/services/World/Route/NAServer/Route_World").replace(/\/$/, "");
-  var solveUrl = base.indexOf("solve") !== -1 ? base : base + "/solve";
+  function ensureNode(key, x, y) {
+    var n = nodesByKey[key];
+    if (n) {
+      n.xSum += x;
+      n.ySum += y;
+      n.count += 1;
+      return n;
+    }
+    n = { key: key, x: x, y: y, xSum: x, ySum: y, count: 1, edges: {} };
+    nodesByKey[key] = n;
+    keys.push(key);
+    return n;
+  }
 
-  var p0 = new Point({
-    x: lastCurrentLocationWgs.lon,
-    y: lastCurrentLocationWgs.lat,
-    spatialReference: SR4326
+  function addEdge(k1, k2, w) {
+    if (!isFinite(w) || w <= 0 || k1 === k2) return;
+    var n1 = nodesByKey[k1];
+    var n2 = nodesByKey[k2];
+    if (!n1 || !n2) return;
+    if (n1.edges[k2] == null || w < n1.edges[k2]) n1.edges[k2] = w;
+    if (n2.edges[k1] == null || w < n2.edges[k1]) n2.edges[k1] = w;
+  }
+
+  (features || []).forEach(function (f) {
+    var g = toEngineSR(ensureSR32643(geomFromJSON(f && f.geometry)));
+    if (!g || g.type !== "polyline" || !g.paths || !g.paths.length) return;
+    g.paths.forEach(function (path) {
+      if (!path || path.length < 2) return;
+      for (var i = 0; i < path.length - 1; i++) {
+        var a = path[i];
+        var b = path[i + 1];
+        if (!a || !b || !isFinite(a[0]) || !isFinite(a[1]) || !isFinite(b[0]) || !isFinite(b[1])) continue;
+        var kA = keyForXY(a[0], a[1]);
+        var kB = keyForXY(b[0], b[1]);
+        ensureNode(kA, a[0], a[1]);
+        ensureNode(kB, b[0], b[1]);
+        addEdge(kA, kB, planarDistanceMeters(a[0], a[1], b[0], b[1]));
+      }
+    });
   });
 
-  var p1 = new Point({
-    x: lastAoiLocationWgs.lon,
-    y: lastAoiLocationWgs.lat,
-    spatialReference: SR4326
+  keys.forEach(function (k) {
+    var n = nodesByKey[k];
+    if (!n || !n.count) return;
+    n.x = n.xSum / n.count;
+    n.y = n.ySum / n.count;
   });
 
-  var fs = new FeatureSet({
-    features: [
-      new Graphic({ geometry: p0, attributes: { Name: "Current Location" } }),
-      new Graphic({ geometry: p1, attributes: { Name: "Selected AOI" } })
-    ]
-  });
+  return { nodesByKey: nodesByKey, keys: keys };
+}
 
-  var rparams = new RouteParameters({
-    stops: fs,
-    returnDirections: true,
-    directionsLengthUnits: "esriKilometers",
-    returnRoutes: true
+function findNearestGraphNode(graph, point32643, maxSnapM) {
+  if (!graph || !graph.keys || !graph.keys.length || !point32643) return null;
+  var maxM = Number(maxSnapM) > 0 ? Number(maxSnapM) : 1200;
+  var best = null;
+  var bestD = Infinity;
+  graph.keys.forEach(function (k) {
+    var n = graph.nodesByKey[k];
+    if (!n) return;
+    var d = planarDistanceMeters(point32643.x, point32643.y, n.x, n.y);
+    if (d < bestD) {
+      bestD = d;
+      best = n;
+    }
   });
+  if (!best || !isFinite(bestD) || bestD > maxM) return null;
+  return { node: best, snapMeters: bestD };
+}
 
-  if (esriConfig.apiKey) rparams.apiKey = esriConfig.apiKey;
+function shortestPathRoadGraph(graph, startKey, endKey) {
+  if (!graph || !startKey || !endKey || !graph.nodesByKey[startKey] || !graph.nodesByKey[endKey]) return null;
+  if (startKey === endKey) {
+    return { nodeKeys: [startKey], distanceM: 0 };
+  }
+
+  var keys = graph.keys || [];
+  var dist = {};
+  var prev = {};
+  var visited = {};
+  keys.forEach(function (k) { dist[k] = Infinity; });
+  dist[startKey] = 0;
+
+  while (true) {
+    var cur = null;
+    var bestD = Infinity;
+    keys.forEach(function (k) {
+      if (visited[k]) return;
+      if (dist[k] < bestD) {
+        bestD = dist[k];
+        cur = k;
+      }
+    });
+    if (!cur || !isFinite(bestD)) break;
+    if (cur === endKey) break;
+    visited[cur] = true;
+
+    var edges = graph.nodesByKey[cur].edges || {};
+    Object.keys(edges).forEach(function (nk) {
+      if (visited[nk]) return;
+      var alt = dist[cur] + Number(edges[nk] || Infinity);
+      if (alt < dist[nk]) {
+        dist[nk] = alt;
+        prev[nk] = cur;
+      }
+    });
+  }
+
+  if (!isFinite(dist[endKey])) return null;
+  var path = [];
+  var walk = endKey;
+  while (walk) {
+    path.push(walk);
+    if (walk === startKey) break;
+    walk = prev[walk];
+  }
+  if (!path.length || path[path.length - 1] !== startKey) return null;
+  path.reverse();
+  return { nodeKeys: path, distanceM: dist[endKey] };
+}
+
+function compactPathCoords(pathCoords) {
+  var out = [];
+  (pathCoords || []).forEach(function (p) {
+    if (!p || !isFinite(p[0]) || !isFinite(p[1])) return;
+    if (!out.length) {
+      out.push([p[0], p[1]]);
+      return;
+    }
+    var q = out[out.length - 1];
+    if (planarDistanceMeters(p[0], p[1], q[0], q[1]) > 0.2) out.push([p[0], p[1]]);
+  });
+  return out;
+}
+
+function buildRoutePinDataUrl(primaryHex, secondaryHex) {
+  var svg =
+    "<svg xmlns='http://www.w3.org/2000/svg' width='56' height='72' viewBox='0 0 56 72'>" +
+    "<defs>" +
+    "<linearGradient id='pinGrad' x1='0' y1='0' x2='0' y2='1'>" +
+    "<stop offset='0%' stop-color='" + primaryHex + "'/>" +
+    "<stop offset='100%' stop-color='" + secondaryHex + "'/>" +
+    "</linearGradient>" +
+    "<filter id='pinShadow' x='-50%' y='-50%' width='200%' height='200%'>" +
+    "<feDropShadow dx='0' dy='2' stdDeviation='2' flood-color='rgba(0,0,0,0.35)'/>" +
+    "</filter>" +
+    "</defs>" +
+    "<g filter='url(#pinShadow)'>" +
+    "<path d='M28 3c-11.6 0-21 9.4-21 21c0 16.8 21 44.5 21 44.5S49 40.8 49 24C49 12.4 39.6 3 28 3z' fill='url(#pinGrad)' stroke='#ffffff' stroke-width='2'/>" +
+    "<circle cx='28' cy='24' r='8.3' fill='#ffffff'/>" +
+    "<circle cx='28' cy='24' r='4.3' fill='" + secondaryHex + "' fill-opacity='0.9'/>" +
+    "</g>" +
+    "</svg>";
+  return "data:image/svg+xml;charset=UTF-8," + encodeURIComponent(svg);
+}
+
+var routeStartMarkerUrl = buildRoutePinDataUrl("#34d399", "#059669");
+var routeEndMarkerUrl = buildRoutePinDataUrl("#fb7185", "#e11d48");
+
+function addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, routeGeom) {
+  if (!routeLineLayer || !fromWgs || !toWgs) return;
+
+  function toWgsFromVertex(vertex, sr) {
+    if (!vertex) return null;
+    var x = Number(vertex[0] != null ? vertex[0] : vertex.x);
+    var y = Number(vertex[1] != null ? vertex[1] : vertex.y);
+    if (!isFinite(x) || !isFinite(y)) return null;
+    var w = wkidValue(sr);
+    if (w === 4326) {
+      return isValidWgsLatLon(y, x) ? { lat: y, lon: x } : null;
+    }
+    try {
+      var p = new Point({ x: x, y: y, spatialReference: sr || SR_WEB });
+      var pWgs = projection.project(p, SR4326);
+      if (pWgs && isValidWgsLatLon(Number(pWgs.y), Number(pWgs.x))) {
+        return { lat: Number(pWgs.y), lon: Number(pWgs.x) };
+      }
+    } catch (e0) {}
+    return null;
+  }
+
+  var startWgs = fromWgs;
+  var endWgs = toWgs;
+  try {
+    if (routeGeom && routeGeom.type === "polyline" && routeGeom.paths && routeGeom.paths.length) {
+      var firstPath = null;
+      var lastPath = null;
+      routeGeom.paths.forEach(function (p) {
+        if (p && p.length) {
+          if (!firstPath) firstPath = p;
+          lastPath = p;
+        }
+      });
+      if (firstPath && lastPath) {
+        var routeStart = toWgsFromVertex(firstPath[0], routeGeom.spatialReference);
+        var routeEnd = toWgsFromVertex(lastPath[lastPath.length - 1], routeGeom.spatialReference);
+        if (routeStart) startWgs = routeStart;
+        if (routeEnd) endWgs = routeEnd;
+      }
+    }
+  } catch (e1) {}
+
+  if (!isValidWgsLatLon(Number(startWgs.lat), Number(startWgs.lon))) return;
+  if (!isValidWgsLatLon(Number(endWgs.lat), Number(endWgs.lon))) return;
+
+  function pointGraphic(wgs, label, isStart) {
+    return new Graphic({
+      geometry: {
+        type: "point",
+        longitude: Number(wgs.lon),
+        latitude: Number(wgs.lat),
+        spatialReference: SR4326
+      },
+      symbol: {
+        type: "picture-marker",
+        url: isStart ? routeStartMarkerUrl : routeEndMarkerUrl,
+        width: "28px",
+        height: "36px",
+        yoffset: "18px"
+      },
+      attributes: {
+        routeEndpoint: isStart ? "start" : "end",
+        label: label || (isStart ? "Start" : "Destination")
+      },
+      popupTemplate: {
+        title: (label || (isStart ? "Start" : "Destination")) + (isStart ? " (Start)" : " (End)")
+      }
+    });
+  }
+
+  routeLineLayer.add(pointGraphic(startWgs, fromLabel, true));
+  routeLineLayer.add(pointGraphic(endWgs, toLabel, false));
+}
+
+function drawOsrmFallbackRouteLine(fromWgs, toWgs, opts) {
+  opts = opts || {};
+  var fromLabel = opts.fromLabel || "Start";
+  var toLabel = opts.toLabel || "Destination";
+  var url =
+    "https://router.project-osrm.org/route/v1/driving/" +
+    encodeURIComponent(fromWgs.lon + "," + fromWgs.lat) + ";" +
+    encodeURIComponent(toWgs.lon + "," + toWgs.lat) +
+    "?overview=full&geometries=geojson&steps=true";
+
+  return fetch(url).then(function (res) {
+    if (!res || !res.ok) return null;
+    return res.json();
+  }).then(function (json) {
+    if (!json || json.code !== "Ok" || !json.routes || !json.routes.length) return null;
+    var route = json.routes[0];
+    var coords = route.geometry && route.geometry.coordinates;
+    if (!coords || coords.length < 2) return null;
+
+    return projection.load().then(function () {
+      var line4326 = new Polyline({
+        paths: [coords.map(function (xy) { return [xy[0], xy[1]]; })],
+        spatialReference: SR4326
+      });
+      var lineWeb = projection.project(line4326, SR_WEB);
+      if (!lineWeb) return null;
+
+      routeLineLayer.removeAll();
+      routeLineLayer.add(new Graphic({
+        geometry: lineWeb,
+        symbol: new SimpleLineSymbol({ color: [230, 128, 36, 0.98], width: 3.5 })
+      }));
+      addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, lineWeb);
+
+      var km = Number(route.distance || 0) / 1000;
+      var mins = Math.max(1, Math.round(Number(route.duration || 0) / 60));
+      var steps = [];
+      try {
+        var leg = route.legs && route.legs[0];
+        if (leg && leg.steps && leg.steps.length) {
+          leg.steps.slice(0, 40).forEach(function (s) {
+            var man = (s && s.maneuver) || {};
+            var n = String((s && s.name) || "").trim();
+            var mType = String(man.type || "").trim();
+            var mMod = String(man.modifier || "").trim();
+            var txt = "";
+            if (n) txt = "Take " + n;
+            else if (mType || mMod) txt = "Continue " + [mType, mMod].filter(Boolean).join(" ");
+            if (txt) steps.push(txt);
+          });
+        }
+      } catch (e0) {}
+      if (!steps.length) steps.push("Road-following route is shown on the map.");
+
+      return view.goTo(lineWeb, { padding: getUiZoomPadding() }).catch(function () {}).then(function () {
+        return {
+          summary: "Approx route (via roads): " + km.toFixed(2) + " km - ~" + mins + " min",
+          steps: [
+            "ArcGIS driving route unavailable (API key/token missing).",
+            "Showing road-following route from " + fromLabel + " to " + toLabel + "."
+          ].concat(steps.slice(0, 15)),
+          km: km,
+          mins: mins
+        };
+      });
+    });
+  }).catch(function (e1) {
+    console.warn("[routing] OSRM fallback failed", e1);
+    return null;
+  });
+}
+
+function drawRoadNetworkFallbackLine(fromWgs, toWgs, opts) {
+  opts = opts || {};
+  var fromLabel = opts.fromLabel || "Start";
+  var toLabel = opts.toLabel || "Destination";
+  var speedKmh = Number(opts.speedKmh) > 0 ? Number(opts.speedKmh) : 35;
+
+  return projection.load().then(function () {
+    var start4326 = new Point({ x: fromWgs.lon, y: fromWgs.lat, spatialReference: SR4326 });
+    var end4326 = new Point({ x: toWgs.lon, y: toWgs.lat, spatialReference: SR4326 });
+    var start32643 = projection.project(start4326, SR_METER);
+    var end32643 = projection.project(end4326, SR_METER);
+    if (!start32643 || !end32643) return null;
+
+    var straightM = planarDistanceMeters(start32643.x, start32643.y, end32643.x, end32643.y);
+    var padM = Math.max(800, Math.min(15000, straightM * 0.65));
+    var ext = new Extent({
+      xmin: Math.min(start32643.x, end32643.x) - padM,
+      ymin: Math.min(start32643.y, end32643.y) - padM,
+      xmax: Math.max(start32643.x, end32643.x) + padM,
+      ymax: Math.max(start32643.y, end32643.y) + padM,
+      spatialReference: SR_METER
+    });
+
+    return queryLayer(TRANS_MS, LAYER_ROADS_LINE, Object.assign({
+      where: "1=1",
+      returnGeometry: true,
+      outFields: "OBJECTID",
+      resultRecordCount: 1200
+    }, geometryToQueryParams(ext))).then(function (data) {
+      var roads = (data && data.features) || [];
+      if (!roads.length) return null;
+
+      var graph = buildRoadGraph(roads, 8);
+      if (!graph.keys.length) return null;
+
+      var maxSnapM = Math.max(900, Math.min(6000, straightM * 0.7));
+      var startNode = findNearestGraphNode(graph, start32643, maxSnapM);
+      var endNode = findNearestGraphNode(graph, end32643, maxSnapM);
+      if (!startNode || !endNode) return null;
+
+      var path = shortestPathRoadGraph(graph, startNode.node.key, endNode.node.key);
+      if (!path || !path.nodeKeys || !path.nodeKeys.length) return null;
+
+      var pathCoords = [[start32643.x, start32643.y]];
+      path.nodeKeys.forEach(function (k) {
+        var n = graph.nodesByKey[k];
+        if (n) pathCoords.push([n.x, n.y]);
+      });
+      pathCoords.push([end32643.x, end32643.y]);
+      pathCoords = compactPathCoords(pathCoords);
+      if (pathCoords.length < 2) return null;
+
+      var line32643 = new Polyline({ paths: [pathCoords], spatialReference: SR_METER });
+      var lineWeb = projection.project(line32643, SR_WEB);
+      if (!lineWeb) return null;
+
+      routeLineLayer.removeAll();
+      routeLineLayer.add(new Graphic({
+        geometry: lineWeb,
+        symbol: new SimpleLineSymbol({ color: [230, 128, 36, 0.98], width: 3 })
+      }));
+      addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, lineWeb);
+
+      var routeM = path.distanceM + startNode.snapMeters + endNode.snapMeters;
+      var km = routeM / 1000;
+      var mins = Math.max(1, Math.round((km / speedKmh) * 60));
+      return view.goTo(lineWeb, { padding: getUiZoomPadding() }).catch(function () {}).then(function () {
+        return {
+          summary: "Approx route (via roads): " + km.toFixed(2) + " km - ~" + mins + " min",
+          steps: [
+            "ArcGIS driving route unavailable (API key/token missing).",
+            "Showing nearest available road-network path from " + fromLabel + " to " + toLabel + "."
+          ],
+          km: km,
+          mins: mins
+        };
+      });
+    }).catch(function (e0) {
+      console.warn("[routing] roads fallback query/path failed", e0);
+      return null;
+    });
+  }).catch(function (e1) {
+    console.warn("[routing] roads fallback projection failed", e1);
+    return null;
+  });
+}
+
+function drawApproxRouteLine(fromWgs, toWgs, opts) {
+  opts = opts || {};
+  var fromLabel = opts.fromLabel || "Start";
+  var toLabel = opts.toLabel || "Destination";
+  var speedKmh = Number(opts.speedKmh) > 0 ? Number(opts.speedKmh) : 35;
+  var dM = haversineMeters(fromWgs.lon, fromWgs.lat, toWgs.lon, toWgs.lat);
+  var km = dM / 1000;
+  var mins = Math.max(1, Math.round((km / speedKmh) * 60));
 
   routeLineLayer.removeAll();
-  setStatus("Computing driving route from current location to AOI...");
+  return projection.load().then(function () {
+    var line4326 = new Polyline({
+      paths: [[[fromWgs.lon, fromWgs.lat], [toWgs.lon, toWgs.lat]]],
+      spatialReference: SR4326
+    });
+    var lineWeb = projection.project(line4326, SR_WEB);
+    routeLineLayer.add(new Graphic({
+      geometry: lineWeb,
+      symbol: new SimpleLineSymbol({ color: [230, 128, 36, 0.95], width: 3, style: "short-dash" })
+    }));
+    addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, lineWeb);
+    return view.goTo(lineWeb, { padding: getUiZoomPadding() });
+  }).catch(function (e1) {
+    console.warn("[routing] fallback line draw/zoom issue", e1);
+  }).then(function () {
+    return {
+      summary: "Approx route (straight line): " + km.toFixed(2) + " km - ~" + mins + " min",
+      steps: [
+        "ArcGIS driving route needs an API key/token.",
+        "Showing straight-line approximation from " + fromLabel + " to " + toLabel + "."
+      ],
+      km: km,
+      mins: mins
+    };
+  });
+}
 
-  solve(solveUrl, rparams, { apiKey: esriConfig.apiKey }).then(function (res) {
-    var rr = res.routeResults && res.routeResults[0];
-    var routeFeat = rr && rr.route;
-    var altFeat = null;
-    var geom = routeFeat && (routeFeat.geometry || routeFeat);
+function drawBestAvailableFallbackRoute(fromWgs, toWgs, opts) {
+  return drawOsrmFallbackRouteLine(fromWgs, toWgs, opts).then(function (osrmRes) {
+    if (osrmRes) return osrmRes;
+    return drawRoadNetworkFallbackLine(fromWgs, toWgs, opts);
+  }).then(function (roadRes) {
+    if (roadRes) return roadRes;
+    return drawApproxRouteLine(fromWgs, toWgs, opts);
+  }).catch(function () {
+    return drawApproxRouteLine(fromWgs, toWgs, opts);
+  });
+}
 
-    if (!geom || !geom.type) {
-      altFeat = res.routes && res.routes.features && res.routes.features[0];
-      geom = altFeat && altFeat.geometry;
+function resolveWgsFrom32643Geometry(geom) {
+  if (!geom) return Promise.resolve(null);
+  var g32643 = toEngineSR(ensureSR32643(geom));
+  if (!g32643) return Promise.resolve(null);
+  var ctr = getGeometryCentroid(g32643);
+  var anch = ctr || (g32643.type === "point" ? g32643 : null);
+  if (!anch) return Promise.resolve(null);
+  return projection.load().then(function () {
+    var anch32643 = toEngineSR(ensureSR32643(anch));
+    var wgs = anch32643 ? projection.project(anch32643, SR4326) : null;
+    if (!wgs || !isValidWgsLatLon(Number(wgs.y), Number(wgs.x))) return null;
+    return { lat: Number(wgs.y), lon: Number(wgs.x) };
+  }).catch(function () {
+    return null;
+  });
+}
+
+function resolveCurrentLocationForRoute() {
+  return coerceLocationToWgs(lastCurrentLocationWgs).then(function (wgs) {
+    if (wgs) {
+      lastCurrentLocationWgs = wgs;
+      return wgs;
+    }
+    var g = currentLocationGraphic && currentLocationGraphic.geometry;
+    if (!g) return null;
+    return projection.load().then(function () {
+      if (g.type === "point" && isValidWgsLatLon(Number(g.y), Number(g.x))) {
+        return { lat: Number(g.y), lon: Number(g.x) };
+      }
+      var p = g.type === "point" ? g : null;
+      var pWgs = p ? projection.project(p, SR4326) : null;
+      if (!pWgs || !isValidWgsLatLon(Number(pWgs.y), Number(pWgs.x))) return null;
+      return { lat: Number(pWgs.y), lon: Number(pWgs.x) };
+    }).then(function (v) {
+      if (v) lastCurrentLocationWgs = v;
+      return v || null;
+    }).catch(function () {
+      return null;
+    });
+  });
+}
+
+function fetchBrowserCurrentLocationWgsForRoute() {
+  if (!navigator.geolocation) return Promise.resolve(null);
+  return new Promise(function (resolve) {
+    navigator.geolocation.getCurrentPosition(function (pos) {
+      var lat = Number(pos && pos.coords && pos.coords.latitude);
+      var lon = Number(pos && pos.coords && pos.coords.longitude);
+      if (!isValidWgsLatLon(lat, lon)) {
+        resolve(null);
+        return;
+      }
+      lastCurrentLocationWgs = { lat: lat, lon: lon };
+      try {
+        if (view && !view.destroyed) {
+          if (currentLocationGraphic) view.graphics.remove(currentLocationGraphic);
+          currentLocationGraphic = new Graphic({
+            geometry: {
+              type: "point",
+              longitude: lon,
+              latitude: lat,
+              spatialReference: { wkid: 4326 }
+            },
+            symbol: {
+              type: "simple-marker",
+              style: "circle",
+              size: 11,
+              color: [0, 122, 255, 0.95],
+              outline: { color: [255, 255, 255, 0.95], width: 1.5 }
+            },
+            attributes: { label: "Current Location" }
+          });
+          view.graphics.add(currentLocationGraphic);
+        }
+      } catch (e0) {}
+      resolve(lastCurrentLocationWgs);
+    }, function () {
+      resolve(null);
+    }, {
+      enableHighAccuracy: true,
+      timeout: 10000,
+      maximumAge: 0
+    });
+  });
+}
+
+function buildAoiSelectionQueryForRoute() {
+  var dCode = districtSelect && districtSelect.value ? String(districtSelect.value).trim() : "";
+  var tCode = tehsilSelect && tehsilSelect.value ? String(tehsilSelect.value).trim() : "";
+  var vCode = villageSelect && villageSelect.value ? String(villageSelect.value).trim() : "";
+  if (!dCode) return null;
+
+  var layerId = LAYER_DISTRICT;
+  var where = "n_d_code = " + sqlQuote(dCode);
+  if (vCode && tCode) {
+    layerId = LAYER_VILLAGE;
+    where += " AND n_t_code = " + sqlQuote(tCode) + " AND n_v_code = " + sqlQuote(vCode);
+  } else if (tCode) {
+    layerId = LAYER_TEHSIL;
+    where += " AND n_t_code = " + sqlQuote(tCode);
+  }
+  return { layerId: layerId, where: where };
+}
+
+function queryAdminExtentCenterWgsForRoute(layerId, where) {
+  if (layerId == null || !where) return Promise.resolve(null);
+  var fl = new FeatureLayer({ url: ADMIN_MS + "/" + layerId });
+  var q = fl.createQuery();
+  q.where = where;
+  q.returnGeometry = false;
+  q.outSpatialReference = SR_METER;
+  return fl.load().then(function () {
+    return fl.queryExtent(q);
+  }).then(function (res) {
+    var ext = res && res.extent;
+    if (!ext || !isFinite(ext.xmin) || !isFinite(ext.xmax)) return null;
+    var ctr = ext.center;
+    if (!ctr) return null;
+    return projection.load().then(function () {
+      var ctrWgs = projection.project(ctr, SR4326);
+      if (!ctrWgs || !isValidWgsLatLon(Number(ctrWgs.y), Number(ctrWgs.x))) return null;
+      return { lat: Number(ctrWgs.y), lon: Number(ctrWgs.x) };
+    }).catch(function () {
+      return null;
+    });
+  }).catch(function () {
+    return null;
+  });
+}
+
+function resolveAoiLocationForRoute() {
+  return coerceLocationToWgs(lastAoiLocationWgs).then(function (wgs) {
+    if (wgs) {
+      lastAoiLocationWgs = wgs;
+      return wgs;
     }
 
-    if (!geom) {
-      setStatus("Esri route returned no line.");
+    var fromSelectedGeom = selectedVillageGeom || selectedTehsilGeom || selectedDistrictGeom;
+    var selectedTry = fromSelectedGeom ? resolveWgsFrom32643Geometry(fromSelectedGeom) : Promise.resolve(null);
+    return selectedTry.then(function (w0) {
+      if (w0) return w0;
+      var q = buildAoiSelectionQueryForRoute();
+      if (!q) return null;
+      return queryAdministrativeGeometryForZoom(q.layerId, q.where, "OBJECTID").then(function (res) {
+        var g32643 = res && res.geometry;
+        if (g32643) {
+          return resolveWgsFrom32643Geometry(g32643).then(function (w1) {
+            if (w1) return w1;
+            return queryAdminExtentCenterWgsForRoute(q.layerId, q.where);
+          });
+        }
+        return queryAdminExtentCenterWgsForRoute(q.layerId, q.where);
+      }).catch(function () {
+        return queryAdminExtentCenterWgsForRoute(q.layerId, q.where);
+      });
+    });
+  }).then(function (wgsFinal) {
+    if (wgsFinal) {
+      lastAoiLocationWgs = wgsFinal;
+      return wgsFinal;
+    }
+    return projection.load().then(function () {
+      var c = view && view.center ? view.center : null;
+      if (!c) return null;
+      var cWgs = projection.project(c, SR4326);
+      if (!cWgs || !isValidWgsLatLon(Number(cWgs.y), Number(cWgs.x))) return null;
+      var fb = { lat: Number(cWgs.y), lon: Number(cWgs.x) };
+      lastAoiLocationWgs = fb;
+      return fb;
+    }).catch(function () {
+      return null;
+    });
+  });
+}
+
+function ensureCurrentLocationForRoute() {
+  return resolveCurrentLocationForRoute().then(function (wgs) {
+    if (wgs) return wgs;
+    setStatus("Fetching current location for routing...");
+    return fetchBrowserCurrentLocationWgsForRoute();
+  }).then(function (wgsFinal) {
+    if (wgsFinal) lastCurrentLocationWgs = wgsFinal;
+    return wgsFinal || null;
+  });
+}
+
+function ensureAoiLocationForRoute() {
+  return resolveAoiLocationForRoute().then(function (wgs) {
+    if (wgs) return wgs;
+    return runNavigate().catch(function () {
+      return null;
+    }).then(function () {
+      return resolveAoiLocationForRoute();
+    });
+  }).then(function (wgsFinal) {
+    if (wgsFinal) lastAoiLocationWgs = wgsFinal;
+    return wgsFinal || null;
+  });
+}
+
+function routeFromCurrentLocationToAoi() {
+  openAoiRoutePanel();
+  renderAoiRoutePanel("Preparing route...", []);
+
+  Promise.all([
+    ensureCurrentLocationForRoute(),
+    ensureAoiLocationForRoute()
+  ]).then(function (resolved) {
+    var resolvedCurrent = resolved[0];
+    var resolvedAoi = resolved[1];
+    if (!resolvedCurrent || !resolvedAoi) {
+      var preMsg = !resolvedCurrent && !resolvedAoi
+        ? "Current location and AOI both are missing. Set location and click Apply & zoom."
+        : (!resolvedCurrent
+          ? "Current location not found. Allow location permission and try Route again."
+          : "AOI location not found from current selection. Change selection or click Apply & zoom, then Route.");
+      renderAoiRoutePanel(preMsg, [], true);
+      setStatus(preMsg);
+      return;
+    }
+    return Promise.all([
+      coerceLocationToWgs(resolvedCurrent),
+      coerceLocationToWgs(resolvedAoi)
+    ]);
+  }).then(function (pair) {
+    if (!pair) return;
+    var fromWgs = pair[0];
+    var toWgs = pair[1];
+    if (!fromWgs || !toWgs) {
+      var badLocMsg = "Route points invalid. Click current location and Apply & zoom again.";
+      renderAoiRoutePanel(badLocMsg, [], true);
+      setStatus(badLocMsg);
       return;
     }
 
-    return projection.load().then(function () {
-      var gLine = geom.spatialReference && geom.spatialReference.wkid === 3857
-        ? geom
-        : projection.project(geom, SR_WEB);
+    lastCurrentLocationWgs = fromWgs;
+    lastAoiLocationWgs = toWgs;
 
-      routeLineLayer.add(new Graphic({
-        geometry: gLine,
-        symbol: new SimpleLineSymbol({ color: [0, 92, 230, 1], width: 4 })
-      }));
+    var solveUrl = getEsriRouteSolveUrl();
+    var destLabel = getSelectedAoiLabel();
+    var fromTxt = fromWgs.lat.toFixed(6) + ", " + fromWgs.lon.toFixed(6);
+    var toTxt = toWgs.lat.toFixed(6) + ", " + toWgs.lon.toFixed(6);
 
-      return view.goTo(gLine, { padding: getUiZoomPadding() });
-    }).then(function () {
-      var attrs = (routeFeat && routeFeat.attributes) || (altFeat && altFeat.attributes) || {};
-      var km = attrs.Total_Kilometers != null ? attrs.Total_Kilometers : attrs.Shape_Length;
-      var mins = attrs.Total_Minutes;
+    if (!hasArcGisRoutingApiKey() && routeServiceNeedsApiKey(solveUrl)) {
+      setStatus("ArcGIS API key not configured - showing approximate route.");
+      renderAoiRoutePanel("ArcGIS route key missing. Showing approximate route to " + destLabel + "...", []);
+      drawBestAvailableFallbackRoute(fromWgs, toWgs, {
+        fromLabel: "Current Location",
+        toLabel: destLabel
+      }).then(function (approx) {
+        var panelSummary = approx.summary + "\nFrom: " + fromTxt + "\nTo: " + destLabel + " (" + toTxt + ")";
+        renderAoiRoutePanel(panelSummary, approx.steps, false);
+        var el0 = document.getElementById("cadResults");
+        if (el0) el0.textContent = panelSummary + "\n\n" + approx.steps.join("\n");
+      });
+      return;
+    }
 
-      var msg =
-        "Driving route: " +
-        (km != null ? Number(km).toFixed(2) + " km" : "") +
-        (mins != null ? " · ~" + Math.round(mins) + " min" : "");
-
-      setStatus(msg);
-
-      var el = document.getElementById("cadResults");
-      if (el) el.textContent = msg;
+    var p0 = new Point({
+      x: fromWgs.lon,
+      y: fromWgs.lat,
+      spatialReference: SR4326
     });
-  }).catch(function (err) {
-    console.error(err);
-    setStatus("Routing failed — check ArcGIS API key.");
+
+    var p1 = new Point({
+      x: toWgs.lon,
+      y: toWgs.lat,
+      spatialReference: SR4326
+    });
+
+    var fs = new FeatureSet({
+      features: [
+        new Graphic({ geometry: p0, attributes: { Name: "Current Location" } }),
+        new Graphic({ geometry: p1, attributes: { Name: "Selected AOI" } })
+      ]
+    });
+
+    var rparams = new RouteParameters({
+      stops: fs,
+      returnDirections: true,
+      directionsLengthUnits: "esriKilometers",
+      returnRoutes: true
+    });
+
+    if (esriConfig.apiKey) rparams.apiKey = esriConfig.apiKey;
+
+    routeLineLayer.removeAll();
+    setStatus("Computing driving route from current location to AOI...");
+    renderAoiRoutePanel("Computing best road route to " + destLabel + "...", []);
+
+    solve(solveUrl, rparams, { apiKey: esriConfig.apiKey }).then(function (res) {
+      var rr = res.routeResults && res.routeResults[0];
+      var routeFeat = rr && rr.route;
+      var altFeat = null;
+      var geom = routeFeat && (routeFeat.geometry || routeFeat);
+
+      if (!geom || !geom.type) {
+        altFeat = res.routes && res.routes.features && res.routes.features[0];
+        geom = altFeat && altFeat.geometry;
+      }
+
+      if (!geom) {
+        var noRouteMsg = "Esri route returned no line.";
+        renderAoiRoutePanel(noRouteMsg, [], true);
+        setStatus(noRouteMsg);
+        return;
+      }
+
+      return projection.load().then(function () {
+        var gLine = geom.spatialReference && geom.spatialReference.wkid === 3857
+          ? geom
+          : projection.project(geom, SR_WEB);
+
+        routeLineLayer.add(new Graphic({
+          geometry: gLine,
+          symbol: new SimpleLineSymbol({ color: [0, 92, 230, 1], width: 4 })
+        }));
+        addRouteEndpointMarkers(fromWgs, toWgs, "Current Location", destLabel, gLine);
+
+        return view.goTo(gLine, { padding: getUiZoomPadding() });
+      }).then(function () {
+        var attrs = (routeFeat && routeFeat.attributes) || (altFeat && altFeat.attributes) || {};
+        var km = attrs.Total_Kilometers != null ? attrs.Total_Kilometers : attrs.Shape_Length;
+        var mins = attrs.Total_Minutes;
+        var lines = [];
+
+        if (rr && rr.directions && rr.directions.features) {
+          rr.directions.features.slice(0, 30).forEach(function (df) {
+            var a = df.attributes || {};
+            var tx = a.text || a.Text || a.narrative || "";
+            if (tx) lines.push(tx);
+          });
+        }
+
+        var msg =
+          "Driving route: " +
+          (km != null ? Number(km).toFixed(2) + " km" : "") +
+          (mins != null ? " - ~" + Math.round(mins) + " min" : "");
+        var panelSummary = msg + "\nFrom: " + fromTxt + "\nTo: " + destLabel + " (" + toTxt + ")";
+        if (!lines.length) lines.push("Route line is shown on the map.");
+
+        setStatus(msg);
+        renderAoiRoutePanel(panelSummary, lines);
+
+        var el = document.getElementById("cadResults");
+        if (el) el.textContent = msg + (lines.length ? "\n\n" + lines.join("\n") : "");
+      });
+    }).catch(function (err) {
+      console.error(err);
+      if (isRoutingAuthError(err)) {
+        setStatus("ArcGIS route authorization failed - showing approximate route.");
+        drawBestAvailableFallbackRoute(fromWgs, toWgs, {
+          fromLabel: "Current Location",
+          toLabel: destLabel
+        }).then(function (approx) {
+          var panelSummary = approx.summary + "\nFrom: " + fromTxt + "\nTo: " + destLabel + " (" + toTxt + ")";
+          renderAoiRoutePanel(panelSummary, approx.steps, false);
+          var el0 = document.getElementById("cadResults");
+          if (el0) el0.textContent = panelSummary + "\n\n" + approx.steps.join("\n");
+        });
+        return;
+      }
+      var routeFailMsg = isGateway502Error(err)
+        ? "Routing failed: ArcGIS route service/proxy unreachable (502)."
+        : "Routing failed - ArcGIS route service error.";
+      renderAoiRoutePanel(routeFailMsg, [], true);
+      setStatus(routeFailMsg);
+    });
+  });
+}
+
+function getSelectedAoiLabel() {
+  function getText(id) {
+    var el = document.getElementById(id);
+    if (!el || !el.options || el.selectedIndex < 0) return "";
+    var txt = String((el.options[el.selectedIndex] && el.options[el.selectedIndex].text) || "").trim();
+    return txt;
+  }
+  var v = getText("villageSelect");
+  var t = getText("tehsilSelect");
+  var d = getText("districtSelect");
+  return v || t || d || "Selected AOI";
+}
+
+function openAoiRoutePanel() {
+  var panel = document.getElementById("aoiRoutePanel");
+  if (panel) panel.classList.add("open");
+}
+
+function closeAoiRoutePanel() {
+  var panel = document.getElementById("aoiRoutePanel");
+  if (panel) panel.classList.remove("open");
+}
+
+function renderAoiRoutePanel(summary, steps, isError) {
+  var panel = document.getElementById("aoiRoutePanel");
+  var sumEl = document.getElementById("aoiRouteSummary");
+  var stepsEl = document.getElementById("aoiRouteSteps");
+  if (!panel || !sumEl || !stepsEl) return;
+
+  panel.classList.toggle("is-error", !!isError);
+  sumEl.textContent = summary || "";
+  stepsEl.innerHTML = "";
+  (steps || []).forEach(function (line) {
+    if (!line) return;
+    var li = document.createElement("li");
+    li.textContent = line;
+    stepsEl.appendChild(li);
   });
 }
 /** Last spatial analysis tool run (buffer, proximity, etc.). */
@@ -457,7 +1303,7 @@ function publishInvestorSnapshot(p32643, source) {
 
 /**
  * Approximate zoom when MapServer omits geometry: same district centre [lon,lat], tighter scale for
- * district → tehsil → village → muraba → khasra (finer each step).
+ * district ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ tehsil ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ village ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ muraba ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ khasra (finer each step).
  */
 function zoomGoToApproxSelection(dCode, mode) {
   var k = normalizeDistrictCodeKey(dCode);
@@ -535,7 +1381,10 @@ var view = new MapView({
   background: { color: "#ffffff" }
 });
 
-var layerList = new LayerList({ view: view, container: "layerListContainer" });
+var layerList = new LayerList({
+  view: view,
+  container: "layerListContainer"
+});
 var legend = new Legend({ view: view, container: "legendInner", basemapLegendVisible: true });
 
 view.ui.add(new Home({ view: view }), "top-right");
@@ -607,6 +1456,17 @@ function setStatus(msg) {
   if (el) el.textContent = msg || "";
   console.log("[status]", msg);
 }
+
+function isGateway502Error(err) {
+  if (!err) return false;
+  try {
+    var d = err.details || {};
+    if (Number(d.httpStatus) === 502 || Number(d.status) === 502) return true;
+  } catch (e0) {}
+  var m = String((err && err.message) || "");
+  return m.indexOf("status: 502") >= 0 || m.indexOf("status 502") >= 0;
+}
+
 function alertNoData(ctx) {
   var m = "No results" + (ctx ? ": " + ctx : "") + ".";
   window.alert(m);
@@ -731,7 +1591,7 @@ function mapImageLayerForCadNearUrl(url) {
   return null;
 }
 
-/** Match “Nearby” checkboxes to MapServer sublayer visibility so features show as soon as they are checked. */
+/** Match ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œNearbyÃƒÂ¢Ã¢â€šÂ¬Ã‚Â checkboxes to MapServer sublayer visibility so features show as soon as they are checked. */
 function syncCadNearInfrastructureVisibility() {
   var urls = [TRANS_MS, INV_MS, SOC_MS, UTIL_MS];
   urls.forEach(function (u) {
@@ -752,6 +1612,64 @@ function syncCadNearInfrastructureVisibility() {
   });
 }
 
+function resolveCadNearbySearchGeometry32643() {
+  function toUsable32643(g) {
+    if (!g || !geometryIsUsable(g)) return null;
+    try {
+      return toEngineSR(ensureSR32643(g)) || ensureSR32643(g);
+    } catch (e0) {
+      return g;
+    }
+  }
+
+  var dSel = cadDistrictSelect && cadDistrictSelect.value ? String(cadDistrictSelect.value).trim() : "";
+  var tSel = cadTehsilSelect && cadTehsilSelect.value ? String(cadTehsilSelect.value).trim() : "";
+  var vSel = cadVillageSelect && cadVillageSelect.value ? String(cadVillageSelect.value).trim() : "";
+  var murSel = cadMurabaSelect && cadMurabaSelect.value ? String(cadMurabaSelect.value).trim() : "";
+  var khaSel = cadKhasraSelect && cadKhasraSelect.value ? String(cadKhasraSelect.value).trim() : "";
+
+  var districtFallback = function () {
+    if (!dSel) {
+      return Promise.resolve(lastCadParcel32643 ? toUsable32643(lastCadParcel32643) : null);
+    }
+    return queryAdminGeometryForCadZoom(dSel, tSel, vSel).then(function (gAdm) {
+      return toUsable32643(gAdm) || (lastCadParcel32643 ? toUsable32643(lastCadParcel32643) : null);
+    }).catch(function () {
+      return lastCadParcel32643 ? toUsable32643(lastCadParcel32643) : null;
+    });
+  };
+
+  if (dSel && tSel && vSel && murSel && khaSel) {
+    return queryCadParcelGeometry().then(function (res) {
+      var g = res && res.feature && res.feature.geometry ? geomFromJSON(res.feature.geometry) : null;
+      var parcel = toUsable32643(g);
+      if (parcel) return parcel;
+      return queryCadMurabaExtentGeometry(dSel, tSel, vSel, murSel).then(function (gMur) {
+        return toUsable32643(gMur);
+      }).catch(function () {
+        return null;
+      }).then(function (murGeom) {
+        if (murGeom) return murGeom;
+        return districtFallback();
+      });
+    }).catch(function () {
+      return districtFallback();
+    });
+  }
+
+  if (dSel && tSel && vSel && murSel) {
+    return queryCadMurabaExtentGeometry(dSel, tSel, vSel, murSel).then(function (gMur) {
+      var murGeom = toUsable32643(gMur);
+      if (murGeom) return murGeom;
+      return districtFallback();
+    }).catch(function () {
+      return districtFallback();
+    });
+  }
+
+  return districtFallback();
+}
+
 var cadNearAutoTimer = null;
 
 function runCadNearbyDistances(opts) {
@@ -764,19 +1682,130 @@ function runCadNearbyDistances(opts) {
     }
     return;
   }
+
   var rad = parseInt(document.getElementById("cadNearM").value, 10) || 2000;
-  resolveParcel32643().then(function (parcel) {
+  rad = Math.max(200, Math.min(10000, rad));
+
+  projection.load().catch(function () { return null; }).then(function () {
+    return resolveCadNearbySearchGeometry32643();
+  }).then(function (parcel) {
     if (!parcel) {
       if (!opts.silentNoParcel) {
-        alertNoData("parcel — fill District→Khasra or use Show parcel");
+        setStatus("Select District, Tehsil, Village, Muraba (and optional Khasra), then click Features near me.");
+        var cr0 = document.getElementById("cadResults");
+        if (cr0) cr0.textContent = "AOI / parcel not ready. Select cadastral values first.";
       }
       return;
     }
-    lastCadParcel32643 = parcel;
-    var buf = geometryEngine.buffer(parcel, rad, "meters");
-    if (!buf) return;
-    ensureSR32643(buf);
+
+    var parcelLinear = null;
+    try {
+      parcelLinear = toEngineSR(ensureSR32643(parcel)) || parcel;
+    } catch (eP0) {
+      parcelLinear = parcel;
+    }
+    if (!parcelLinear || !geometryIsUsable(parcelLinear)) {
+      setStatus("Nearby query failed: parcel geometry is not usable.");
+      return;
+    }
+
+    lastCadParcel32643 = parcelLinear;
+
+    var distanceGeom = parcelLinear;
+    var usedCenterFallback = false;
+    var usedEnvelopeFallback = false;
+
+    function tryBuffer(gIn) {
+      if (!gIn || !geometryIsUsable(gIn)) return null;
+      var g = gIn;
+      try {
+        g = toEngineSR(ensureSR32643(gIn)) || gIn;
+      } catch (e0) {
+        g = gIn;
+      }
+      var sr = g.spatialReference || null;
+      var wk = wkidValue(sr);
+      var isGeographic = !!(sr && (sr.isGeographic === true || wk === 4326 || wk === 4269));
+      try {
+        return isGeographic
+          ? geometryEngine.geodesicBuffer(g, rad, "meters")
+          : geometryEngine.buffer(g, rad, "meters");
+      } catch (e1) {
+        return null;
+      }
+    }
+
+    var buf = tryBuffer(distanceGeom);
+    if (!buf && (distanceGeom.type === "polygon" || distanceGeom.type === "polyline")) {
+      try {
+        var simp = geometryEngine.simplify(distanceGeom);
+        if (simp && geometryIsUsable(simp)) {
+          distanceGeom = simp;
+          buf = tryBuffer(distanceGeom);
+        }
+      } catch (eS0) {}
+    }
+    if (!buf) {
+      var ctr0 = null;
+      try {
+        ctr0 = getGeometryCentroid(distanceGeom);
+      } catch (eC0) {}
+      if (!ctr0 && distanceGeom.extent && distanceGeom.extent.center) ctr0 = distanceGeom.extent.center;
+      if (!ctr0 && parcelLinear && parcelLinear.extent && parcelLinear.extent.center) ctr0 = parcelLinear.extent.center;
+      if (ctr0) {
+        try {
+          coerceMissingSpatialReference(ctr0, distanceGeom.spatialReference || parcelLinear.spatialReference || SR_METER);
+          ctr0 = toEngineSR(ensureSR32643(ctr0)) || ctr0;
+        } catch (eC1) {}
+        if (ctr0 && ctr0.type === "point" && isFinite(ctr0.x) && isFinite(ctr0.y)) {
+          usedCenterFallback = true;
+          distanceGeom = ctr0;
+          buf = tryBuffer(distanceGeom);
+          if (!buf) {
+            try {
+              buf = new Extent({
+                xmin: ctr0.x - rad,
+                ymin: ctr0.y - rad,
+                xmax: ctr0.x + rad,
+                ymax: ctr0.y + rad,
+                spatialReference: ctr0.spatialReference || SR_METER
+              });
+              usedEnvelopeFallback = true;
+            } catch (eE0) {}
+          }
+        }
+      }
+    }
+    if (!buf) {
+      console.warn("[cad nearby] buffer failed after fallback", parcelLinear);
+    }
+    if (!buf) {
+      setStatus("Nearby query failed: buffer could not be created.");
+      var crFail = document.getElementById("cadResults");
+      if (crFail) {
+        crFail.textContent = "Buffer create failed for selected geometry. Try another Muraba/Khasra or click Apply/Show once.";
+      }
+      return;
+    }
+
+    try {
+      buf = toEngineSR(ensureSR32643(buf)) || buf;
+    } catch (eBProj) {}
+    var bufWeb = projection.project(buf, SR_WEB) || buf;
+    if (bufWeb && geometryIsUsable(bufWeb)) {
+      cadNearbyLayer.add(new Graphic({
+        geometry: bufWeb,
+        symbol: symCadNearBuffer,
+        attributes: { type: "cad-near-buffer", radiusM: rad }
+      }));
+    }
+
     var qp = geometryToQueryParams(buf);
+    if (!qp || !qp.geometry) {
+      setStatus("Nearby query failed: unable to prepare buffer geometry.");
+      return;
+    }
+
     var tasks = checks.map(function (c) {
       return queryLayer(c.getAttribute("data-url"), parseInt(c.getAttribute("data-layer"), 10), Object.assign({
         where: "1=1",
@@ -785,32 +1814,62 @@ function runCadNearbyDistances(opts) {
         resultRecordCount: 400
       }, qp)).catch(function () { return { features: [] }; });
     });
+
     var lines = [];
     var parcelCtr = null;
-    if (parcel.type === "point") {
-      parcelCtr = parcel;
-    } else if (parcel.extent && parcel.extent.center) {
-      parcelCtr = parcel.extent.center;
+    if (distanceGeom.type === "point") {
+      parcelCtr = distanceGeom;
+    } else if (distanceGeom.extent && distanceGeom.extent.center) {
+      parcelCtr = distanceGeom.extent.center;
     }
     if (!parcelCtr) {
-      try { parcelCtr = getGeometryCentroid(parcel); } catch (e) { parcelCtr = null; }
+      try { parcelCtr = getGeometryCentroid(distanceGeom); } catch (e) { parcelCtr = null; }
     }
     if (parcelCtr) {
-      ensureSR32643(parcelCtr);
-      var pcW = projection.project(parcelCtr, SR4326);
+      var pcW = projection.project(ensureSR32643(parcelCtr), SR4326) || parcelCtr;
       lastCadCenterWgs = { lat: pcW.y, lon: pcW.x };
     }
+
     return Promise.all(tasks).then(function (all) {
       var bestD = Infinity;
       var bestPt = null;
+      var linearDistanceFailures = 0;
+
       all.forEach(function (data, idx) {
-        var label = (checks[idx].parentElement && checks[idx].parentElement.textContent) ? checks[idx].parentElement.textContent.replace(/\s+/g, " ").trim() : "Layer";
+        var label = (checks[idx].parentElement && checks[idx].parentElement.textContent)
+          ? checks[idx].parentElement.textContent.replace(/\s+/g, " ").trim()
+          : "Layer";
+
         (data.features || []).forEach(function (f) {
-          var fg = ensureSR32643(geomFromJSON(f.geometry));
-          if (!fg) return;
-          var dM = geometryEngine.distance(parcel, fg, "meters");
-          lines.push(label.substring(0, 36) + ": ~" + Math.round(dM) + " m");
-          if (dM < bestD) {
+          var raw = geomFromJSON(f.geometry);
+          if (!raw || !geometryIsUsable(raw)) return;
+
+          coerceMissingSpatialReference(raw, distanceGeom.spatialReference || SR_METER);
+
+          var fg = null;
+          try {
+            fg = toEngineSR(raw) || raw;
+          } catch (eG0) {
+            fg = raw;
+          }
+          if (!fg || !geometryIsUsable(fg)) return;
+
+          var dM = null;
+          try {
+            dM = geometryEngine.distance(distanceGeom, fg, "meters");
+          } catch (eD0) {
+            linearDistanceFailures++;
+            dM = null;
+          }
+
+          if (dM == null || !isFinite(dM)) {
+            dM = geodesicDistanceMetersFallback(distanceGeom, fg);
+          }
+
+          var dLabel = (dM != null && isFinite(dM)) ? ("~" + Math.round(dM) + " m") : "n/a";
+          lines.push(label.substring(0, 36) + ": " + dLabel);
+
+          if (dM != null && isFinite(dM) && dM < bestD) {
             bestD = dM;
             var c2 = fg.extent && fg.extent.center ? fg.extent.center : null;
             if (!c2) {
@@ -818,31 +1877,52 @@ function runCadNearbyDistances(opts) {
             }
             if (c2) bestPt = c2;
           }
+
           var sym = fg.type === "point" ? symPoint : (fg.type === "polyline" ? symLineHit : symVillage);
+          var fgWeb = projection.project(fg, SR_WEB) || fg;
           cadNearbyLayer.add(new Graphic({
-            geometry: projection.project(fg, SR_WEB),
+            geometry: fgWeb,
             symbol: sym,
             attributes: f.attributes || {}
           }));
         });
       });
+
       if (bestPt) {
-        var bw = projection.project(ensureSR32643(bestPt), SR4326);
+        var bw = projection.project(ensureSR32643(bestPt), SR4326) || bestPt;
         lastNearestPoiWgs = { lat: bw.y, lon: bw.x };
       }
-      document.getElementById("cadResults").textContent = "Distances (min straight-line, m):\n" + lines.slice(0, 80).join("\n") +
-        (lines.length > 80 ? "\n…" : "") + "\n\nBuffer: " + rad + " m — showing features intersecting buffer.";
-      setStatus("Nearby features loaded.");
-    });
-  }).catch(function (e) { console.error(e); setStatus("Nearby query failed."); });
-}
 
+      var summary = lines.length
+        ? ("Distances (min straight-line, m):\n" +
+            lines.slice(0, 80).join("\n") +
+            (lines.length > 80 ? "\n..." : ""))
+        : "No selected feature found inside " + rad + " m buffer.";
+      document.getElementById("cadResults").textContent =
+        summary +
+        "\n\nBuffer: " + rad + " m - showing intersecting features on map." +
+        (usedCenterFallback ? "\nDistance source: AOI center fallback (parcel geometry was not buffer-safe)." : "") +
+        (usedEnvelopeFallback ? "\nQuery shape: meter-envelope fallback." : "");
+
+      setStatus(
+        (lines.length ? "Nearby features loaded." : "Nearby search complete: no feature in buffer.") +
+          (linearDistanceFailures ? " Some distances used fallback." : "")
+      );
+    });
+  }).catch(function (e) {
+    console.error(e);
+    setStatus("Nearby query failed.");
+  });
+}
 function scheduleCadNearbyAutoRun() {
   clearTimeout(cadNearAutoTimer);
   cadNearAutoTimer = setTimeout(function () {
     syncCadNearInfrastructureVisibility();
-    var kha = typeof cadKhasraSelect !== "undefined" && cadKhasraSelect && cadKhasraSelect.value;
-    if (!kha && !lastCadParcel32643) {
+    var dSel = cadDistrictSelect && cadDistrictSelect.value ? String(cadDistrictSelect.value).trim() : "";
+    var tSel = cadTehsilSelect && cadTehsilSelect.value ? String(cadTehsilSelect.value).trim() : "";
+    var vSel = cadVillageSelect && cadVillageSelect.value ? String(cadVillageSelect.value).trim() : "";
+    var murSel = cadMurabaSelect && cadMurabaSelect.value ? String(cadMurabaSelect.value).trim() : "";
+    if (!dSel || !tSel || !vSel || !murSel) {
       return;
     }
     runCadNearbyDistances({ silentNoParcel: true });
@@ -883,6 +1963,7 @@ function refreshMapViewPadding() {
  * After side panels open/close, the map container size changes. MapView has no resize() in 4.30;
  * DOMContainer provides forceDOMReadyCycle() to remeasure. Fallback for older API copies.
  */
+var __msmeLastLayoutNotifyMs = 0;
 function notifyViewLayoutChanged() {
   if (!view) return;
   try {
@@ -890,13 +1971,17 @@ function notifyViewLayoutChanged() {
   } catch (e0) {
     return;
   }
-  if (typeof view.forceDOMReadyCycle === "function") {
-    view.forceDOMReadyCycle();
+  var now = Date.now();
+  if (now - __msmeLastLayoutNotifyMs < 220) return;
+  __msmeLastLayoutNotifyMs = now;
+
+  // forceDOMReadyCycle can feel like a map reload on frequent sidebar clicks.
+  // Use lightweight refresh; MapView already tracks container size in modern versions.
+  if (typeof view.requestRender === "function") {
+    view.requestRender();
     return;
   }
-  if (typeof view.resize === "function") {
-    view.resize();
-  }
+  if (typeof view.resize === "function") view.resize();
 }
 
 window.msmeGisSetResultsFlyoutInset = function (leftPx) {
@@ -1016,17 +2101,17 @@ var cadMurabaSelect = document.getElementById("cadMurabaSelect");
 var cadKhasraSelect = document.getElementById("cadKhasraSelect");
 var lastCadParcel32643 = null;
 
-/** Avoid throwing on missing nodes — a single throw aborts all later wiring (rail, analysis, identify). */
+/** Avoid throwing on missing nodes ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â a single throw aborts all later wiring (rail, analysis, identify). */
 function msmeBind(id, evt, handler) {
   var el = document.getElementById(id);
   if (!el) {
-    console.warn("[GIS] Missing #" + id + " — skipping " + evt + " handler.");
+    console.warn("[GIS] Missing #" + id + " ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â skipping " + evt + " handler.");
     return false;
   }
   el.addEventListener(evt, handler);
   return true;
 }
-/** Last zoom target from cadastral hierarchy (district→tehsil→village→muraba) for analysis extent. */
+/** Last zoom target from cadastral hierarchy (districtÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢tehsilÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢villageÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢muraba) for analysis extent. */
 var lastCadHierarchyGeom32643 = null;
 
 refreshGisPlaceholderLabelsImpl = function () {
@@ -1194,7 +2279,7 @@ if (districtSelect && tehsilSelect && villageSelect) {
   function zoomFromAdministrativeSelectionOnChange() {
     return runNavigate().catch(function (err) {
       console.error("[admin selection zoom]", err);
-      setStatus("Administrative boundary zoom failed — see console.");
+      setStatus("Administrative boundary zoom failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
     });
   }
 
@@ -1230,7 +2315,7 @@ if (districtSelect && tehsilSelect && villageSelect) {
     if (d) zoomFromAdministrativeSelectionOnChange();
   });
 } else {
-  console.error("[GIS] Administrative AOI selects (#districtSelect / #tehsilSelect / #villageSelect) missing — AOI tab disabled.");
+  console.error("[GIS] Administrative AOI selects (#districtSelect / #tehsilSelect / #villageSelect) missing ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â AOI tab disabled.");
 }
 
 function resetCadBelowTehsil() {
@@ -1304,7 +2389,7 @@ function loadCadMurabaList() {
   var dName = (opt && opt.getAttribute("data-dname")) || opt.text || "";
   var lid = getCadastralLayerIdForDistrictName(dName);
   if (lid == null) {
-    setStatus("Cadastral map has no polygon layer for “" + dName + "”.");
+    setStatus("Cadastral map has no polygon layer for ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œ" + dName + "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â.");
     return Promise.resolve();
   }
   var w = "n_d_code = " + sqlQuote(d) + " AND n_t_code = " + sqlQuote(t) + " AND n_v_code = " + sqlQuote(v) + " AND n_murr_no IS NOT NULL";
@@ -1470,17 +2555,17 @@ function fixGeometrySR(g) {
 
   if (x == null || y == null) return null;
 
-  // ✅ Already WebMercator (CORRECT CASE)
+  // ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ Already WebMercator (CORRECT CASE)
   if (Math.abs(x) > 1000000 && Math.abs(y) > 1000000) {
     g.spatialReference = { wkid: 3857 };
   }
 
-  // ✅ UTM (Haryana)
+  // ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ UTM (Haryana)
   else if (x > 100000 && x < 900000 && y > 2000000 && y < 4000000) {
     g.spatialReference = { wkid: 32643 };
   }
 
-  // ❌ Unknown → skip (IMPORTANT)
+  // ÃƒÂ¢Ã‚ÂÃ…â€™ Unknown ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ skip (IMPORTANT)
   else {
     console.warn("Unknown SR, skipping geometry", x, y);
     return null;
@@ -1508,10 +2593,10 @@ function zoomCadMurabaFromServer(d, t, v, mur) {
           var g = item.geometry;
           if (!g) return;
 
-          // ✅ FORCE CORRECT SR
+          // ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ FORCE CORRECT SR
           g = fixGeometrySR(g);
 
-          // ✅ PROJECT TO MAP SR (3857)
+          // ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ PROJECT TO MAP SR (3857)
           var gWeb;
           try {
             gWeb = projection.project(g, view.spatialReference);
@@ -1524,7 +2609,7 @@ function zoomCadMurabaFromServer(d, t, v, mur) {
 
           var ext = gWeb.extent;
 
-          // 🚨 SAFETY CHECK (avoid 10,000 km zoom)
+          // ÃƒÂ°Ã…Â¸Ã…Â¡Ã‚Â¨ SAFETY CHECK (avoid 10,000 km zoom)
           var width = ext.xmax - ext.xmin;
           var height = ext.ymax - ext.ymin;
 
@@ -1544,7 +2629,7 @@ function zoomCadMurabaFromServer(d, t, v, mur) {
           throw "Extent invalid";
         }
 
-        // ✅ FINAL ZOOM (perfect muraba fit)
+        // ÃƒÂ¢Ã…â€œÃ¢â‚¬Â¦ FINAL ZOOM (perfect muraba fit)
         return view.goTo({
           target: unionExt.expand(1.2),
           padding: getUiZoomPadding()
@@ -1557,7 +2642,7 @@ function zoomCadMurabaFromServer(d, t, v, mur) {
 
       console.warn("[muraba zoom fallback]", err);
 
-      // fallback → village
+      // fallback ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ village
       return queryAdminGeometryForCadZoom(d, t, v).then(function (g2) {
         if (g2 && geometryIsUsable(g2)) {
           return zoomToGeometry(g2);
@@ -1644,7 +2729,7 @@ if (cadDistrictSelect && cadTehsilSelect && cadVillageSelect && cadMurabaSelect 
     performCadParcelShowZoom();
   });
 } else {
-  console.error("[GIS] Cadastral AOI selects missing — cadastral dropdown workflow disabled.");
+  console.error("[GIS] Cadastral AOI selects missing ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â cadastral dropdown workflow disabled.");
 }
 
 var cadNearM = document.getElementById("cadNearM");
@@ -1659,7 +2744,7 @@ if (cadNearM) {
 (function buildCadNearChecks() {
   var box = document.getElementById("cadNearChecks");
   if (!box) {
-    console.warn("[GIS] cadNearChecks missing — skipping cad nearby checkboxes (rail/panels may still work).");
+    console.warn("[GIS] cadNearChecks missing ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â skipping cad nearby checkboxes (rail/panels may still work).");
     return;
   }
   POI_LAYERS.forEach(function (p) {
@@ -1683,6 +2768,37 @@ if (cadNearM) {
   syncCadNearInfrastructureVisibility();
 })();
 
+function isAdministrativeAoiTabActive() {
+  var tabAoi = document.getElementById("tabAoi");
+  var mpAoi = document.getElementById("mpAoi");
+  if (tabAoi && tabAoi.classList.contains("active")) return true;
+  if (mpAoi && mpAoi.classList.contains("active")) return true;
+  return false;
+}
+
+function syncCurrentLocationFabVisibility() {
+  var fab = document.getElementById("currentLocationFab");
+  if (!fab) return;
+  var show = isAdministrativeAoiTabActive();
+  fab.style.display = show ? "flex" : "none";
+  fab.setAttribute("aria-hidden", show ? "false" : "true");
+
+  if (!show && view && view.popup && view.popup.visible) {
+    var isCurrentPopup = false;
+    try {
+      var sf = view.popup.selectedFeature;
+      isCurrentPopup = !!(sf && sf.attributes && String(sf.attributes.label || "").toLowerCase() === "current location");
+    } catch (e0) {}
+    if (!isCurrentPopup) {
+      var t = String(view.popup.title || "").toLowerCase();
+      isCurrentPopup = t.indexOf("current location") >= 0;
+    }
+    if (isCurrentPopup) {
+      try { view.popup.close(); } catch (e1) {}
+    }
+  }
+}
+
 document.querySelectorAll(".modal-tabs button").forEach(function (btn) {
   btn.addEventListener("click", function () {
     document.querySelectorAll(".modal-tabs button").forEach(function (b) { b.classList.remove("active"); });
@@ -1691,8 +2807,10 @@ document.querySelectorAll(".modal-tabs button").forEach(function (btn) {
     var id = btn.getAttribute("data-mpanel");
     var p = document.getElementById(id);
     if (p) p.classList.add("active");
+    syncCurrentLocationFabVisibility();
   });
 });
+syncCurrentLocationFabVisibility();
 
 function queryCadParcelGeometry() {
   var d = cadDistrictSelect.value ? String(cadDistrictSelect.value).trim() : "";
@@ -1861,7 +2979,7 @@ function getMergedFlatForHighlight(currentFlat, selectionSource) {
 }
 
 /**
- * After identify: anchor “parcel” for downstream tools — cad highlight, else smallest polygon hit, else small buffer at click.
+ * After identify: anchor ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œparcelÃƒÂ¢Ã¢â€šÂ¬Ã‚Â for downstream tools ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â cad highlight, else smallest polygon hit, else small buffer at click.
  */
 function ensureParcelAnchorFromIdentify(flat, anchorPoint32643) {
   if (lastCadParcel32643) return;
@@ -1919,11 +3037,11 @@ function queryNearbyRowsFromPoint(anchor32643Point, radiusM) {
 
 function buildMapIdentificationPopupHtml(lat, lon, atClickRows, nearbyRows, radiusM) {
   var h = "<div style=\"font-size:12px;max-width:380px;max-height:320px;overflow:auto;line-height:1.35;\">";
-  h += "<p style=\"margin:0 0 8px;color:#5f6368;\"><strong>Selected location</strong><br/>Lat " + lat.toFixed(5) + "°, Lon " + lon.toFixed(5) + "°<br/>";
+  h += "<p style=\"margin:0 0 8px;color:#5f6368;\"><strong>Selected location</strong><br/>Lat " + lat.toFixed(5) + "Ãƒâ€šÃ‚Â°, Lon " + lon.toFixed(5) + "Ãƒâ€šÃ‚Â°<br/>";
   h += "Distances are straight-line (meters) from this map click.</p>";
   h += "<h4 style=\"margin:10px 0 6px;font-size:13px;\">Features at click</h4>";
   if (!atClickRows.length) {
-    h += "<p style=\"margin:0;color:#5f6368;\">No features returned — zoom in or try another spot.</p>";
+    h += "<p style=\"margin:0;color:#5f6368;\">No features returned ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â zoom in or try another spot.</p>";
   } else {
     h += "<table style=\"width:100%;border-collapse:collapse;font-size:11px;\"><tr style=\"text-align:left;border-bottom:1px solid #dadce0;\"><th>Layer</th><th>Distance</th></tr>";
     atClickRows.forEach(function (r) {
@@ -1933,7 +3051,7 @@ function buildMapIdentificationPopupHtml(lat, lon, atClickRows, nearbyRows, radi
   }
   h += "<h4 style=\"margin:10px 0 6px;font-size:13px;\">Nearby (within " + radiusM + " m)</h4>";
   if (!nearbyRows.length) {
-    h += "<p style=\"margin:0;color:#5f6368;\">No features in buffer (or layers off — we still query servers).</p>";
+    h += "<p style=\"margin:0;color:#5f6368;\">No features in buffer (or layers off ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â we still query servers).</p>";
   } else {
     h += "<table style=\"width:100%;border-collapse:collapse;font-size:11px;\"><tr style=\"text-align:left;border-bottom:1px solid #dadce0;\"><th>Feature class</th><th>Distance</th></tr>";
     nearbyRows.forEach(function (r) {
@@ -1973,7 +3091,7 @@ function performCadParcelShowZoom() {
   var khaSel = cadKhasraSelect.value ? String(cadKhasraSelect.value).trim() : "";
 
   if (!dSel) {
-    setStatus("Cadastral: choose District, then Tehsil → Village → Muraba (and Khasra for a specific parcel).");
+    setStatus("Cadastral: choose District, then Tehsil ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Village ÃƒÂ¢Ã¢â‚¬Â Ã¢â‚¬â„¢ Muraba (and Khasra for a specific parcel).");
     return;
   }
   if (!tSel || !vSel) {
@@ -2133,26 +3251,27 @@ function performCadParcelShowZoom() {
         });
       });
     }).then(function () {
-var ctr = getGeometryCentroid(g32643);
-var anch = ctr || (g32643.type === "point" ? g32643 : null);
+var ctr = getGeometryCentroid(geom32643);
+var anch = ctr || (geom32643.type === "point" ? geom32643 : null);
 
 if (anch) {
   lastIdentifyAnchor32643 = anch;
-  var aoiWgs = projection.project(anch, SR4326);
-  if (aoiWgs) {
-    lastAoiLocationWgs = { lat: aoiWgs.y, lon: aoiWgs.x };
+  var anch32643 = toEngineSR(ensureSR32643(anch));
+  var aoiWgs = anch32643 ? projection.project(anch32643, SR4326) : null;
+  if (aoiWgs && isValidWgsLatLon(Number(aoiWgs.y), Number(aoiWgs.x))) {
+    lastAoiLocationWgs = { lat: Number(aoiWgs.y), lon: Number(aoiWgs.x) };
   }
 }
 
-return publishInvestorSnapshot(anch || g32643, "admin-aoi");
+return publishInvestorSnapshot(anch || geom32643, "admin-aoi");
     }).then(function () {
-      setStatus(statusMsg || "Cadastral area shown. Use “Nearby + distances” for infrastructure.");
+      setStatus(statusMsg || "Cadastral area shown. Use ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œNearby + distancesÃƒÂ¢Ã¢â€šÂ¬Ã‚Â for infrastructure.");
     });
   }
 
-  /** Khasra dropdown still on placeholder (“Parcel”) — zoom to whole muraba, not a single parcel polygon. */
+  /** Khasra dropdown still on placeholder (ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œParcelÃƒÂ¢Ã¢â€šÂ¬Ã‚Â) ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â zoom to whole muraba, not a single parcel polygon. */
   if (!khaSel) {
-    setStatus("Loading muraba " + murSel + "…");
+    setStatus("Loading muraba " + murSel + "ÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦");
     ensureCadastralMapVisible()
       .then(function () {
         return Promise.all([
@@ -2166,7 +3285,7 @@ return publishInvestorSnapshot(anch || g32643, "admin-aoi");
         if (gMur && geometryIsUsable(gMur)) {
           return doZoomCad(
             gMur,
-            "Muraba " + murSel + " — pick a Khasra / parcel from the list to outline one parcel, or use “Nearby + distances” here.",
+            "Muraba " + murSel + " ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â pick a Khasra / parcel from the list to outline one parcel, or use ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œNearby + distancesÃƒÂ¢Ã¢â€šÂ¬Ã‚Â here.",
             {},
             murViewGeoms
           );
@@ -2175,49 +3294,49 @@ return publishInvestorSnapshot(anch || g32643, "admin-aoi");
           if (adm && geometryIsUsable(adm)) {
             return doZoomCad(
               adm,
-              "Muraba outline not in service response — zoomed to village/admin boundary. Choose Khasra when listed."
+              "Muraba outline not in service response ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â zoomed to village/admin boundary. Choose Khasra when listed."
             );
           }
           return ensureCadastralMapVisible().then(function () {
             return zoomGoToApproxSelection(dSel, "muraba");
           }).then(function () {
-            setStatus("Approximate zoom — geometry was not returned; try again or use map identify.");
+            setStatus("Approximate zoom ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â geometry was not returned; try again or use map identify.");
           });
         });
       })
       .catch(function (e) {
         console.error(e);
-        setStatus("Muraba zoom failed — check connection or pick another muraba.");
+        setStatus("Muraba zoom failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â check connection or pick another muraba.");
       });
     return;
   }
 
   queryCadParcelGeometry().then(function (res) {
     if (!res || !res.feature) {
-      setStatus("No parcel polygon for this khasra — trying muraba…");
+      setStatus("No parcel polygon for this khasra ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â trying murabaÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦");
       return ensureCadastralMapVisible()
         .then(function () {
           return queryCadMurabaExtentGeometry(dSel, tSel, vSel, murSel);
         })
         .then(function (gMur) {
           if (gMur && geometryIsUsable(gMur)) {
-            return doZoomCad(gMur, "Parcel row not found — showing muraba " + murSel + ".");
+            return doZoomCad(gMur, "Parcel row not found ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â showing muraba " + murSel + ".");
           }
           return queryAdminGeometryForCadZoom(dSel, tSel, vSel).then(function (adm) {
             if (adm && geometryIsUsable(adm)) {
               return doZoomCad(
                 adm,
-                "Parcel geometry unavailable — zoomed to village/admin boundary."
+                "Parcel geometry unavailable ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â zoomed to village/admin boundary."
               );
             }
             if (!dSel) {
-              setStatus("Could not zoom — no district for fallback.");
+              setStatus("Could not zoom ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no district for fallback.");
               return;
             }
             return ensureCadastralMapVisible().then(function () {
               return zoomGoToApproxSelection(dSel, "khasra");
             }).then(function () {
-              setStatus("Approximate zoom — refine selection or use identify on the map.");
+              setStatus("Approximate zoom ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â refine selection or use identify on the map.");
             });
           });
         });
@@ -2266,7 +3385,7 @@ return publishInvestorSnapshot(anch || g32643, "admin-aoi");
         if (anch) lastIdentifyAnchor32643 = anch;
         return publishInvestorSnapshot(anch || geom32643, "cad-parcel");
       }).then(function () {
-        setStatus(statusMsg || "Cadastral parcel shown. Use “Nearby + distances” for infrastructure.");
+        setStatus(statusMsg || "Cadastral parcel shown. Use ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œNearby + distancesÃƒÂ¢Ã¢â€šÂ¬Ã‚Â for infrastructure.");
       });
     }
     if (g) {
@@ -2275,20 +3394,20 @@ return publishInvestorSnapshot(anch || g32643, "admin-aoi");
     return queryAdminGeometryForCadZoom(dSel, tSel, vSel).then(function (adm) {
       if (!adm) {
         if (!dSel) {
-          setStatus("Could not zoom — no district selected for fallback.");
+          setStatus("Could not zoom ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â no district selected for fallback.");
           return;
         }
         return ensureCadastralMapVisible().then(function () {
           return zoomGoToApproxSelection(dSel, "khasra");
         }).then(function () {
-          setStatus("Approximate zoom — khasra / parcel level (services omit polygon geometry in REST). Use map identify for exact shapes.");
+          setStatus("Approximate zoom ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â khasra / parcel level (services omit polygon geometry in REST). Use map identify for exact shapes.");
         });
       }
-      return doZoom(adm, "Zoomed to selected village / admin boundary (cadastral parcel outline not returned by server). “Nearby” uses this area until parcel geometry is available.");
+      return doZoom(adm, "Zoomed to selected village / admin boundary (cadastral parcel outline not returned by server). ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œNearbyÃƒÂ¢Ã¢â€šÂ¬Ã‚Â uses this area until parcel geometry is available.");
     });
   }).catch(function (e) {
     console.error(e);
-    setStatus("Could not load parcel — check selections.");
+    setStatus("Could not load parcel ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â check selections.");
   });
 }
 
@@ -2305,79 +3424,117 @@ if (btnCadNearby) {
 var btnCadRoute = document.getElementById("btnCadRoute");
 if (btnCadRoute) btnCadRoute.addEventListener("click", function () {
   if (!lastCadCenterWgs || !lastNearestPoiWgs) {
-    setStatus("Run “Nearby + distances” first to set centres.");
+    setStatus("Run \"Nearby + distances\" first to set centres.");
     return;
   }
-  var base = (esriConfig.routeServiceUrl || "https://route-api.arcgis.com/arcgis/rest/services/World/Route/NAServer/Route_World").replace(/\/$/, "");
-  var solveUrl = base.indexOf("solve") !== -1 ? base : base + "/solve";
-  var p0 = new Point({
-    x: lastCadCenterWgs.lon,
-    y: lastCadCenterWgs.lat,
-    spatialReference: SR4326
-  });
-  var p1 = new Point({
-    x: lastNearestPoiWgs.lon,
-    y: lastNearestPoiWgs.lat,
-    spatialReference: SR4326
-  });
-  var fs = new FeatureSet({
-    features: [
-      new Graphic({ geometry: p0, attributes: { Name: "Parcel centre" } }),
-      new Graphic({ geometry: p1, attributes: { Name: "Nearest POI" } })
-    ]
-  });
-  var rparams = new RouteParameters({
-    stops: fs,
-    returnDirections: true,
-    directionsLengthUnits: "esriKilometers",
-    returnRoutes: true
-  });
-  if (esriConfig.apiKey) rparams.apiKey = esriConfig.apiKey;
-  routeLineLayer.removeAll();
-  setStatus("Computing Esri driving route…");
-  solve(solveUrl, rparams, { apiKey: esriConfig.apiKey }).then(function (res) {
-    var rr = res.routeResults && res.routeResults[0];
-    var routeFeat = rr && rr.route;
-    var altFeat = null;
-    var geom = routeFeat && (routeFeat.geometry || routeFeat);
-    if (!geom || !geom.type) {
-      altFeat = res.routes && res.routes.features && res.routes.features[0];
-      geom = altFeat && altFeat.geometry;
-    }
-    if (!geom) {
-      setStatus("Esri route returned no line — check API key and stops.");
+  Promise.all([
+    coerceLocationToWgs(lastCadCenterWgs),
+    coerceLocationToWgs(lastNearestPoiWgs)
+  ]).then(function (pair) {
+    var centerWgs = pair[0];
+    var poiWgs = pair[1];
+    if (!centerWgs || !poiWgs) {
+      setStatus("Parcel/POI route points are invalid. Run Nearby + distances again.");
       return;
     }
-    return projection.load().then(function () {
-      var gLine = geom.spatialReference && geom.spatialReference.wkid === 3857 ? geom : projection.project(geom, SR_WEB);
-      routeLineLayer.add(new Graphic({
-        geometry: gLine,
-        symbol: new SimpleLineSymbol({ color: [0, 92, 230, 1], width: 4 })
-      }));
-      return view.goTo(gLine, { padding: getUiZoomPadding() });
-    }).then(function () {
-      var lines = [];
-      if (rr.directions && rr.directions.features) {
-        rr.directions.features.slice(0, 30).forEach(function (df) {
-          var a = df.attributes || {};
-          var tx = a.text || a.Text || a.narrative || "";
-          if (tx) lines.push(tx);
-        });
-      }
-      var attrs = (routeFeat && routeFeat.attributes) || (altFeat && altFeat.attributes) || {};
-      var km = attrs.Total_Kilometers != null ? attrs.Total_Kilometers : attrs.Shape_Length;
-      var mins = attrs.Total_Minutes;
-      var head = "Esri driving route — " +
-        (km != null ? Number(km).toFixed(2) + " km" : "") +
-        (mins != null ? " · ~" + Math.round(mins) + " min" : "");
-      var body = lines.length ? "\n\n" + lines.join("\n") : "";
-      var el = document.getElementById("cadResults");
-      if (el) el.textContent = head + body;
-      setStatus("Driving route shown (Esri World Route service).");
+    lastCadCenterWgs = centerWgs;
+    lastNearestPoiWgs = poiWgs;
+
+    var solveUrl = getEsriRouteSolveUrl();
+    if (!hasArcGisRoutingApiKey() && routeServiceNeedsApiKey(solveUrl)) {
+      setStatus("ArcGIS API key not configured - showing approximate parcel to POI route.");
+      drawBestAvailableFallbackRoute(centerWgs, poiWgs, {
+        fromLabel: "Parcel centre",
+        toLabel: "Nearest POI"
+      }).then(function (approx) {
+        var el0 = document.getElementById("cadResults");
+        if (el0) el0.textContent = approx.summary + "\n\n" + approx.steps.join("\n");
+      });
+      return;
+    }
+
+    var p0 = new Point({
+      x: centerWgs.lon,
+      y: centerWgs.lat,
+      spatialReference: SR4326
     });
-  }).catch(function (err) {
-    console.error(err);
-    setStatus("Esri routing failed — set VITE_ARCGIS_API_KEY in .env (ArcGIS Developer).");
+    var p1 = new Point({
+      x: poiWgs.lon,
+      y: poiWgs.lat,
+      spatialReference: SR4326
+    });
+    var fs = new FeatureSet({
+      features: [
+        new Graphic({ geometry: p0, attributes: { Name: "Parcel centre" } }),
+        new Graphic({ geometry: p1, attributes: { Name: "Nearest POI" } })
+      ]
+    });
+    var rparams = new RouteParameters({
+      stops: fs,
+      returnDirections: true,
+      directionsLengthUnits: "esriKilometers",
+      returnRoutes: true
+    });
+    if (esriConfig.apiKey) rparams.apiKey = esriConfig.apiKey;
+
+    routeLineLayer.removeAll();
+    setStatus("Computing Esri driving route...");
+    solve(solveUrl, rparams, { apiKey: esriConfig.apiKey }).then(function (res) {
+      var rr = res.routeResults && res.routeResults[0];
+      var routeFeat = rr && rr.route;
+      var altFeat = null;
+      var geom = routeFeat && (routeFeat.geometry || routeFeat);
+      if (!geom || !geom.type) {
+        altFeat = res.routes && res.routes.features && res.routes.features[0];
+        geom = altFeat && altFeat.geometry;
+      }
+      if (!geom) {
+        setStatus("Esri route returned no line - check API key and stops.");
+        return;
+      }
+      return projection.load().then(function () {
+        var gLine = geom.spatialReference && geom.spatialReference.wkid === 3857 ? geom : projection.project(geom, SR_WEB);
+        routeLineLayer.add(new Graphic({
+          geometry: gLine,
+          symbol: new SimpleLineSymbol({ color: [0, 92, 230, 1], width: 4 })
+        }));
+        addRouteEndpointMarkers(centerWgs, poiWgs, "Parcel centre", "Nearest POI", gLine);
+        return view.goTo(gLine, { padding: getUiZoomPadding() });
+      }).then(function () {
+        var lines = [];
+        if (rr.directions && rr.directions.features) {
+          rr.directions.features.slice(0, 30).forEach(function (df) {
+            var a = df.attributes || {};
+            var tx = a.text || a.Text || a.narrative || "";
+            if (tx) lines.push(tx);
+          });
+        }
+        var attrs = (routeFeat && routeFeat.attributes) || (altFeat && altFeat.attributes) || {};
+        var km = attrs.Total_Kilometers != null ? attrs.Total_Kilometers : attrs.Shape_Length;
+        var mins = attrs.Total_Minutes;
+        var head = "Esri driving route - " +
+          (km != null ? Number(km).toFixed(2) + " km" : "") +
+          (mins != null ? " Â· ~" + Math.round(mins) + " min" : "");
+        var body = lines.length ? "\n\n" + lines.join("\n") : "";
+        var el = document.getElementById("cadResults");
+        if (el) el.textContent = head + body;
+        setStatus("Driving route shown (Esri World Route service).");
+      });
+    }).catch(function (err) {
+      console.error(err);
+      if (isRoutingAuthError(err)) {
+        setStatus("ArcGIS route authorization failed - showing approximate parcel to POI route.");
+        drawBestAvailableFallbackRoute(centerWgs, poiWgs, {
+          fromLabel: "Parcel centre",
+          toLabel: "Nearest POI"
+        }).then(function (approx) {
+          var el1 = document.getElementById("cadResults");
+          if (el1) el1.textContent = approx.summary + "\n\n" + approx.steps.join("\n");
+        });
+        return;
+      }
+      setStatus("Esri routing failed - service unavailable.");
+    });
   });
 });
 
@@ -2386,7 +3543,10 @@ if (btnCadClear) {
   btnCadClear.addEventListener("click", function () {
     cadParcelLayer.removeAll();
     cadNearbyLayer.removeAll();
+    routeLineLayer.removeAll();
     lastCadParcel32643 = null;
+    lastCadCenterWgs = null;
+    lastNearestPoiWgs = null;
     var cr = document.getElementById("cadResults");
     if (cr) cr.textContent = "";
     setStatus("Cadastral graphics cleared.");
@@ -2405,6 +3565,8 @@ function runNavigate() {
   if (vCode) vCode = String(vCode).trim();
   if (!dCode) {
     selectedDistrictGeom = selectedTehsilGeom = selectedVillageGeom = null;
+    lastAoiLocationWgs = null;
+    closeAoiRoutePanel();
     return setAdminFilters(null, null, null).then(function () {
       return projection.load().then(function () {
         return zoomToGeometry(projection.project(defaultStudyExtent32643, SR_WEB));
@@ -2433,7 +3595,7 @@ function runNavigate() {
       }
       var nameFallback = (a && (a.n_v_name || a.n_t_name || a.n_d_name)) || "selection";
       return zoomGoToApproxSelection(dCode, approxModeFromAdminLayerId(layerId)).then(function () {
-        setStatus("Approximate zoom — " + nameFallback + " (no usable boundary geometry in query; using district centre).");
+        setStatus("Approximate zoom ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â " + nameFallback + " (no usable boundary geometry in query; using district centre).");
       });
     }
     selectedDistrictGeom = selectedTehsilGeom = selectedVillageGeom = null;
@@ -2445,7 +3607,20 @@ function runNavigate() {
       setStatus("View: " + viewLabel);
       var ctr = getGeometryCentroid(g32643);
       var anch = ctr || (g32643.type === "point" ? g32643 : null);
-      if (anch) lastIdentifyAnchor32643 = anch;
+      if (anch) {
+        lastIdentifyAnchor32643 = anch;
+        return projection.load().then(function () {
+          var anch32643 = toEngineSR(ensureSR32643(anch));
+          var aoiWgs = anch32643 ? projection.project(anch32643, SR4326) : null;
+          if (aoiWgs && isValidWgsLatLon(Number(aoiWgs.y), Number(aoiWgs.x))) {
+            lastAoiLocationWgs = { lat: Number(aoiWgs.y), lon: Number(aoiWgs.x) };
+          }
+        }).catch(function () {
+          return null;
+        }).then(function () {
+          return publishInvestorSnapshot(anch || g32643, "admin-aoi");
+        });
+      }
       return publishInvestorSnapshot(anch || g32643, "admin-aoi");
     };
     if (extentZoomed) return doAfterZoom();
@@ -2455,7 +3630,11 @@ function runNavigate() {
     }).then(doAfterZoom);
   }).catch(function (e) {
     console.error("[navigate]", e);
-    setStatus("Navigation failed — see console.");
+    if (isGateway502Error(e)) {
+      setStatus("Navigation failed: Administrative service/proxy is unreachable (502).");
+    } else {
+      setStatus("Navigation failed - see console.");
+    }
   });
 }
 
@@ -2463,6 +3642,9 @@ function runClearNav() {
   if (!districtSelect) return Promise.resolve();
   districtSelect.value = "";
   selectedDistrictGeom = selectedTehsilGeom = selectedVillageGeom = null;
+  lastAoiLocationWgs = null;
+  routeLineLayer.removeAll();
+  closeAoiRoutePanel();
   resetTehsilVillage();
   return setAdminFilters(null, null, null).then(function () {
     return projection.load().then(function () {
@@ -2472,13 +3654,28 @@ function runClearNav() {
 }
 
 var btnNavApply = document.getElementById("btnNavApply");
-if (btnNavApply) btnNavApply.addEventListener("click", runNavigate);
+if (btnNavApply) {
+  btnNavApply.addEventListener("click", function () {
+    return runNavigate().catch(function (e) {
+      console.error("[navigate click]", e);
+      if (isGateway502Error(e)) {
+        setStatus("Navigation failed: Administrative service/proxy is unreachable (502).");
+      } else {
+        setStatus("Navigation failed - see console.");
+      }
+    });
+  });
+}
 var btnNavClear = document.getElementById("btnNavClear");
 if (btnNavClear) btnNavClear.addEventListener("click", runClearNav);
 var btnRouteFromCurrentToAoi = document.getElementById("btnRouteFromCurrentToAoi");
 if (btnRouteFromCurrentToAoi) {
   btnRouteFromCurrentToAoi.addEventListener("click", routeFromCurrentLocationToAoi);
-} 
+}
+var btnAoiRouteClose = document.getElementById("btnAoiRouteClose");
+if (btnAoiRouteClose) {
+  btnAoiRouteClose.addEventListener("click", closeAoiRoutePanel);
+}
 
 function loadHsvpPlots(dCode) {
   var plotSel = document.getElementById("hsvpPlotSelect");
@@ -2496,7 +3693,7 @@ function loadHsvpPlots(dCode) {
       var a = f.attributes || {};
       var oid = a.OBJECTID != null ? a.OBJECTID : a.objectid;
       if (oid == null) return;
-      var label = String(a.n_name || a.Name || a.NAME || a.PLOT_NAME || a.REMARKS || "Plot") + " · " + oid;
+      var label = String(a.n_name || a.Name || a.NAME || a.PLOT_NAME || a.REMARKS || "Plot") + " Ãƒâ€šÃ‚Â· " + oid;
       var o = document.createElement("option");
       o.value = String(oid);
       o.textContent = label;
@@ -2549,7 +3746,7 @@ function performHsvpLandZoom() {
     var gj = feat.geometry;
     var g = gj ? geomFromJSON(gj) : null;
     if (!g || !geometryIsUsable(g)) {
-      setStatus("Plot geometry missing — choose another plot.");
+      setStatus("Plot geometry missing ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â choose another plot.");
       return;
     }
     coerceMissingSpatialReference(g, SR_WEB);
@@ -2572,13 +3769,13 @@ function performHsvpLandZoom() {
       _identifyUrl: INV_MS
     }];
     var mapPt = projection.project(ctr, SR_WEB);
-    setStatus("Building investor report for selected plot…");
+    setStatus("Building investor report for selected plotÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦");
     return zoomToGeometry(g326).then(function () {
       return finalizeIdentifyResults(ctr, mapPt, flat, "hsvp");
     });
   }).catch(function (e) {
     console.error(e);
-    setStatus("HSVP selection failed — see console.");
+    setStatus("HSVP selection failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
   });
 }
 
@@ -2596,6 +3793,7 @@ function performHsvpLandZoom() {
 function closeAoiSheet() {
   var aoi = document.getElementById("aoiPanel");
   if (!aoi || aoi.classList.contains("collapsed")) return;
+  closeAoiRoutePanel();
   aoi.classList.add("collapsed");
   aoi.setAttribute("aria-hidden", "true");
   var b = document.getElementById("btnOpenNav");
@@ -2823,7 +4021,7 @@ bindRange("suitDist", "suitDistVal");
 (function buildChecks() {
   var pc = document.getElementById("proxCheckboxes");
   if (!pc) {
-    console.warn("[GIS] proxCheckboxes missing — skipping proximity checkboxes.");
+    console.warn("[GIS] proxCheckboxes missing ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â skipping proximity checkboxes.");
     return;
   }
   POI_LAYERS.forEach(function (p) {
@@ -2886,6 +4084,10 @@ var symSuitable = new SimpleFillSymbol({
   outline: new SimpleLineSymbol({ color: [30, 142, 62, 1.5], width: 1.5 })
 });
 var symLineHit = new SimpleLineSymbol({ color: [251, 140, 0, 1], width: 2 });
+var symCadNearBuffer = new SimpleFillSymbol({
+  color: [0, 188, 212, 0.1],
+  outline: new SimpleLineSymbol({ color: [0, 150, 136, 1], width: 2 })
+});
 var symBufferMark = new SimpleMarkerSymbol({
   style: "diamond",
   color: [176, 32, 93, 0.95],
@@ -2905,18 +4107,28 @@ msmeBind("runBuffer", "click", function () {
   }, geometryToQueryParams(qg))).then(function (data) {
     if (!data.features || !data.features.length) { alertNoData("features in area"); return; }
     var n = 0;
+    var skipped = 0;
     data.features.forEach(function (f) {
-      var g = toEngineSR(geomFromJSON(f.geometry));
+      var raw = geomFromJSON(f.geometry);
+      // Query responses often keep SR only at top-level; assume requested outSR (32643) when missing.
+      coerceMissingSpatialReference(raw, SR_METER);
+      var g = toEngineSR(raw);
       if (!g) return;
       var buf = geometryEngine.buffer(g, distM, "meters");
       if (buf) {
         resultsLayer.add(new Graphic({ geometry: projection.project(buf, SR_WEB), symbol: symBuffer, attributes: f.attributes }));
         n++;
+      } else {
+        skipped++;
       }
     });
-    if (!n) alertNoData("buffer");
+    if (!n) {
+      setStatus("Buffer could not be created from selected features. Try another road source or zoom area.");
+      alertNoData("buffer");
+    }
     else {
       var msg = "Buffer: " + n + " feature(s), " + distM + " m.";
+      if (skipped) msg += " (" + skipped + " skipped invalid geometry)";
       setStatus(msg);
       publishAnalysisToolResult("buffer", msg, { count: n, distanceM: distM });
     }
@@ -2972,7 +4184,7 @@ msmeBind("runProximity", "click", function () {
     }
   }).catch(function (e) {
     console.error(e);
-    setStatus("Proximity analysis failed — see console.");
+    setStatus("Proximity analysis failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
   });
 });
 
@@ -3029,7 +4241,7 @@ msmeBind("runIntersect", "click", function () {
     }
   }).catch(function (e) {
     console.error(e);
-    setStatus("Intersect analysis failed — see console.");
+    setStatus("Intersect analysis failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
   });
 });
 
@@ -3105,7 +4317,7 @@ msmeBind("runMulti", "click", function () {
     }
   }).catch(function (e) {
     console.error(e);
-    setStatus("Multi-layer analysis failed — see console.");
+    setStatus("Multi-layer analysis failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
   });
 });
 
@@ -3155,7 +4367,7 @@ msmeBind("runSuitability", "click", function () {
     }
   }).catch(function (e) {
     console.error(e);
-    setStatus("Suitability analysis failed — see console.");
+    setStatus("Suitability analysis failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
   });
 });
 
@@ -3164,7 +4376,7 @@ view.on("pointer-move", function (evt) {
     var p = view.toMap(evt);
     var g = projection.project(p, new SpatialReference({ wkid: 4326 }));
     var el = document.getElementById("coordBar");
-    if (el && g) el.textContent = "Lat " + g.y.toFixed(5) + "° · Lon " + g.x.toFixed(5) + "°";
+    if (el && g) el.textContent = "Lat " + g.y.toFixed(5) + "Ãƒâ€šÃ‚Â° Ãƒâ€šÃ‚Â· Lon " + g.x.toFixed(5) + "Ãƒâ€šÃ‚Â°";
   });
 });
 
@@ -3184,7 +4396,7 @@ function setSelectParcelTool(on) {
     bufferMarkModeActive = false;
     var bbm0 = document.getElementById("btnBufferMarkPoint");
     if (bbm0) bbm0.classList.remove("active");
-    setStatus("Select tool — click the map. Results appear in the left panel with distances.");
+    setStatus("Select tool ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â click the map. Results appear in the left panel with distances.");
   }
 }
 
@@ -3216,7 +4428,7 @@ function setSelectParcelTool(on) {
 
 /**
  * When identify returns cadastral polygon(s), prefer the smallest polygon (usually parcel vs village/district).
- * Sets lastCadParcel32643 so “Nearby + distances” works without using the dropdowns.
+ * Sets lastCadParcel32643 so ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œNearby + distancesÃƒÂ¢Ã¢â€šÂ¬Ã‚Â works without using the dropdowns.
  */
 window.msmeGisZoomToGeometry = function (geomJson) {
   if (!geomJson) return Promise.resolve();
@@ -3535,7 +4747,7 @@ function finalizeIdentifyResults(anchor32643, mapPoint, flat, selectionSource) {
     if (selectionSource === "sketch") {
       highlightSketchSelection(flat);
     }
-    var accHint = mapSelectionAccumulateMode ? " Multi-select on — click again to add, then “Use map selection for analysis”." : "";
+    var accHint = mapSelectionAccumulateMode ? " Multi-select on ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â click again to add, then ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œUse map selection for analysisÃƒÂ¢Ã¢â€šÂ¬Ã‚Â." : "";
     setStatus("Identified " + flat.length + " hit(s); distances in the results panel (within " + radiusM + " m nearby)." + accHint);
     if (selectParcelToolActive) {
       setSelectParcelTool(false);
@@ -3579,17 +4791,17 @@ function initSketchViewModel() {
       selectionHighlightLayer.removeAll();
       connectorLayer.removeAll();
       var mapPointW = projection.project(anchor32643, SR_WEB);
-      setStatus("Finding features in your sketch…");
+      setStatus("Finding features in your sketchÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦");
       return querySketchIntersection(g326).then(function (flat) {
         if (!flat.length) {
-          setStatus("No features intersect the sketch — try a larger shape or zoom.");
+          setStatus("No features intersect the sketch ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â try a larger shape or zoom.");
           return;
         }
         return finalizeIdentifyResults(anchor32643, mapPointW, flat, "sketch");
       });
     }).catch(function (e) {
       console.error(e);
-      setStatus("Sketch processing failed — see console.");
+      setStatus("Sketch processing failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
     });
   });
 }
@@ -3615,7 +4827,7 @@ window.msmeGisStartSketch = function (mode) {
 window.msmeGisActivateIdentifyMode = function () {
   if (sketchVM) sketchVM.cancel();
   setSelectParcelTool(true);
-  setStatus("Identify mode — click the map for features.");
+  setStatus("Identify mode ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â click the map for features.");
 };
 
 window.msmeGisSetMapMultiSelectMode = function (on) {
@@ -3627,8 +4839,8 @@ window.msmeGisSetMapMultiSelectMode = function (on) {
   }
   setStatus(
     mapSelectionAccumulateMode
-      ? "Multi-select on — each click adds features. Use “Apply map selection to analysis” when ready."
-      : "Multi-select off — the next identify replaces the previous."
+      ? "Multi-select on ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â each click adds features. Use ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œApply map selection to analysisÃƒÂ¢Ã¢â€šÂ¬Ã‚Â when ready."
+      : "Multi-select off ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â the next identify replaces the previous."
   );
 };
 
@@ -3639,7 +4851,7 @@ window.msmeGisApplyMapSelectionToAnalysis = function () {
   });
   userMapAnalysisGeometry32643 = computeUnionGeometryFromFlats(merged);
   if (!userMapAnalysisGeometry32643) {
-    setStatus("No usable feature geometry in the map selection — identify features first.");
+    setStatus("No usable feature geometry in the map selection ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â identify features first.");
     publishAnalysisReportSnapshot({
       generatedAt: new Date().toISOString(),
       reportKind: "analysis",
@@ -3659,7 +4871,7 @@ window.msmeGisApplyMapSelectionToAnalysis = function () {
     summary: "Buffer / proximity / intersect tools now use the union of " + nFeat + " map hit(s).",
     featureCount: nFeat
   });
-  setStatus("Spatial analysis tools will use your combined map selection — run buffer, proximity, or other tools.");
+  setStatus("Spatial analysis tools will use your combined map selection ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â run buffer, proximity, or other tools.");
 };
 
 window.msmeGisClearMapSelection = function () {
@@ -3706,7 +4918,7 @@ view.on("click", function (event) {
       bufferMarkLayer.removeAll();
       var gw = projection.project(bufferMarkPoint32643, SR_WEB);
       bufferMarkLayer.add(new Graphic({ geometry: gw, symbol: symBufferMark }));
-      setStatus("Buffer anchor point set — adjust search radius, then Run buffer.");
+      setStatus("Buffer anchor point set ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â adjust search radius, then Run buffer.");
       if (view && view.container) view.container.style.cursor = "";
     }).catch(function (err) { console.error(err); });
     return;
@@ -3749,13 +4961,15 @@ view.on("click", function (event) {
     });
   }).catch(function (e) {
     console.error(e);
-    setStatus("Identify failed — see console.");
+    setStatus("Identify failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
   });
 });
 
 /** Full teardown for React remount / HMR: widgets + sketch VM, then MapView (partial destroy left tools broken). */
 if (typeof window !== "undefined") {
   window.__msmeGisCleanup = function () {
+    window.__msmeGisInitialized = false;
+    window.__msmeGisInitInProgress = false;
     try {
       document.removeEventListener("keydown", msmeGisKeydownEsc);
     } catch (eK) {}
@@ -3799,10 +5013,25 @@ projection.load().then(function () {
     refreshMapViewPadding();
     initSketchViewModel();
   });
+  if (typeof window !== "undefined" && window.__msmeGisBootId === myBootId) {
+    window.__msmeGisInitialized = true;
+    window.__msmeGisInitInProgress = false;
+  }
   setStatus("Ready. Haryana administrative boundaries are loaded; open Layers to load additional map services.");
 }).catch(function (e) {
   if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
+  if (typeof window !== "undefined" && window.__msmeGisBootId === myBootId) {
+    window.__msmeGisInitialized = false;
+    window.__msmeGisInitInProgress = false;
+  }
   console.error(e);
-  setStatus("Load error — see console.");
+  if (isGateway502Error(e)) {
+    setStatus("Load error: ArcGIS service/proxy unreachable (502). Check server/proxy.");
+  } else {
+    setStatus("Load error - see console.");
+  }
 });
 }
+
+
+
