@@ -68,8 +68,8 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             <img src="/admin-avatar.jpg" alt="Admin" className="user-avatar" />
             {isOpen && (
               <div className="user-info">
-                <span className="user-name">Admin Anil</span>
-                <span className="user-role">Super Admin</span>
+                <span className="user-name">Admin</span>
+                {/* <span className="user-role">Super Admin</span> */}
               </div>
             )}
           </div>

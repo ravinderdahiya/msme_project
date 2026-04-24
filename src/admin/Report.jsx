@@ -1,7 +1,7 @@
 import React from 'react';
 import { 
   FileText, CheckCircle, Clock, Download, Search, 
-  Calendar, MapPin, Filter, Eye, Trash2, Plus 
+  Calendar, MapPin, Filter, Eye, Trash2, Plus ,Settings
 } from 'lucide-react';
 import './Report.css';
 
@@ -23,6 +23,16 @@ const Report = () => {
 
   return (
     <div className="reports-container">
+      <div className="users-nav-header">
+        <div className="breadcrumb">Dashboard {'>'} Report </div>
+        <div className="top-right-actions">
+          <div className="user-info-pill">
+            <img src="/avatar.jpg" alt="User" className="small-avatar" />
+            <span>Anil Kumar</span>
+          </div>
+          <Settings size={18} className="header-icon" />
+        </div>
+      </div>
       <div className="reports-header">
         <div className="header-left">
           <h1>Reports</h1>

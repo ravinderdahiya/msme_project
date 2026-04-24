@@ -93,17 +93,16 @@ const IndustrialZones = () => {
                 </div>
 
                 {/* Pagination */}
-                <div className="zone-footer">
-                    <div className="simple-pagination">
-                        <button className="page-arrow">1</button>
-                        <button className="page-arrow">2</button>
-                        <button className="page-arrow">5</button>
-                        <button className="page-arrow">3</button>
+                 <div className="table-footer-pagination">
+                    <div className="pagination-left">
+                        <button className="nav-btn disabled"><ChevronLeft size={16} /></button>
+                        <span className="page-num active">1</span>
+                        <button className="nav-btn"><ChevronRight size={16} /></button>
                     </div>
-                    <div className="footer-right-control">
-                        <button className="page-arrow"><ChevronLeft size={14} /></button>
-                        <span className="footer-tag">Shape</span>
-                        <button className="page-arrow"><ChevronRight size={14} /></button>
+                    <div className="pagination-right">
+                        <button className="nav-btn"><ChevronLeft size={16} /></button>
+                        <span className="total-label">Meal</span>
+                        <button className="nav-btn"><ChevronRight size={16} /></button>
                     </div>
                 </div>
             </div>

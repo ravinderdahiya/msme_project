@@ -32,6 +32,16 @@ const Location = () => {
             </div> */}
 
             {/* Main Heading & Add Button */}
+            <div className="users-nav-header">
+                <div className="breadcrumb">Dashboard {'>'} Location</div>
+                <div className="top-right-actions">
+                    <div className="user-info-pill">
+                        <img src="/avatar.jpg" alt="User" className="small-avatar" />
+                        <span>Anil Kumar</span>
+                    </div>
+                    <Settings size={18} className="header-icon" />
+                </div>
+            </div>
             <div className="content-header">
                 <h1 className="main-title">Manage Locations</h1>
                 <button className="add-location-btn">

@@ -33,7 +33,7 @@
   display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 20px; padding: 20px; margin-bottom: 25px;
 }
-.filter-group label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px; }
+.filter-group label { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: white;font-weight: bold; margin-bottom: 8px; }
 .filter-input {
   width: 100%; background: #0f172a; border: 1px solid #334155;
   color: white; padding: 8px 12px; border-radius: 6px; outline: none;
@@ -50,7 +50,7 @@
 .glass-card { background: rgba(15, 23, 42, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; }
 
 .custom-reports-table { width: 100%; border-collapse: collapse; }
-.custom-reports-table th { text-align: left; padding: 15px; color: #64748b; font-size: 0.8rem; border-bottom: 1px solid #1e293b; }
+.custom-reports-table th { text-align: left; padding: 15px; color: white; font-size: 1rem; border-bottom: 1px solid #1e293b;font-weight: bold; }
 .custom-reports-table td { padding: 15px; font-size: 0.85rem; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
 
 .report-name-cell strong { display: block; color: #f1f5f9; }

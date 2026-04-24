@@ -17,11 +17,11 @@ const Users = () => {
       <div className="users-nav-header">
         <div className="breadcrumb">Dashboard {'>'} Users</div>
         <div className="top-right-actions">
-           <div className="user-info-pill">
-             <img src="/avatar.jpg" alt="User" className="small-avatar" />
-             <span>Anil Kumar</span>
-           </div>
-           <Settings size={18} className="header-icon" />
+          <div className="user-info-pill">
+            <img src="/avatar.jpg" alt="User" className="small-avatar" />
+            <span>Anil Kumar</span>
+          </div>
+          <Settings size={18} className="header-icon" />
         </div>
       </div>
 
@@ -78,17 +78,16 @@ const Users = () => {
         </div>
 
         {/* Table Footer / Pagination */}
-        <div className="users-table-footer">
-          <div className="pagination-numbers">
-            <button className="page-btn active">1</button>
-            <button className="page-btn">2</button>
-            <button className="page-btn">5</button>
-            <button className="page-btn">3</button>
+        <div className="table-footer-pagination">
+          <div className="pagination-left">
+            <button className="nav-btn disabled"><ChevronLeft size={16} /></button>
+            <span className="page-num active">1</span>
+            <button className="nav-btn"><ChevronRight size={16} /></button>
           </div>
-          <div className="footer-right-nav">
-             <button className="nav-arrow"><ChevronLeft size={16} /></button>
-             <span className="footer-label">Image</span>
-             <button className="nav-arrow"><ChevronRight size={16} /></button>
+          <div className="pagination-right">
+            <button className="nav-btn"><ChevronLeft size={16} /></button>
+            <span className="total-label">Meal</span>
+            <button className="nav-btn"><ChevronRight size={16} /></button>
           </div>
         </div>
       </div>
