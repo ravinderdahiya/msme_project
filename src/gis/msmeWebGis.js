@@ -113,7 +113,8 @@ var GIS_UI_DEFAULTS = {
   allTehsils: "All tehsils",
   allVillages: "All villages",
   mapPopupTitle: "Features at this location",
-  hsvpPlot: "Plot"
+  hsvpSector: "Sector / area",
+  hsvpPlot: "Plot no"
 };
 var __gisUi = Object.assign({}, GIS_UI_DEFAULTS);
 var refreshGisPlaceholderLabelsImpl = function () {};
@@ -192,6 +193,7 @@ function readLandReportDomContext() {
     },
     hsvp: {
       district: tx("hsvpDistrictSelect"),
+      sector: tx("hsvpSectorSelect"),
       plot: tx("hsvpPlotSelect")
     }
   };
@@ -2441,6 +2443,7 @@ refreshGisPlaceholderLabelsImpl = function () {
     ["cadVillageSelect", "village"],
     ["cadMurabaSelect", "muraba"],
     ["cadKhasraSelect", "cadKhasraPlaceholder"],
+    ["hsvpSectorSelect", "hsvpSector"],
     ["hsvpPlotSelect", "hsvpPlot"]
   ];
   rows.forEach(function (row) {
@@ -2529,6 +2532,16 @@ function loadDistricts() {
     cadDistrictSelect.innerHTML = "<option value=\"\">" + gisPh("district") + "</option>";
     var hsvpD0 = document.getElementById("hsvpDistrictSelect");
     if (hsvpD0) hsvpD0.innerHTML = "<option value=\"\">" + gisPh("district") + "</option>";
+    var hsvpS0 = document.getElementById("hsvpSectorSelect");
+    if (hsvpS0) {
+      hsvpS0.innerHTML = "<option value=\"\">" + gisPh("hsvpSector") + "</option>";
+      hsvpS0.disabled = true;
+    }
+    var hsvpP0 = document.getElementById("hsvpPlotSelect");
+    if (hsvpP0) {
+      hsvpP0.innerHTML = "<option value=\"\">" + gisPh("hsvpPlot") + "</option>";
+      hsvpP0.disabled = true;
+    }
     (data.features || []).forEach(function (f) {
       var a = f.attributes;
       var o = document.createElement("option");
@@ -4012,12 +4025,27 @@ function getHsvpDistrictNameByCode(dCode) {
   return "";
 }
 
+var hsvpSectorBuckets = {};
+var hsvpFeatureByOid = {};
+
 function hsvpPlotOid(attrs) {
   var a = attrs || {};
   var oid = a.objectid != null ? a.objectid : (a.OBJECTID != null ? a.OBJECTID : null);
   if (oid == null) return null;
   var n = Number(oid);
   return isFinite(n) ? n : null;
+}
+
+function hsvpPlotNo(attrs, oid) {
+  var a = attrs || {};
+  var plotNo =
+    a.alloted_reg_num != null ? a.alloted_reg_num :
+    (a.ALLOTED_REG_NUM != null ? a.ALLOTED_REG_NUM :
+    (a.reg_no != null ? a.reg_no :
+    (a.REG_NO != null ? a.REG_NO : "")));
+  var clean = String(plotNo || "").trim();
+  if (clean) return clean;
+  return String(oid);
 }
 
 function hsvpPlotName(attrs, oid) {
@@ -4033,6 +4061,67 @@ function hsvpPlotName(attrs, oid) {
   var clean = String(nm || "").trim();
   if (clean) return clean;
   return "Industrial plot " + String(oid);
+}
+
+function hsvpSectorAreaLabel(attrs) {
+  var a = attrs || {};
+  var addr = String(a.address != null ? a.address : (a.ADDRESS != null ? a.ADDRESS : "")).trim();
+  if (addr) {
+    var m = addr.match(/\bsector\s*[- ]*\s*([a-z0-9]+)/i);
+    if (m && m[1]) return "Sector " + String(m[1]).toUpperCase();
+    var first = addr.split(",")[0];
+    if (first) {
+      var cleanFirst = String(first).trim();
+      if (cleanFirst) return cleanFirst;
+    }
+  }
+  var cls = String(
+    a.classification_of_area != null
+      ? a.classification_of_area
+      : (a.CLASSIFICATION_OF_AREA != null ? a.CLASSIFICATION_OF_AREA : "")
+  ).trim();
+  if (cls) return cls;
+  return "Other area";
+}
+
+function hsvpSectorKey(label) {
+  var s = String(label || "").trim();
+  if (!s) return "otherarea";
+  var key = normalizeDistrictName(s);
+  return key || "otherarea";
+}
+
+function resetHsvpSectorAndPlotSelects() {
+  var secSel = document.getElementById("hsvpSectorSelect");
+  if (secSel) {
+    secSel.innerHTML = "<option value=\"\">" + gisPh("hsvpSector") + "</option>";
+    secSel.disabled = true;
+  }
+  var plotSel = document.getElementById("hsvpPlotSelect");
+  if (plotSel) {
+    plotSel.innerHTML = "<option value=\"\">" + gisPh("hsvpPlot") + "</option>";
+    plotSel.disabled = true;
+  }
+}
+
+function hsvpPoint32643FromFeature(feat) {
+  if (!feat) return null;
+  var attrs = feat.attributes || {};
+  var gj = feat.geometry;
+  var g = gj ? geomFromJSON(gj) : null;
+  if (g && geometryIsUsable(g)) {
+    if (!g.spatialReference) g.spatialReference = SR4326;
+    var p = g.type === "point" ? g : getGeometryCentroid(g);
+    var p326 = p ? toEngineSR(p) : null;
+    if (p326 && p326.type === "point" && geometryIsUsable(p326)) return p326;
+  }
+  var lat = Number(attrs.lat != null ? attrs.lat : attrs.LAT);
+  var lon = Number(attrs.long != null ? attrs.long : (attrs.LONG != null ? attrs.LONG : (attrs.lon != null ? attrs.lon : attrs.LON)));
+  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+  var pWgs = new Point({ x: lon, y: lat, spatialReference: SR4326 });
+  var p326Fallback = toEngineSR(pWgs);
+  if (p326Fallback && p326Fallback.type === "point" && geometryIsUsable(p326Fallback)) return p326Fallback;
+  return null;
 }
 
 function zoomToHsvpDistrict(dCode) {
@@ -4074,91 +4163,249 @@ function zoomToHsvpDistrict(dCode) {
   });
 }
 
-function loadHsvpPlots(dCode) {
+function zoomToHsvpSectorArea(sectorKeyValue) {
+  var bucket = sectorKeyValue ? hsvpSectorBuckets[String(sectorKeyValue)] : null;
+  if (!bucket || !bucket.features || !bucket.features.length) return Promise.resolve();
+
+  var xmin = Infinity;
+  var ymin = Infinity;
+  var xmax = -Infinity;
+  var ymax = -Infinity;
+  var validCount = 0;
+  var firstPt = null;
+
+  bucket.features.forEach(function (f) {
+    var p = hsvpPoint32643FromFeature(f);
+    if (!p) return;
+    if (!firstPt) firstPt = p;
+    xmin = Math.min(xmin, p.x);
+    ymin = Math.min(ymin, p.y);
+    xmax = Math.max(xmax, p.x);
+    ymax = Math.max(ymax, p.y);
+    validCount++;
+  });
+
+  if (!validCount || !firstPt) return Promise.resolve();
+
+  if (validCount === 1) {
+    return projection.load().then(function () {
+      var pWeb = projection.project(firstPt, SR_WEB);
+      if (!pWeb) return Promise.resolve();
+      return view.goTo({ center: pWeb, zoom: 15, padding: getUiZoomPadding() });
+    }).catch(function () {
+      return Promise.resolve();
+    });
+  }
+
+  var ext = new Extent({
+    xmin: xmin,
+    ymin: ymin,
+    xmax: xmax,
+    ymax: ymax,
+    spatialReference: SR_METER
+  });
+  return zoomToGeometry(ext, { expandFactor: 1.28 });
+}
+
+function loadHsvpPlotsBySector(sectorKeyValue) {
   var plotSel = document.getElementById("hsvpPlotSelect");
   if (!plotSel) return Promise.resolve();
   plotSel.innerHTML = "<option value=\"\">" + gisPh("hsvpPlot") + "</option>";
   plotSel.disabled = true;
+
+  if (!sectorKeyValue) {
+    setStatus("Select sector/area to list plot numbers.");
+    return Promise.resolve();
+  }
+
+  var bucket = hsvpSectorBuckets[String(sectorKeyValue)];
+  if (!bucket || !bucket.features || !bucket.features.length) {
+    setStatus("No plots found for selected sector/area.");
+    return Promise.resolve();
+  }
+
+  var features = bucket.features.slice();
+  features.sort(function (fa, fb) {
+    var oa = hsvpPlotOid(fa && fa.attributes ? fa.attributes : {});
+    var ob = hsvpPlotOid(fb && fb.attributes ? fb.attributes : {});
+    var aa = fa && fa.attributes ? fa.attributes : {};
+    var bb = fb && fb.attributes ? fb.attributes : {};
+    var pa = hsvpPlotNo(aa, oa);
+    var pb = hsvpPlotNo(bb, ob);
+    var na = Number(pa);
+    var nb = Number(pb);
+    if (isFinite(na) && isFinite(nb) && na !== nb) return na - nb;
+    return String(pa).localeCompare(String(pb));
+  });
+
+  var added = 0;
+  features.forEach(function (f) {
+    var a = f && f.attributes ? f.attributes : {};
+    var oid = hsvpPlotOid(a);
+    if (oid == null) return;
+    var plotNo = hsvpPlotNo(a, oid);
+    var plotName = hsvpPlotName(a, oid);
+    var o = document.createElement("option");
+    o.value = String(oid);
+    o.textContent = "Plot " + plotNo + " - " + plotName;
+    o.setAttribute("data-plot-name", plotName);
+    o.setAttribute("data-plot-no", plotNo);
+    plotSel.appendChild(o);
+    added++;
+  });
+
+  plotSel.disabled = added === 0;
+  if (added > 0) setStatus("Loaded " + added + " plot number(s) in " + bucket.label + ".");
+  else setStatus("No plots found for selected sector/area.");
+  return Promise.resolve();
+}
+
+function loadHsvpPlots(dCode) {
+  var sectorSel = document.getElementById("hsvpSectorSelect");
+  if (!sectorSel) return Promise.resolve();
+
+  resetHsvpSectorAndPlotSelects();
+  hsvpSectorBuckets = {};
+  hsvpFeatureByOid = {};
   if (!dCode) return Promise.resolve();
 
   var districtName = getHsvpDistrictNameByCode(dCode);
-  var districtNorm = normalizeDistrictName(districtName);
-  var seen = {};
-  var added = 0;
-  var hsvpPlotOutFields = "objectid,firm_name,district,lat,long";
-
-  function pushOptions(features, useClientFilter) {
-    (features || []).forEach(function (f) {
-      var a = f && f.attributes ? f.attributes : {};
-      var oid = hsvpPlotOid(a);
-      if (oid == null || seen[oid]) return;
-
-      if (useClientFilter && districtNorm) {
-        var dNameAttr = String(a.district != null ? a.district : (a.DISTRICT != null ? a.DISTRICT : "")).trim();
-        if (dNameAttr && normalizeDistrictName(dNameAttr) !== districtNorm) return;
-      }
-
-      seen[oid] = true;
-      var plotName = hsvpPlotName(a, oid);
-      var districtLabel = String(a.district != null ? a.district : (a.DISTRICT != null ? a.DISTRICT : districtName)).trim();
-      var o = document.createElement("option");
-      o.value = String(oid);
-      o.textContent = districtLabel ? plotName + " - " + districtLabel : plotName;
-      o.setAttribute("data-plot-name", plotName);
-      plotSel.appendChild(o);
-      added++;
-    });
-  }
-
-  function finalizeLoadStatus() {
-    plotSel.disabled = added === 0;
-    if (added > 0) setStatus("Loaded " + added + " industrial plot(s) for " + (districtName || dCode) + ".");
-    else setStatus("No industrial plots found for selected district.");
-  }
-
-  function queryPlots(whereClause) {
-    return queryLayer(INV_MS, LAYER_INVESTMENT, {
-      where: whereClause,
-      outFields: hsvpPlotOutFields,
-      returnGeometry: false,
-      resultRecordCount: 2000
-    }).then(function (data) {
-      pushOptions(data.features || [], false);
-    });
-  }
-
   if (!districtName) {
     setStatus("Select district first.");
     return Promise.resolve();
   }
 
+  var hsvpDistrictOutFields =
+    "objectid,firm_name,district,address,alloted_reg_num,reg_no,classification_of_area,lat,long";
+
+  function queryDistrictFeatures(whereClause) {
+    return queryLayer(INV_MS, LAYER_INVESTMENT, {
+      where: whereClause,
+      outFields: hsvpDistrictOutFields,
+      returnGeometry: true,
+      resultRecordCount: 2000
+    }).then(function (data) {
+      return data && data.features ? data.features : [];
+    }).catch(function () {
+      return [];
+    });
+  }
+
   var whereExact = "district = " + sqlQuote(districtName);
   var whereUpper = "UPPER(district) = " + sqlQuote(String(districtName).toUpperCase());
 
-  return queryPlots(whereExact).then(function () {
-    if (added > 0) {
-      finalizeLoadStatus();
+  return queryDistrictFeatures(whereExact).then(function (f0) {
+    if (f0.length) return f0;
+    return queryDistrictFeatures(whereUpper);
+  }).then(function (features) {
+    if (!features.length) {
+      setStatus("No industrial plots found for selected district.");
       return;
     }
-    return queryPlots(whereUpper).then(function () {
-      finalizeLoadStatus();
+
+    features.forEach(function (f) {
+      var a = f && f.attributes ? f.attributes : {};
+      var oid = hsvpPlotOid(a);
+      if (oid == null) return;
+      hsvpFeatureByOid[String(oid)] = f;
+      var label = hsvpSectorAreaLabel(a);
+      var key = hsvpSectorKey(label);
+      if (!hsvpSectorBuckets[key]) hsvpSectorBuckets[key] = { label: label, features: [] };
+      hsvpSectorBuckets[key].features.push(f);
     });
-  }).catch(function (err1) {
-    console.warn("[hsvp plots] district query failed", err1);
-    return queryPlots(whereUpper).then(function () {
-      finalizeLoadStatus();
-    }).catch(function (err2) {
-      console.warn("[hsvp plots] fallback district query failed", err2);
-      plotSel.disabled = true;
-      setStatus("Could not load industrial plots. Please try again.");
+
+    var keys = Object.keys(hsvpSectorBuckets).sort(function (ka, kb) {
+      return String(hsvpSectorBuckets[ka].label || "").localeCompare(String(hsvpSectorBuckets[kb].label || ""));
     });
+    if (!keys.length) {
+      setStatus("No sector/area found for selected district.");
+      return;
+    }
+
+    sectorSel.innerHTML = "<option value=\"\">" + gisPh("hsvpSector") + "</option>";
+    keys.forEach(function (k) {
+      var b = hsvpSectorBuckets[k];
+      var o = document.createElement("option");
+      o.value = k;
+      o.textContent = b.label + " (" + b.features.length + ")";
+      sectorSel.appendChild(o);
+    });
+    sectorSel.disabled = false;
+    setStatus("Loaded " + keys.length + " sector/area option(s). Select sector/area to continue.");
+  }).catch(function (err) {
+    console.warn("[hsvp sectors] district load failed", err);
+    setStatus("Could not load sectors/areas for selected district.");
+    resetHsvpSectorAndPlotSelects();
+  });
+}
+
+function zoomToHsvpFeature(feat, oid) {
+  if (!feat) return Promise.resolve();
+  var attrs = feat.attributes || {};
+  var plotName = hsvpPlotName(attrs, oid);
+  var plotNo = hsvpPlotNo(attrs, oid);
+  var gj = feat.geometry;
+  var g = gj ? geomFromJSON(gj) : null;
+
+  if (!g || !geometryIsUsable(g)) {
+    var lat = Number(attrs.lat != null ? attrs.lat : attrs.LAT);
+    var lon = Number(attrs.long != null ? attrs.long : (attrs.LONG != null ? attrs.LONG : (attrs.lon != null ? attrs.lon : attrs.LON)));
+    if (isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      g = new Point({ x: lon, y: lat, spatialReference: SR4326 });
+    }
+  }
+
+  if (!g || !geometryIsUsable(g)) {
+    setStatus("Selected plot has no usable geometry.");
+    return Promise.resolve();
+  }
+  if (!g.spatialReference) g.spatialReference = SR_WEB;
+  var g326 = toEngineSR(g);
+  if (!g326 || !geometryIsUsable(g326)) {
+    setStatus("Selected plot geometry could not be projected.");
+    return Promise.resolve();
+  }
+
+  var ctr = g326.type === "point" ? g326 : getGeometryCentroid(g326);
+  if (!ctr && g326.extent && g326.extent.center) ctr = g326.extent.center;
+  if (!ctr) {
+    setStatus("Plot geometry could not anchor a report point.");
+    return Promise.resolve();
+  }
+  lastIdentifyAnchor32643 = ctr;
+  identifyLayer.removeAll();
+  sketchLayer.removeAll();
+  selectionHighlightLayer.removeAll();
+  connectorLayer.removeAll();
+  var flat = [{
+    layerName: "Industrial / HSVP",
+    layerId: LAYER_INVESTMENT,
+    feature: feat,
+    _identifyUrl: INV_MS
+  }];
+  var mapPt = projection.project(ctr, SR_WEB);
+  setStatus("Zooming to plot no. " + plotNo + ": " + plotName);
+  function zoomToSelectedPlot() {
+    if (g326 && g326.type === "point") {
+      return projection.load().then(function () {
+        var pWeb = projection.project(g326, SR_WEB);
+        if (!pWeb) return zoomToGeometry(g326);
+        return view.goTo({ center: pWeb, zoom: 16, padding: getUiZoomPadding() });
+      }).catch(function () {
+        return zoomToGeometry(g326);
+      });
+    }
+    return zoomToGeometry(g326);
+  }
+  return zoomToSelectedPlot().then(function () {
+    return finalizeIdentifyResults(ctr, mapPt, flat, "hsvp");
   });
 }
 
 function performHsvpLandZoom() {
   var ps = document.getElementById("hsvpPlotSelect");
   if (!ps || !ps.value) {
-    setStatus("Select district and an HSVP / industrial plot.");
+    setStatus("Select district, sector/area and plot no.");
     return Promise.resolve();
   }
   var oid = parseInt(ps.value, 10);
@@ -4182,6 +4429,8 @@ function performHsvpLandZoom() {
   return invLayer.when(function () {
     invLayer.visible = true;
   }).then(function () {
+    var cached = hsvpFeatureByOid[String(oid)];
+    if (cached) return { features: [cached] };
     return queryPlotByWhere("objectid = " + oid);
   }).then(function (data) {
     if (data) return data;
@@ -4195,65 +4444,7 @@ function performHsvpLandZoom() {
       alertNoData("HSVP / industrial plot");
       return;
     }
-    var feat = data.features[0];
-    var attrs = feat.attributes || {};
-    var plotName = hsvpPlotName(attrs, oid);
-    var gj = feat.geometry;
-    var g = gj ? geomFromJSON(gj) : null;
-
-    if (!g || !geometryIsUsable(g)) {
-      var lat = Number(attrs.lat != null ? attrs.lat : attrs.LAT);
-      var lon = Number(attrs.long != null ? attrs.long : (attrs.LONG != null ? attrs.LONG : (attrs.lon != null ? attrs.lon : attrs.LON)));
-      if (isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
-        g = new Point({ x: lon, y: lat, spatialReference: SR4326 });
-      }
-    }
-
-    if (!g || !geometryIsUsable(g)) {
-      setStatus("Selected plot has no usable geometry.");
-      return;
-    }
-    if (!g.spatialReference) g.spatialReference = SR_WEB;
-    var g326 = toEngineSR(g);
-    if (!g326 || !geometryIsUsable(g326)) {
-      setStatus("Selected plot geometry could not be projected.");
-      return;
-    }
-
-    var ctr = g326.type === "point" ? g326 : getGeometryCentroid(g326);
-    if (!ctr && g326.extent && g326.extent.center) ctr = g326.extent.center;
-    if (!ctr) {
-      setStatus("Plot geometry could not anchor a report point.");
-      return;
-    }
-    lastIdentifyAnchor32643 = ctr;
-    identifyLayer.removeAll();
-    sketchLayer.removeAll();
-    selectionHighlightLayer.removeAll();
-    connectorLayer.removeAll();
-    var flat = [{
-      layerName: "Industrial / HSVP",
-      layerId: LAYER_INVESTMENT,
-      feature: feat,
-      _identifyUrl: INV_MS
-    }];
-    var mapPt = projection.project(ctr, SR_WEB);
-    setStatus("Zooming to selected plot: " + plotName);
-    function zoomToSelectedPlot() {
-      if (g326 && g326.type === "point") {
-        return projection.load().then(function () {
-          var pWeb = projection.project(g326, SR_WEB);
-          if (!pWeb) return zoomToGeometry(g326);
-          return view.goTo({ center: pWeb, zoom: 16, padding: getUiZoomPadding() });
-        }).catch(function () {
-          return zoomToGeometry(g326);
-        });
-      }
-      return zoomToGeometry(g326);
-    }
-    return zoomToSelectedPlot().then(function () {
-      return finalizeIdentifyResults(ctr, mapPt, flat, "hsvp");
-    });
+    return zoomToHsvpFeature(data.features[0], oid);
   }).catch(function (e) {
     console.error(e);
     setStatus("HSVP selection failed - see console.");
@@ -4266,6 +4457,7 @@ function performHsvpLandZoom() {
     hd.addEventListener("change", function () {
       var dCode = this.value ? String(this.value).trim() : "";
       if (!dCode) {
+        resetHsvpSectorAndPlotSelects();
         loadHsvpPlots("").catch(function (err0) {
           console.warn("[hsvp district change: clear plots]", err0);
         });
@@ -4276,6 +4468,20 @@ function performHsvpLandZoom() {
       });
       zoomToHsvpDistrict(dCode).catch(function (err2) {
         console.warn("[hsvp district change: zoom district]", err2);
+      });
+    });
+  }
+
+  var hs = document.getElementById("hsvpSectorSelect");
+  if (hs) {
+    hs.addEventListener("change", function () {
+      var sectorKeyValue = this.value ? String(this.value).trim() : "";
+      loadHsvpPlotsBySector(sectorKeyValue).catch(function (err2a) {
+        console.warn("[hsvp sector change: load plots]", err2a);
+      });
+      if (!sectorKeyValue) return;
+      zoomToHsvpSectorArea(sectorKeyValue).catch(function (err2b) {
+        console.warn("[hsvp sector change: zoom area]", err2b);
       });
     });
   }

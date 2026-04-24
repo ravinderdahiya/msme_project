@@ -43,6 +43,7 @@ const MSMEGISPage = () => {
       cadKhasraPlaceholder: t("cadKhasraPlaceholder"),
       allTehsils: t("placeholderAllTehsils"),
       allVillages: t("placeholderAllVillages"),
+      hsvpSector: t("placeholderHsvpSector"),
       hsvpPlot: t("placeholderHsvpPlot"),
       mapPopupTitle: t("mapPopupTitle"),
     });

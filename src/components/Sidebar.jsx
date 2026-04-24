@@ -391,6 +391,11 @@ export default function Sidebar({ t }) {
                 <option value="">{t('placeholderDistrict')}</option>
               </select>
 
+              <label>{t('hsvpSector')}</label>
+              <select id="hsvpSectorSelect" disabled>
+                <option value="">{t('placeholderHsvpSector')}</option>
+              </select>
+
               <label>{t('hsvpPlot')}</label>
               <select id="hsvpPlotSelect" disabled>
                 <option value="">{t('placeholderHsvpPlot')}</option>
