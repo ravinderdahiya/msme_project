@@ -1409,6 +1409,20 @@ textarea {
   line-height: 1;
 }
 
+.results-flyout .winbtn i {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.results-flyout .winbtn-glyph {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.results-flyout .winbtn-zip {
+  color: var(--primary-dark);
+}
+
 .results-flyout .winbtn:hover {
   background: var(--surface-3);
   border-color: var(--rail-active-border);
@@ -1674,6 +1688,38 @@ textarea {
 
 .land-report-fab:hover {
   background: #fff;
+}
+
+.map-export-fab {
+  position: fixed;
+  right: 16px;
+  bottom: 154px;
+  z-index: 96;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--primary-dark);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(12px);
+}
+
+.map-export-fab:hover {
+  background: #fff;
+}
+
+.map-export-fab.is-disabled {
+  opacity: 0.72;
+}
+
+.map-export-fab-ico {
+  width: 21px;
+  height: 21px;
 }
 
 .land-report-overlay {

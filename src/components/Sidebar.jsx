@@ -1,4 +1,5 @@
 import ResultsFlyout from './ResultsFlyout.jsx'
+import LandLocationReport from './LandLocationReport.jsx'
 
 export default function Sidebar({ t }) {
   return (
@@ -80,6 +81,11 @@ export default function Sidebar({ t }) {
                   <span className="val" id="bufDistVal">1000</span>
                   <button type="button" className="btn-run" id="runBuffer">
                     {t('runBuffer')}
+                  </button>
+                </div>
+                <div className="buffer-mark-row">
+                  <button type="button" className="btn-secondary" id="btnBufferPdf">
+                    Download buffer PDF
                   </button>
                 </div>
                 <p className="panel-hint">{t('bufferHint')}</p>
@@ -549,6 +555,7 @@ export default function Sidebar({ t }) {
       </aside>
 
       <ResultsFlyout />
+      <LandLocationReport />
     </>
   )
 }

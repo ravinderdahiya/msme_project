@@ -29,6 +29,7 @@ import FeatureSet from "@arcgis/core/rest/support/FeatureSet.js";
 import Point from "@arcgis/core/geometry/Point.js";
 import Polyline from "@arcgis/core/geometry/Polyline.js";
 import Extent from "@arcgis/core/geometry/Extent.js";
+import { jsPDF } from "jspdf";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel.js";
 import "@arcgis/core/assets/esri/themes/light/main.css";
 
@@ -1258,6 +1259,286 @@ function publishAnalysisToolResult(toolId, summary, extra) {
   publishAnalysisReportSnapshot(p);
 }
 
+var lastBufferExportContext = null;
+function setLastBufferExportContext(ctx) {
+  lastBufferExportContext = ctx && typeof ctx === "object" ? ctx : null;
+}
+
+function formatIsoForPdf(iso) {
+  if (!iso) return "-";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch (e0) {
+    return String(iso);
+  }
+}
+
+function readBufferUiState() {
+  var srcEl = document.getElementById("bufRoadLayer");
+  var searchEl = document.getElementById("bufMarkQueryRadius");
+  var distEl = document.getElementById("bufDist");
+  var srcText = "-";
+  if (srcEl && srcEl.selectedOptions && srcEl.selectedOptions[0]) {
+    srcText = String(srcEl.selectedOptions[0].text || "").trim() || "-";
+  }
+  return {
+    roadSource: srcText,
+    searchRadiusM: searchEl ? parseInt(searchEl.value, 10) || null : null,
+    bufferDistanceM: distEl ? parseInt(distEl.value, 10) || null : null
+  };
+}
+
+function getBufferAnchorLatLonText() {
+  try {
+    if (!bufferMarkPoint32643 || bufferMarkPoint32643.type !== "point") return "-";
+    var wgs = projection.project(bufferMarkPoint32643, SR4326);
+    if (!wgs) return "-";
+    return Number(wgs.y).toFixed(6) + ", " + Number(wgs.x).toFixed(6);
+  } catch (e0) {
+    return "-";
+  }
+}
+
+function addPdfLine(doc, text, x, y, maxWidth) {
+  var parts = doc.splitTextToSize(String(text == null ? "" : text), maxWidth);
+  doc.text(parts, x, y);
+  return y + parts.length * 14;
+}
+
+function isMainRoadFeature(attrs) {
+  var a = attrs || {};
+  var cat = String(a.road_catog != null ? a.road_catog : (a.ROAD_CATOG != null ? a.ROAD_CATOG : "")).toUpperCase();
+  var nm = String(a.rd_name != null ? a.rd_name : (a.RD_NAME != null ? a.RD_NAME : "")).toUpperCase();
+  if (!cat && !nm) return false;
+  if (cat.indexOf("NH") >= 0 || cat.indexOf("SH") >= 0 || cat.indexOf("MDR") >= 0 || cat.indexOf("MAJOR") >= 0 || cat.indexOf("MAIN") >= 0) return true;
+  if (nm.indexOf("NH") >= 0 || nm.indexOf("SH") >= 0 || nm.indexOf("HIGHWAY") >= 0) return true;
+  return false;
+}
+
+function featureOid(attrs) {
+  var a = attrs || {};
+  if (a.OBJECTID != null) return String(a.OBJECTID);
+  if (a.objectid != null) return String(a.objectid);
+  return null;
+}
+
+function countCanalsAndMainRoadsNearSchools(queryGeom, nearM) {
+  var distM = Number(nearM);
+  if (!queryGeom || !isFinite(distM) || distM <= 0) return Promise.resolve(null);
+  var qp = geometryToQueryParams(queryGeom);
+  var schoolLayers = [1, 2];
+
+  function q(url, layerId, outFields, count) {
+    return queryLayer(url, layerId, Object.assign({
+      where: "1=1",
+      returnGeometry: true,
+      outFields: outFields || "OBJECTID",
+      resultRecordCount: count || 1500
+    }, qp)).catch(function () { return { features: [] }; });
+  }
+
+  var schoolTasks = schoolLayers.map(function (lid) { return q(SOC_MS, lid, "OBJECTID", 3000); });
+  return Promise.all([Promise.all(schoolTasks), q(BASE_MS, 2, "OBJECTID,canal_name", 3000), q(TRANS_MS, LAYER_ROADS_LINE, "OBJECTID,road_catog,rd_name", 4000)]).then(function (all) {
+    var schoolResList = all[0] || [];
+    var canalRes = all[1] || { features: [] };
+    var roadRes = all[2] || { features: [] };
+
+    var schoolPts = [];
+    var schoolSeen = {};
+    schoolResList.forEach(function (sr) {
+      var srResponse = sr && sr.spatialReference ? sr.spatialReference : null;
+      (sr && sr.features ? sr.features : []).forEach(function (f) {
+        var g = to32643WithSmartFallback(geomFromJSON(f.geometry), srResponse);
+        if (!g || g.type !== "point") return;
+        var id = featureOid(f.attributes) || ("s@" + g.x + "," + g.y);
+        if (schoolSeen[id]) return;
+        schoolSeen[id] = true;
+        schoolPts.push(g);
+      });
+    });
+    if (!schoolPts.length) {
+      return {
+        schoolsCount: 0,
+        canalsNearSchoolsCount: 0,
+        mainRoadsNearSchoolsCount: 0,
+        nearDistanceM: distM
+      };
+    }
+
+    function isNearAnySchool(g) {
+      for (var i = 0; i < schoolPts.length; i++) {
+        var d = geometryEngine.distance(schoolPts[i], g, "meters");
+        if ((d == null || !isFinite(d)) && geodesicDistanceMetersFallback) {
+          d = geodesicDistanceMetersFallback(schoolPts[i], g);
+        }
+        if (d != null && isFinite(d) && d <= distM) return true;
+      }
+      return false;
+    }
+
+    var canalsNearSet = {};
+    (canalRes.features || []).forEach(function (f) {
+      var g = to32643WithSmartFallback(geomFromJSON(f.geometry), canalRes.spatialReference || null);
+      if (!g) return;
+      if (!isNearAnySchool(g)) return;
+      var id = featureOid(f.attributes) || JSON.stringify(f.geometry || {});
+      canalsNearSet[id] = true;
+    });
+
+    var mainRoadNearSet = {};
+    (roadRes.features || []).forEach(function (f) {
+      if (!isMainRoadFeature(f.attributes)) return;
+      var g = to32643WithSmartFallback(geomFromJSON(f.geometry), roadRes.spatialReference || null);
+      if (!g) return;
+      if (!isNearAnySchool(g)) return;
+      var id = featureOid(f.attributes) || JSON.stringify(f.geometry || {});
+      mainRoadNearSet[id] = true;
+    });
+
+    return {
+      schoolsCount: schoolPts.length,
+      canalsNearSchoolsCount: Object.keys(canalsNearSet).length,
+      mainRoadsNearSchoolsCount: Object.keys(mainRoadNearSet).length,
+      nearDistanceM: distM
+    };
+  });
+}
+
+function hydrateNearSchoolStatsInBackground(ctx) {
+  if (!ctx || ctx.nearSchoolsStats || !ctx.queryGeometryJson) return;
+  var g = geomFromJSON(ctx.queryGeometryJson);
+  if (!g) return;
+  var d = Number(ctx.bufferDistanceM);
+  if (!isFinite(d) || d <= 0) return;
+  projection.load().then(function () {
+    return countCanalsAndMainRoadsNearSchools(g, d);
+  }).then(function (stats) {
+    if (!stats) return;
+    if (lastBufferExportContext === ctx) {
+      ctx.nearSchoolsStats = stats;
+    }
+  }).catch(function (e0) {
+    console.warn("[buffer stats] near-schools stats failed", e0);
+  });
+}
+
+function buildBufferPdfReport() {
+  var report = window.msmeGisGetAnalysisReportSnapshot ? window.msmeGisGetAnalysisReportSnapshot() : null;
+  var ui = readBufferUiState();
+  var ctx = lastBufferExportContext || {};
+  var generatedAt = (report && report.tool === "buffer" && report.generatedAt) || ctx.generatedAt || new Date().toISOString();
+  var summary = (report && report.tool === "buffer" && report.summary) || ctx.summary || "Buffer report";
+
+  var filename = "buffer-report-" + new Date().toISOString().replace(/[:.]/g, "-") + ".pdf";
+  var doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  var pageW = doc.internal.pageSize.getWidth();
+  var pageH = doc.internal.pageSize.getHeight();
+  var margin = 34;
+  var y = 42;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Spatial Analysis - Buffer Report", margin, y);
+  y += 20;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  y = addPdfLine(doc, "Generated: " + formatIsoForPdf(generatedAt), margin, y, pageW - margin * 2);
+  y = addPdfLine(doc, "Summary: " + summary, margin, y, pageW - margin * 2);
+  y += 4;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Run Settings", margin, y);
+  y += 14;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  function renderAndDownload(nearStats) {
+    y = addPdfLine(doc, "Road source: " + (ctx.roadSource || ui.roadSource || "-"), margin, y, pageW - margin * 2);
+    y = addPdfLine(doc, "Search radius around mark (m): " + String(ctx.searchRadiusM != null ? ctx.searchRadiusM : (ui.searchRadiusM != null ? ui.searchRadiusM : "-")), margin, y, pageW - margin * 2);
+    y = addPdfLine(doc, "Buffer distance (m): " + String(ctx.bufferDistanceM != null ? ctx.bufferDistanceM : (ui.bufferDistanceM != null ? ui.bufferDistanceM : "-")), margin, y, pageW - margin * 2);
+    y = addPdfLine(doc, "Anchor point (lat, lon): " + getBufferAnchorLatLonText(), margin, y, pageW - margin * 2);
+    y += 4;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Output", margin, y);
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    y = addPdfLine(doc, "Buffered features count: " + String(ctx.count != null ? ctx.count : ((report && report.tool === "buffer" && report.count != null) ? report.count : "-")), margin, y, pageW - margin * 2);
+    y = addPdfLine(doc, "Fallback mode: " + ((ctx.fallback || (report && report.fallback)) ? "Yes" : "No"), margin, y, pageW - margin * 2);
+    if (ctx.skipped != null) y = addPdfLine(doc, "Skipped geometries: " + String(ctx.skipped), margin, y, pageW - margin * 2);
+    if (ctx.objectIds && ctx.objectIds.length) {
+      y = addPdfLine(doc, "Buffered ObjectIDs (sample): " + ctx.objectIds.join(", "), margin, y, pageW - margin * 2);
+    }
+    y += 4;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Near Schools Summary", margin, y);
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    if (nearStats) {
+      y = addPdfLine(doc, "Schools considered: " + String(nearStats.schoolsCount), margin, y, pageW - margin * 2);
+      y = addPdfLine(doc, "No. of canals near schools: " + String(nearStats.canalsNearSchoolsCount), margin, y, pageW - margin * 2);
+      y = addPdfLine(doc, "No. of main roads near schools: " + String(nearStats.mainRoadsNearSchoolsCount), margin, y, pageW - margin * 2);
+      y = addPdfLine(doc, "Near distance used: " + String(nearStats.nearDistanceM) + " m", margin, y, pageW - margin * 2);
+    } else {
+      y = addPdfLine(doc, "Near-schools counts: not available for this run.", margin, y, pageW - margin * 2);
+    }
+    y += 6;
+
+    function finalizeWithSave() {
+      doc.save(filename);
+      setStatus("Buffer PDF downloaded.");
+    }
+
+    if (!view || view.destroyed || typeof view.takeScreenshot !== "function") {
+      finalizeWithSave();
+      return;
+    }
+
+    var availW = pageW - margin * 2;
+    var availH = Math.max(160, pageH - y - margin);
+    view.takeScreenshot({ format: "png", quality: 0.92, width: 1400 }).then(function (shot) {
+      if (!shot || !shot.dataUrl) {
+        finalizeWithSave();
+        return;
+      }
+      var sw = Number(shot.width || 1);
+      var sh = Number(shot.height || 1);
+      var ratio = Math.min(availW / sw, availH / sh);
+      var drawW = Math.max(10, sw * ratio);
+      var drawH = Math.max(10, sh * ratio);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Map Snapshot", margin, y + 10);
+      doc.addImage(shot.dataUrl, "PNG", margin, y + 18, drawW, drawH, undefined, "FAST");
+      finalizeWithSave();
+    }).catch(function (e0) {
+      console.warn("[pdf] screenshot failed", e0);
+      finalizeWithSave();
+    });
+  }
+
+  var nearStatsReady = ctx && ctx.nearSchoolsStats ? Promise.resolve(ctx.nearSchoolsStats) : (function () {
+    if (!ctx || !ctx.queryGeometryJson) return Promise.resolve(null);
+    var g = geomFromJSON(ctx.queryGeometryJson);
+    if (!g) return Promise.resolve(null);
+    var d = Number(ctx.bufferDistanceM != null ? ctx.bufferDistanceM : (ui.bufferDistanceM != null ? ui.bufferDistanceM : 500));
+    if (!isFinite(d) || d <= 0) d = 500;
+    return projection.load().then(function () {
+      return countCanalsAndMainRoadsNearSchools(g, d);
+    }).then(function (stats) {
+      if (stats && ctx) ctx.nearSchoolsStats = stats;
+      return stats || null;
+    }).catch(function () { return null; });
+  })();
+
+  nearStatsReady.then(function (nearStats) {
+    renderAndDownload(nearStats);
+  });
+}
+
 /** @deprecated Use getters per report type; returns map selection only for backward compatibility. */
 window.msmeGisGetLandReportSnapshot = function () {
   return lastMapSelectionReportSnapshot;
@@ -1401,6 +1682,26 @@ var bgExpand = new Expand({
   collapseTooltip: "Close"
 });
 view.ui.add(bgExpand, "top-right");
+var basemapWatchHandle = null;
+
+function hideBasemapReferenceLabels() {
+  try {
+    var bm = map && map.basemap;
+    if (!bm || !bm.referenceLayers || typeof bm.referenceLayers.forEach !== "function") return;
+    bm.referenceLayers.forEach(function (ly) {
+      ly.visible = false;
+    });
+  } catch (e0) {
+    console.warn("[basemap labels] suppress failed", e0);
+  }
+}
+
+hideBasemapReferenceLabels();
+if (map && typeof map.watch === "function") {
+  basemapWatchHandle = map.watch("basemap", function () {
+    hideBasemapReferenceLabels();
+  });
+}
 
 function mapHasLayer(layer) {
   return !!(map && map.layers && map.layers.includes(layer));
@@ -1517,6 +1818,20 @@ function fixAdminScales() {
   });
 }
 
+function enforceSingleDistrictLabelSource() {
+  return adminLayer.when(function () {
+    var districtBoundary = adminLayer.findSublayerById(LAYER_DISTRICT);
+    var ncrDistricts = adminLayer.findSublayerById(5);
+
+    adminLayer.allSublayers.forEach(function (sl) {
+      sl.labelsVisible = false;
+    });
+
+    if (districtBoundary) districtBoundary.labelsVisible = true;
+    if (ncrDistricts) ncrDistricts.visible = false;
+  });
+}
+
 function fixCadastralScales() {
   return cadLayer.when(function () {
     cadLayer.minScale = 0;
@@ -1524,7 +1839,10 @@ function fixCadastralScales() {
     cadLayer.allSublayers.forEach(function (sl) {
       sl.minScale = 0;
       sl.maxScale = 0;
+      sl.labelsVisible = false;
     });
+    var cadBoundaryOverlay = cadLayer.findSublayerById(25);
+    if (cadBoundaryOverlay) cadBoundaryOverlay.visible = false;
   });
 }
 
@@ -4097,42 +4415,359 @@ var symBufferMark = new SimpleMarkerSymbol({
 
 function clearResults() { resultsLayer.removeAll(); }
 
+function createSafeBuffer32643(geom, distM) {
+  var d = Number(distM);
+  if (!geom || !isFinite(d) || d <= 0) return null;
+
+  var g = toEngineSR(ensureSR32643(geom));
+  if (!g) return null;
+
+  function firstPoly(x) {
+    if (!x) return null;
+    if (Array.isArray(x)) return x.length ? x[0] : null;
+    return x;
+  }
+
+  function usablePoly(x) {
+    var p = firstPoly(x);
+    return geometryIsUsable(p) ? ensureSR32643(p) : null;
+  }
+
+  var out = null;
+  try {
+    out = usablePoly(geometryEngine.buffer(g, d, "meters"));
+    if (out) return out;
+  } catch (e0) {}
+
+  try {
+    var gs = geometryEngine.simplify(g) || g;
+    out = usablePoly(geometryEngine.buffer(gs, d, "meters"));
+    if (out) return out;
+  } catch (e1) {}
+
+  try {
+    var g4326 = projection.project(g, SR4326);
+    if (g4326) {
+      var geo = usablePoly(geometryEngine.geodesicBuffer(g4326, d, "meters"));
+      if (geo) {
+        var back = projection.project(geo, SR_METER);
+        if (geometryIsUsable(back)) return ensureSR32643(back);
+      }
+    }
+  } catch (e2) {}
+
+  return null;
+}
+
+function to32643WithSmartFallback(geom, responseSr) {
+  if (!geom) return null;
+
+  var raw = geom;
+  coerceMissingSpatialReference(raw, responseSr || SR_METER);
+  var g = toEngineSR(raw);
+  if (g) return g;
+
+  function firstXY(x) {
+    if (!x) return null;
+    if (x.type === "point") return [Number(x.x), Number(x.y)];
+    if (x.type === "polyline" && x.paths && x.paths[0] && x.paths[0][0]) {
+      return [Number(x.paths[0][0][0]), Number(x.paths[0][0][1])];
+    }
+    if (x.type === "polygon" && x.rings && x.rings[0] && x.rings[0][0]) {
+      return [Number(x.rings[0][0][0]), Number(x.rings[0][0][1])];
+    }
+    if (x.type === "extent") return [Number(x.xmin), Number(x.ymin)];
+    return null;
+  }
+
+  var xy = firstXY(raw);
+  var x0 = xy ? xy[0] : NaN;
+  var y0 = xy ? xy[1] : NaN;
+
+  try {
+    if (isFinite(x0) && isFinite(y0) && Math.abs(x0) <= 180 && Math.abs(y0) <= 90) {
+      raw.spatialReference = SR4326;
+      g = projection.project(raw, SR_METER);
+      if (g) return g;
+    }
+  } catch (e0) {}
+
+  try {
+    raw.spatialReference = SR_WEB;
+    g = projection.project(raw, SR_METER);
+    if (g) return g;
+  } catch (e1) {}
+
+  return null;
+}
+
+function buildFallbackAnchorBuffer32643(qg, distM) {
+  var anchor = null;
+  if (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") {
+    anchor = bufferMarkPoint32643;
+  } else if (qg && qg.type === "point") {
+    anchor = toEngineSR(ensureSR32643(qg));
+  } else if (qg) {
+    var qg32643 = toEngineSR(ensureSR32643(qg));
+    anchor = getGeometryCentroid(qg32643);
+    if (anchor && anchor.type !== "point") {
+      anchor = getGeometryCentroid(anchor);
+    }
+  }
+  if (!anchor || anchor.type !== "point") return null;
+  return createSafeBuffer32643(anchor, distM);
+}
+
 msmeBind("runBuffer", "click", function () {
   clearResults();
-  var roadLayerId = parseInt(document.getElementById("bufRoadLayer").value, 10);
+  var roadLayerEl = document.getElementById("bufRoadLayer");
+  var roadLayerId = parseInt(roadLayerEl.value, 10);
+  var roadSourceText = roadLayerEl && roadLayerEl.selectedOptions && roadLayerEl.selectedOptions[0]
+    ? String(roadLayerEl.selectedOptions[0].text || "").trim()
+    : "Road source";
   var distM = parseFloat(document.getElementById("bufDist").value) || 1000;
+  var searchRadiusEl = document.getElementById("bufMarkQueryRadius");
+  var searchRadiusM = searchRadiusEl ? parseInt(searchRadiusEl.value, 10) || 5000 : 5000;
+  var runAtIso = new Date().toISOString();
   var qg = activeQueryGeometry();
-  queryLayer(TRANS_MS, roadLayerId, Object.assign({
-    where: "1=1", returnGeometry: true, outFields: "OBJECTID", resultRecordCount: 100
-  }, geometryToQueryParams(qg))).then(function (data) {
-    if (!data.features || !data.features.length) { alertNoData("features in area"); return; }
+  var qgJson = qg && typeof qg.toJSON === "function" ? qg.toJSON() : null;
+  var qp = geometryToQueryParams(qg);
+  var baseQuery = {
+    where: "1=1",
+    returnGeometry: true,
+    outFields: "OBJECTID",
+    resultRecordCount: 220
+  };
+  function setBufferContextAndHydrate(ctxObj) {
+    setLastBufferExportContext(ctxObj);
+    hydrateNearSchoolStatsInBackground(lastBufferExportContext);
+  }
+
+  function drawBuffersFromQueryData(data) {
+    var features = (data && data.features) || [];
+    var responseSr = (data && data.spatialReference) || null;
     var n = 0;
     var skipped = 0;
-    data.features.forEach(function (f) {
+    var withGeometry = 0;
+    var objectIds = [];
+
+    features.forEach(function (f) {
       var raw = geomFromJSON(f.geometry);
-      // Query responses often keep SR only at top-level; assume requested outSR (32643) when missing.
-      coerceMissingSpatialReference(raw, SR_METER);
-      var g = toEngineSR(raw);
-      if (!g) return;
-      var buf = geometryEngine.buffer(g, distM, "meters");
-      if (buf) {
-        resultsLayer.add(new Graphic({ geometry: projection.project(buf, SR_WEB), symbol: symBuffer, attributes: f.attributes }));
-        n++;
-      } else {
+      if (raw) withGeometry++;
+      // Prefer response-level SR when feature-level SR is missing; then try smart SR fallback.
+      var g = to32643WithSmartFallback(raw, responseSr);
+      if (!g) {
         skipped++;
+        return;
       }
+      var buf = createSafeBuffer32643(g, distM);
+      if (!buf) {
+        skipped++;
+        return;
+      }
+      var bufWeb = projection.project(buf, SR_WEB);
+      if (!bufWeb) {
+        skipped++;
+        return;
+      }
+      resultsLayer.add(new Graphic({ geometry: bufWeb, symbol: symBuffer, attributes: f.attributes }));
+      var attrs = f.attributes || {};
+      var oid = attrs.OBJECTID != null ? attrs.OBJECTID : attrs.objectid;
+      if (oid != null && objectIds.length < 120) objectIds.push(String(oid));
+      n++;
     });
-    if (!n) {
-      setStatus("Buffer could not be created from selected features. Try another road source or zoom area.");
-      alertNoData("buffer");
+
+    return {
+      n: n,
+      skipped: skipped,
+      total: features.length,
+      withGeometry: withGeometry,
+      objectIds: objectIds
+    };
+  }
+
+  function publishBufferSuccess(prefix, stats) {
+    var msg = prefix + stats.n + " feature(s), " + distM + " m.";
+    if (stats.skipped) msg += " (" + stats.skipped + " skipped)";
+    setBufferContextAndHydrate({
+      generatedAt: runAtIso,
+      summary: msg,
+      roadSource: roadSourceText,
+      searchRadiusM: searchRadiusM,
+      bufferDistanceM: distM,
+      count: stats.n,
+      skipped: stats.skipped || 0,
+      fallback: false,
+      objectIds: stats.objectIds || [],
+      queryGeometryJson: qgJson,
+      nearSchoolsStats: null
+    });
+    setStatus(msg);
+    publishAnalysisToolResult("buffer", msg, {
+      count: stats.n,
+      distanceM: distM,
+      searchRadiusM: searchRadiusM,
+      roadSource: roadSourceText
+    });
+  }
+
+  function showNoBufferError(stats, triedPolygonFallback) {
+    var reason = "";
+    if (!stats.total) reason = "No features found in selected search area.";
+    else if (!stats.withGeometry) reason = "Features returned without geometry.";
+    else reason = "Feature geometries could not be buffered at this location.";
+
+    var suffix = triedPolygonFallback
+      ? " Tried Roads (Line) and Roads (Polygon)."
+      : "";
+    setBufferContextAndHydrate({
+      generatedAt: runAtIso,
+      summary: "No buffer drawn. " + reason + suffix,
+      roadSource: roadSourceText,
+      searchRadiusM: searchRadiusM,
+      bufferDistanceM: distM,
+      count: 0,
+      skipped: stats && stats.skipped != null ? stats.skipped : 0,
+      fallback: false,
+      objectIds: [],
+      queryGeometryJson: qgJson,
+      nearSchoolsStats: null
+    });
+    setStatus("No buffer drawn. " + reason + suffix);
+    window.alert("No buffer drawn.\n" + reason + suffix + "\nTry increasing search radius or changing Road source.");
+  }
+
+  projection.load().then(function () {
+    return queryLayer(TRANS_MS, roadLayerId, Object.assign({}, baseQuery, qp));
+  }).then(function (data) {
+    var stats = drawBuffersFromQueryData(data);
+    if (stats.n > 0) {
+      publishBufferSuccess("Buffer: ", stats);
+      return;
     }
-    else {
-      var msg = "Buffer: " + n + " feature(s), " + distM + " m.";
-      if (skipped) msg += " (" + skipped + " skipped invalid geometry)";
-      setStatus(msg);
-      publishAnalysisToolResult("buffer", msg, { count: n, distanceM: distM });
+
+    // Automatic fallback: when Roads (Line) fails, try Roads (Polygon) once.
+    if (roadLayerId === LAYER_ROADS_LINE) {
+      return queryLayer(TRANS_MS, 5, Object.assign({}, baseQuery, qp)).then(function (polyData) {
+        var polyStats = drawBuffersFromQueryData(polyData);
+        if (polyStats.n > 0) {
+          publishBufferSuccess("Buffer (roads polygon fallback): ", polyStats);
+          return;
+        }
+        var fallbackBuf = buildFallbackAnchorBuffer32643(qg, distM);
+        if (fallbackBuf) {
+          var fbWeb = projection.project(fallbackBuf, SR_WEB);
+          if (fbWeb) {
+            resultsLayer.add(new Graphic({ geometry: fbWeb, symbol: symBuffer }));
+            var fbMsg = "Fallback buffer shown around marked point (" + distM + " m). Roads geometry buffer was unavailable at this location.";
+            setBufferContextAndHydrate({
+              generatedAt: runAtIso,
+              summary: fbMsg,
+              roadSource: roadSourceText,
+              searchRadiusM: searchRadiusM,
+              bufferDistanceM: distM,
+              count: 1,
+              skipped: polyStats && polyStats.skipped != null ? polyStats.skipped : 0,
+              fallback: true,
+              objectIds: [],
+              queryGeometryJson: qgJson,
+              nearSchoolsStats: null
+            });
+            setStatus(fbMsg);
+            publishAnalysisToolResult("buffer", fbMsg, {
+              count: 1,
+              distanceM: distM,
+              fallback: true,
+              searchRadiusM: searchRadiusM,
+              roadSource: roadSourceText
+            });
+            return;
+          }
+        }
+        showNoBufferError(polyStats, true);
+      }).catch(function (e2) {
+        console.warn("[buffer] roads polygon fallback failed", e2);
+        var fallbackBuf2 = buildFallbackAnchorBuffer32643(qg, distM);
+        if (fallbackBuf2) {
+          var fbWeb2 = projection.project(fallbackBuf2, SR_WEB);
+          if (fbWeb2) {
+            resultsLayer.add(new Graphic({ geometry: fbWeb2, symbol: symBuffer }));
+            var fbMsg2 = "Fallback buffer shown around marked point (" + distM + " m). Roads query fallback failed.";
+            setBufferContextAndHydrate({
+              generatedAt: runAtIso,
+              summary: fbMsg2,
+              roadSource: roadSourceText,
+              searchRadiusM: searchRadiusM,
+              bufferDistanceM: distM,
+              count: 1,
+              skipped: stats && stats.skipped != null ? stats.skipped : 0,
+              fallback: true,
+              objectIds: [],
+              queryGeometryJson: qgJson,
+              nearSchoolsStats: null
+            });
+            setStatus(fbMsg2);
+            publishAnalysisToolResult("buffer", fbMsg2, {
+              count: 1,
+              distanceM: distM,
+              fallback: true,
+              searchRadiusM: searchRadiusM,
+              roadSource: roadSourceText
+            });
+            return;
+          }
+        }
+        showNoBufferError(stats, true);
+      });
     }
+
+    var fallbackBuf3 = buildFallbackAnchorBuffer32643(qg, distM);
+    if (fallbackBuf3) {
+      var fbWeb3 = projection.project(fallbackBuf3, SR_WEB);
+      if (fbWeb3) {
+        resultsLayer.add(new Graphic({ geometry: fbWeb3, symbol: symBuffer }));
+        var fbMsg3 = "Fallback buffer shown around marked point (" + distM + " m).";
+        setBufferContextAndHydrate({
+          generatedAt: runAtIso,
+          summary: fbMsg3,
+          roadSource: roadSourceText,
+          searchRadiusM: searchRadiusM,
+          bufferDistanceM: distM,
+          count: 1,
+          skipped: stats && stats.skipped != null ? stats.skipped : 0,
+          fallback: true,
+          objectIds: [],
+          queryGeometryJson: qgJson,
+          nearSchoolsStats: null
+        });
+        setStatus(fbMsg3);
+        publishAnalysisToolResult("buffer", fbMsg3, {
+          count: 1,
+          distanceM: distM,
+          fallback: true,
+          searchRadiusM: searchRadiusM,
+          roadSource: roadSourceText
+        });
+        return;
+      }
+    }
+    showNoBufferError(stats, false);
   }).catch(function (e) { console.error(e); setStatus("Buffer failed."); });
+});
+
+window.msmeGisDownloadBufferPdf = function () {
+  var report = window.msmeGisGetAnalysisReportSnapshot ? window.msmeGisGetAnalysisReportSnapshot() : null;
+  if ((!report || report.tool !== "buffer") && !lastBufferExportContext) {
+    window.alert("Run Buffer once, then download PDF.");
+    return;
+  }
+  buildBufferPdfReport();
+};
+
+msmeBind("btnBufferPdf", "click", function () {
+  if (window.msmeGisDownloadBufferPdf) {
+    window.msmeGisDownloadBufferPdf();
+  }
 });
 
 msmeBind("runProximity", "click", function () {
@@ -4981,6 +5616,10 @@ if (typeof window !== "undefined") {
       if (basemapGallery && typeof basemapGallery.destroy === "function") basemapGallery.destroy();
     } catch (eG) {}
     try {
+      if (basemapWatchHandle && typeof basemapWatchHandle.remove === "function") basemapWatchHandle.remove();
+    } catch (eW) {}
+    basemapWatchHandle = null;
+    try {
       if (bgExpand && typeof bgExpand.destroy === "function") bgExpand.destroy();
     } catch (eE) {}
     try {
@@ -4998,6 +5637,9 @@ if (typeof window !== "undefined") {
 projection.load().then(function () {
   if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
   return fixAdminScales();
+}).then(function () {
+  if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
+  return enforceSingleDistrictLabelSource();
 }).then(function () {
   if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
   return buildCadastralLayerIndex();
