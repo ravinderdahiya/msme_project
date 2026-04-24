@@ -1,17 +1,18 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { initMsmeWebGis, applyMsmeGisUiStrings } from "../gis/msmeWebGis.js";
 import { useI18n } from "../i18n/useI18n.js";
 import Sidebar from "../components/Sidebar.jsx";
 import HaryanaMap from "../components/Haryana_map.jsx";
+import HeaderGis from "../components/Header_gis.jsx";
 import "../msme-webgis.css";
 
 const MSMEGISPage = () => {
-  const { t, lang } = useI18n();
-  const theme = "hepc-blue";
+  const { t, lang, setLang, languages } = useI18n();
+  const [theme, setTheme] = useState("hepc-blue");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
-  }, []);
+  }, [theme]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -42,6 +43,7 @@ const MSMEGISPage = () => {
       cadKhasraPlaceholder: t("cadKhasraPlaceholder"),
       allTehsils: t("placeholderAllTehsils"),
       allVillages: t("placeholderAllVillages"),
+      hsvpSector: t("placeholderHsvpSector"),
       hsvpPlot: t("placeholderHsvpPlot"),
       mapPopupTitle: t("mapPopupTitle"),
     });
@@ -49,6 +51,12 @@ const MSMEGISPage = () => {
 
   return (
     <>
+      <HeaderGis
+        t={t}
+        lang={lang}
+        setLang={setLang}
+        languages={languages}
+      />
       <Sidebar t={t} />
       <HaryanaMap t={t} />
     </>

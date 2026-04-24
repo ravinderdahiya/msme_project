@@ -152,7 +152,15 @@ export default function Login() {
                                         </label>
                                     </div>
 
-                                    <button type="submit" className="login-button">Login</button>
+                                    {/* <button type="submit" className="login-button">Login</button> */}
+                                    
+                                    <button
+                                        type="button"
+                                        className="login-button"
+                                        onClick={() => navigate('/msme-gis-map')}
+                                    >
+                                        Login
+                                    </button>
 
                                     <a href="/" className="forgot-link">Forgot password?</a>
 

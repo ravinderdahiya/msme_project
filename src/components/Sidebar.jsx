@@ -1,24 +1,9 @@
 import ResultsFlyout from './ResultsFlyout.jsx'
+import LandLocationReport from './LandLocationReport.jsx'
 
 export default function Sidebar({ t }) {
   return (
     <>
-      <header
-        id="appHeader"
-        // style={{
-        //   justifyContent: 'flex-start',
-        //   background: 'linear-gradient(90deg, #1e3c72, #2a5298)',
-        //   color: '#fff',
-        //   padding: '15px 18px',
-        // }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-          <h2 style={{ margin: 0, color: '#fff', fontSize: '28px', fontWeight: 600 }}>
-            GIS Dashboard
-          </h2>
-        </div>
-      </header>
-
       <aside
         id="spatialPanel"
         className="spatial-panel collapsed"
@@ -80,6 +65,11 @@ export default function Sidebar({ t }) {
                   <span className="val" id="bufDistVal">1000</span>
                   <button type="button" className="btn-run" id="runBuffer">
                     {t('runBuffer')}
+                  </button>
+                </div>
+                <div className="buffer-mark-row">
+                  <button type="button" className="btn-secondary" id="btnBufferPdf">
+                    Download buffer PDF
                   </button>
                 </div>
                 <p className="panel-hint">{t('bufferHint')}</p>
@@ -401,6 +391,11 @@ export default function Sidebar({ t }) {
                 <option value="">{t('placeholderDistrict')}</option>
               </select>
 
+              <label>{t('hsvpSector')}</label>
+              <select id="hsvpSectorSelect" disabled>
+                <option value="">{t('placeholderHsvpSector')}</option>
+              </select>
+
               <label>{t('hsvpPlot')}</label>
               <select id="hsvpPlotSelect" disabled>
                 <option value="">{t('placeholderHsvpPlot')}</option>
@@ -549,6 +544,7 @@ export default function Sidebar({ t }) {
       </aside>
 
       <ResultsFlyout />
+      <LandLocationReport />
     </>
   )
 }

@@ -1,0 +1,444 @@
+﻿{
+ "currentVersion": 10.91,
+ "cimVersion": "2.9.0",
+ "id": 0,
+ "name": "Industrial Sites",
+ "type": "Feature Layer",
+ "description": "",
+ "geometryType": "esriGeometryPoint",
+ "sourceSpatialReference": {
+  "wkid": 32643,
+  "latestWkid": 32643,
+  "xyTolerance": 0.001,
+  "zTolerance": 0.001,
+  "mTolerance": 0.001,
+  "falseX": -5120900,
+  "falseY": -9998100,
+  "xyUnits": 10000,
+  "falseZ": -100000,
+  "zUnits": 10000,
+  "falseM": -100000,
+  "mUnits": 10000
+ },
+ "copyrightText": "",
+ "parentLayer": null,
+ "subLayers": [],
+ "minScale": 0,
+ "maxScale": 0,
+ "referenceScale": 0.0,
+ "drawingInfo": {
+  "renderer": {
+   "type": "simple",
+   "symbol": {
+    "type": "esriSMS",
+    "style": "esriSMSCircle",
+    "color": [
+     168,
+     0,
+     0,
+     255
+    ],
+    "size": 10,
+    "angle": 0,
+    "xoffset": 0,
+    "yoffset": 0,
+    "outline": {
+     "color": [
+      0,
+      0,
+      0,
+      255
+     ],
+     "width": 0.5
+    }
+   }
+  },
+  "scaleSymbols": true,
+  "transparency": 0,
+  "labelingInfo": null
+ },
+ "defaultVisibility": true,
+ "extent": {
+  "xmin": 74.49142523881535,
+  "ymin": 27.700294256370707,
+  "xmax": 77.55816061445186,
+  "ymax": 30.870553007705375,
+  "spatialReference": {
+   "wkid": 4326,
+   "latestWkid": 4326,
+   "xyTolerance": 8.983152841195215E-9,
+   "zTolerance": 0.001,
+   "mTolerance": 0.001,
+   "falseX": -400,
+   "falseY": -400,
+   "xyUnits": 9.999999999999999E8,
+   "falseZ": -100000,
+   "zUnits": 10000,
+   "falseM": -100000,
+   "mUnits": 10000
+  }
+ },
+ "hasAttachments": false,
+ "htmlPopupType": "esriServerHTMLPopupTypeAsHTMLText",
+ "displayField": "firm_name",
+ "typeIdField": null,
+ "subtypeFieldName": null,
+ "subtypeField": null,
+ "defaultSubtypeCode": null,
+ "fields": [
+  {
+   "name": "objectid",
+   "type": "esriFieldTypeOID",
+   "alias": "OBJECTID",
+   "domain": null
+  },
+  {
+   "name": "address",
+   "type": "esriFieldTypeString",
+   "alias": "Address",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "pincode",
+   "type": "esriFieldTypeDouble",
+   "alias": "Pincode",
+   "domain": null
+  },
+  {
+   "name": "lat",
+   "type": "esriFieldTypeDouble",
+   "alias": "lat",
+   "domain": null
+  },
+  {
+   "name": "long",
+   "type": "esriFieldTypeDouble",
+   "alias": "long",
+   "domain": null
+  },
+  {
+   "name": "built_up_area",
+   "type": "esriFieldTypeString",
+   "alias": "Built Up Area ",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "shape",
+   "type": "esriFieldTypeGeometry",
+   "alias": "Shape",
+   "domain": null
+  },
+  {
+   "name": "state_reg_code",
+   "type": "esriFieldTypeString",
+   "alias": "Unique Alloted Registration (State Code)",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "district_reg_code",
+   "type": "esriFieldTypeString",
+   "alias": "Unique Alloted Registration (District Code)",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "alloted_reg_num",
+   "type": "esriFieldTypeString",
+   "alias": "Unique Alloted Registration Number",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "firm_name",
+   "type": "esriFieldTypeString",
+   "alias": "Name of The Firm/Company",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "district",
+   "type": "esriFieldTypeString",
+   "alias": "District",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "auth_competen_name",
+   "type": "esriFieldTypeString",
+   "alias": "Name of the Authorized/Competent Respondent",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "contact_land_line",
+   "type": "esriFieldTypeDouble",
+   "alias": "Contact Number (Land Line)",
+   "domain": null
+  },
+  {
+   "name": "contact_mobile",
+   "type": "esriFieldTypeDouble",
+   "alias": "Contact Number (Mobile)",
+   "domain": null
+  },
+  {
+   "name": "e_mail_id",
+   "type": "esriFieldTypeString",
+   "alias": "E-Mail ID",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "classification_of_area",
+   "type": "esriFieldTypeString",
+   "alias": "Classification of Area/ Location",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "industry_category",
+   "type": "esriFieldTypeString",
+   "alias": "Industry Category",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "date_of_commencement_d",
+   "type": "esriFieldTypeDouble",
+   "alias": "Date of Commencement  (DD)",
+   "domain": null
+  },
+  {
+   "name": "date_of_commencement_m",
+   "type": "esriFieldTypeString",
+   "alias": "Date of Commencement (MMM)",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "date_of_commencement_y",
+   "type": "esriFieldTypeDouble",
+   "alias": "Date of Commencement  (YYYY)",
+   "domain": null
+  },
+  {
+   "name": "firm_type",
+   "type": "esriFieldTypeString",
+   "alias": "Type or Nature of the Firm",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "details",
+   "type": "esriFieldTypeString",
+   "alias": "Details of Any Other",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "registered_body",
+   "type": "esriFieldTypeString",
+   "alias": "Name of Registered Body",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "any_other_registered_body",
+   "type": "esriFieldTypeString",
+   "alias": "Please Specify Any Other",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "reg_no",
+   "type": "esriFieldTypeString",
+   "alias": "Registration Number",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "reg_category",
+   "type": "esriFieldTypeString",
+   "alias": "Category of the Unit",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "area_of_land_available",
+   "type": "esriFieldTypeString",
+   "alias": "Area of land available under unit",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "conforming_non_conforming",
+   "type": "esriFieldTypeString",
+   "alias": "Conforming Area/ Non-Conforming Area",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "dept",
+   "type": "esriFieldTypeString",
+   "alias": "HSIIDC /HUDA/ Indl Dep Estate",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "manufactured_service",
+   "type": "esriFieldTypeString",
+   "alias": "Items/Products Manufactured/ Service as on 31#03#2011",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "land_type_of_units",
+   "type": "esriFieldTypeString",
+   "alias": "Units Located in Land Type",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "tin_no",
+   "type": "esriFieldTypeString",
+   "alias": "TIN No.",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "cst_no",
+   "type": "esriFieldTypeString",
+   "alias": "CST No.",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "pan_no",
+   "type": "esriFieldTypeString",
+   "alias": "PAN Number",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "electricity_supplier",
+   "type": "esriFieldTypeString",
+   "alias": "Connected for Electricity Supply with _",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "power_backup",
+   "type": "esriFieldTypeString",
+   "alias": "Do You have any power backup facilities?",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "capacity_of_gen_set",
+   "type": "esriFieldTypeString",
+   "alias": "If Yes, Capacity of Gen-Set Installed_(KVA)",
+   "length": 255,
+   "domain": null
+  },
+  {
+   "name": "fuel_type",
+   "type": "esriFieldTypeString",
+   "alias": "Type of Fuel",
+   "length": 255,
+   "domain": null
+  }
+ ],
+ "geometryField": {
+  "name": "shape",
+  "type": "esriFieldTypeGeometry",
+  "alias": "Shape"
+ },
+ "indexes": [
+  {
+   "name": "r109_sde_rowid_uk",
+   "fields": "objectid",
+   "isAscending": true,
+   "isUnique": true,
+   "description": ""
+  },
+  {
+   "name": "a97_ix1",
+   "fields": "shape",
+   "isAscending": true,
+   "isUnique": true,
+   "description": ""
+  }
+ ],
+ "subtypes": [],
+ "relationships": [],
+ "canModifyLayer": true,
+ "canScaleSymbols": false,
+ "hasLabels": false,
+ "capabilities": "Query,Map,Data",
+ "maxRecordCount": 2000,
+ "supportsStatistics": true,
+ "supportsExceedsLimitStatistics": true,
+ "supportsAdvancedQueries": true,
+ "supportedQueryFormats": "JSON, geoJSON, PBF",
+ "isDataVersioned": false,
+ "ownershipBasedAccessControlForFeatures": {"allowOthersToQuery": true},
+ "useStandardizedQueries": true,
+ "supportedSpatialRelationships": [
+  "esriSpatialRelIntersects",
+  "esriSpatialRelContains",
+  "esriSpatialRelCrosses",
+  "esriSpatialRelEnvelopeIntersects",
+  "esriSpatialRelIndexIntersects",
+  "esriSpatialRelOverlaps",
+  "esriSpatialRelTouches",
+  "esriSpatialRelWithin",
+  "esriSpatialRelRelation"
+ ],
+ "advancedQueryCapabilities": {
+  "useStandardizedQueries": true,
+  "supportsStatistics": true,
+  "supportsPercentileStatistics": true,
+  "supportsHavingClause": true,
+  "supportsOrderBy": true,
+  "supportsDistinct": true,
+  "supportsCountDistinct": true,
+  "supportsPagination": true,
+  "supportsLod": false,
+  "supportsQueryWithLodSR": false,
+  "supportsTrueCurve": true,
+  "supportsQueryWithDatumTransformation": true,
+  "supportsReturningQueryExtent": true,
+  "supportsQueryWithDistance": true,
+  "supportsSqlExpression": true,
+  "supportsTimeRelation": true,
+  "supportsSqlFormat": false,
+  "supportsQueryAnalytic": true
+ },
+ "supportsDatumTransformation": true,
+ "advancedQueryAnalyticCapabilities": {
+  "supportsLinearRegression": true,
+  "supportsAsync": false,
+  "supportsPercentileAnalytic": false
+ },
+ "dateFieldsTimeReference": {
+  "timeZone": "India Standard Time",
+  "respectsDaylightSaving": false
+ },
+ "preferredTimeReference": {
+  "timeZone": "India Standard Time",
+  "respectsDaylightSaving": false
+ },
+ "datesInUnknownTimezone": false,
+ "hasMetadata": true,
+ "isDataArchived": false,
+ "archivingInfo": {
+  "supportsQueryWithHistoricMoment": false,
+  "startArchivingMoment": -1
+ },
+ "supportsCoordinatesQuantization": true,
+ "supportsDynamicLegends": true,
+ "serviceItemId": "50a97565d4574167b06cf3718450badc"
+}
