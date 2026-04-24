@@ -460,7 +460,7 @@ export default function ResultsFlyout() {
 
   return (
     <>
-      <button
+      {/* <button
         type="button"
         className={`map-export-fab ${canExportNow ? '' : 'is-disabled'}`}
         title={canExportNow ? 'Download selected as ZIP' : 'Select map features first'}
@@ -478,7 +478,7 @@ export default function ResultsFlyout() {
           <path d="M8 10h8M8 13h8M8 16h5" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" />
         </svg>
         <span className="visually-hidden">Download selected as ZIP</span>
-      </button>
+      </button> */}
 
       {canShowFlyout && (
         <div

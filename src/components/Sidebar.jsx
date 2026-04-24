@@ -4,22 +4,6 @@ import LandLocationReport from './LandLocationReport.jsx'
 export default function Sidebar({ t }) {
   return (
     <>
-      <header
-        id="appHeader"
-        // style={{
-        //   justifyContent: 'flex-start',
-        //   background: 'linear-gradient(90deg, #1e3c72, #2a5298)',
-        //   color: '#fff',
-        //   padding: '15px 18px',
-        // }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', width: '100%' }}>
-          <h2 style={{ margin: 0, color: '#fff', fontSize: '28px', fontWeight: 600 }}>
-            GIS Dashboard
-          </h2>
-        </div>
-      </header>
-
       <aside
         id="spatialPanel"
         className="spatial-panel collapsed"

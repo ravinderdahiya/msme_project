@@ -47,9 +47,12 @@ export function requestArcGisJson(url, options) {
  * MapServer layer query. Densifies true curves so rings are always present when possible.
  */
 export function queryLayer(url, layerId, query) {
-  var base = { f: 'json', outSR: 32643, returnTrueCurves: false }
+  var q = query || {}
+  var wantsGeometry = q.returnGeometry !== false || q.returnExtentOnly === true
+  var base = { f: 'json', returnTrueCurves: false }
+  if (wantsGeometry) base.outSR = 32643
   return requestArcGisJson(url + '/' + layerId + '/query', {
-    query: Object.assign(base, query),
+    query: Object.assign(base, q),
     responseType: 'json',
   }).then(function (res) {
     return res.data

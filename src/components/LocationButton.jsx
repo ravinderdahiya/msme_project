@@ -10,7 +10,7 @@ export default function LocationButton({ t }) {
       }
       style={{
         position: 'absolute',
-        top: '250px',
+        top: '300px',
         right: '52px',
         zIndex: 46,
         width: '46px',
