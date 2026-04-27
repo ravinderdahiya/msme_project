@@ -15,6 +15,7 @@ import Header from "./components/Header.jsx"
 import Sidebar from "../src/components/Sidebar"
 import { useState } from "react";
 import MSMEMapPage from "./pages/MSMEMapPage.jsx";
+// import LoginPage from "./pages/LoginPage";
 
 //import Main from "./Main";
 
@@ -62,6 +63,7 @@ function App() {
           {/* 3. OTHER PAGES */}
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          {/* <Route path="/LoginPage" element={<LoginPage />} /> */}
 
           {/* Agar aap purana link preserve rakhna chahte hain */}
           <Route path="/" element={<Navigate to="/" replace />} />

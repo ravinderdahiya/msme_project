@@ -69,9 +69,9 @@ const Dashboard = ({ pageTitle = "Dashboard" }) => {
 
             <header className="top-header1">
             <div className="header-left">
-                <button className="menu-toggle">
+                {/* <button className="menu-toggle">
                     <Menu size={20} />
-                </button>
+                </button> */}
                 <h2 className="page-title">{pageTitle}</h2>
             </div>
 
