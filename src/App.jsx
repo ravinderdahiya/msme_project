@@ -64,7 +64,9 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           {/* <Route path="/LoginPage" element={<LoginPage />} /> */}
-
+          ][poiuhy
+          
+           ]
           {/* Agar aap purana link preserve rakhna chahte hain */}
           <Route path="/" element={<Navigate to="/" replace />} />
 
