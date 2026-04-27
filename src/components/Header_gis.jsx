@@ -7,7 +7,7 @@ const HEADER_TONES = [
   { id: 'sunset', label: 'Sunset' },
 ]
 
-export default function HeaderGis({ t, lang, setLang, languages }) {
+export default function HeaderGis({ t, lang, setLang, languages, theme = 'white', setTheme }) {
   const headerRef = useRef(null)
   const [headerTone, setHeaderTone] = useState(() => {
     try {
@@ -124,6 +124,25 @@ export default function HeaderGis({ t, lang, setLang, languages }) {
             ))}
           </div>
 
+          <div className="ui-theme-switcher" role="group" aria-label="UI theme">
+            <button
+              type="button"
+              className={`ui-theme-btn ${theme === 'white' ? 'active' : ''}`}
+              aria-pressed={theme === 'white'}
+              onClick={() => setTheme && setTheme('white')}
+            >
+              White
+            </button>
+            <button
+              type="button"
+              className={`ui-theme-btn ${theme === 'black' ? 'active' : ''}`}
+              aria-pressed={theme === 'black'}
+              onClick={() => setTheme && setTheme('black')}
+            >
+              Black
+            </button>
+          </div>
+
           {/* <button
             type="button"
             className="logo-motion-btn"
@@ -142,8 +161,10 @@ export default function HeaderGis({ t, lang, setLang, languages }) {
             {t('navSupport')}
           </a>
           <a href="#" onClick={(e) => e.preventDefault()}>
-            {t('navPolicies')}
+            {/* {t('navPolicies')} */}
+            Logout
           </a>
+          
         </div>
       </nav>
     </header>

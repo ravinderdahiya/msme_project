@@ -33,6 +33,8 @@ export const LAYER_ROADS_LINE = 4
 export const LAYER_FOREST = 0
 export const LAYER_INVESTMENT = 0
 export const LAYER_WATER = 3
+export const LAYER_CON_ASSEMBLY = 0
+export const LAYER_CON_PARLIAMENT = 1
 
 /**
  * Fallback map centres [lon, lat] WGS84 by n_d_code — used when /query omits geometry.

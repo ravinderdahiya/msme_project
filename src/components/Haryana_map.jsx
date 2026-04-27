@@ -50,6 +50,7 @@
 //   )
 // }
 import LocationButton from './LocationButton.jsx'
+import BufferButton from './BufferButton.jsx'
 
 export default function HaryanaMap({ t }) {
   return (
@@ -71,6 +72,7 @@ export default function HaryanaMap({ t }) {
       <div id="coordBar">{t('coordPlaceholder')}</div>
 
       <LocationButton t={t} />
+      <BufferButton t={t} />
 
       <div id="viewDiv"></div>
       <div id="basemapSlot" style={{ display: 'none' }}></div>

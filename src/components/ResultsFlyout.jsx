@@ -2,7 +2,19 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import JSZip from 'jszip'
 import { useI18n } from '../i18n/useI18n.js'
 
-const initialPos = { x: 14, y: 96 }
+const FLYOUT_W = 400
+const FLYOUT_TOP = 96
+
+function getRightDockPos() {
+  if (typeof window === 'undefined') return { x: 14, y: FLYOUT_TOP }
+  const gutter = 14
+  const maxX = Math.max(8, window.innerWidth - 380)
+  const rightX = window.innerWidth - FLYOUT_W - gutter
+  return {
+    x: Math.min(Math.max(8, rightX), maxX),
+    y: FLYOUT_TOP,
+  }
+}
 
 function groupRows(rows, groupKey) {
   const map = new Map()
@@ -103,7 +115,7 @@ export default function ResultsFlyout() {
   const [open, setOpen] = useState(false)
   const [minimized, setMinimized] = useState(false)
   const [maximized, setMaximized] = useState(false)
-  const [pos, setPos] = useState(initialPos)
+  const [pos, setPos] = useState(() => getRightDockPos())
   const [payload, setPayload] = useState(null)
   const dragRef = useRef(null)
   const dragStart = useRef(null)
@@ -120,6 +132,7 @@ export default function ResultsFlyout() {
       setPayload(d)
       setOpen(true)
       setMinimized(false)
+      setPos(getRightDockPos())
       const at = d.atClickRows || []
       const nb = d.nearbyRows || []
       const ck = new Set(groupRows(at, (r) => r.layer).keys())
@@ -145,8 +158,7 @@ export default function ResultsFlyout() {
       setInset(0)
       return () => setInset(0)
     }
-    const w = 400
-    const inset = Math.round(pos.x + w + 12)
+    const inset = Math.round(FLYOUT_W + 12)
     setInset(inset)
     return () => setInset(0)
   }, [open, minimized, maximized, pos.x])
@@ -200,6 +212,21 @@ export default function ResultsFlyout() {
       window.removeEventListener('touchmove', move)
       window.removeEventListener('touchend', up)
     }
+  }, [])
+
+  useEffect(() => {
+    function onResize() {
+      setPos((prev) => {
+        const maxX = Math.max(8, window.innerWidth - 380)
+        const maxY = Math.max(8, window.innerHeight - 80)
+        return {
+          x: Math.min(Math.max(8, prev.x), maxX),
+          y: Math.min(Math.max(56, prev.y), maxY),
+        }
+      })
+    }
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
   }, [])
 
   const toggleClick = useCallback((name) => {
@@ -433,7 +460,7 @@ export default function ResultsFlyout() {
         position: 'fixed',
         left: pos.x,
         top: pos.y,
-        width: 400,
+        width: FLYOUT_W,
         maxHeight: minimized ? 44 : 'min(78vh, 620px)',
       }
 
