@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './Sidebar.css';
 import { 
   LayoutDashboard, 
@@ -14,7 +14,20 @@ import {
 
 // Props receive kar rahe hain: activeTab aur setActiveTab
 const Sidebar = ({ activeTab, setActiveTab }) => {
-  const [isOpen, setIsOpen] = useState(true);
+  const [isOpen, setIsOpen] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.innerWidth > 768;
+  });
+
+  useEffect(() => {
+    function handleResize() {
+      if (window.innerWidth > 768) {
+        setIsOpen(true);
+      }
+    }
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // path ya id add ki hai taaki setActiveTab mein pass kar sakein
   const menuItems = [
@@ -37,6 +50,15 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         {isOpen ? <X size={24} /> : <Menu size={24} />}
       </button>
 
+      {isOpen ? (
+        <button
+          type="button"
+          className="sidebar-backdrop"
+          aria-label="Close navigation menu"
+          onClick={() => setIsOpen(false)}
+        />
+      ) : null}
+
       {/* Sidebar Container */}
       <div className={`sidebar-container ${isOpen ? 'open' : 'closed'}`}>
         
@@ -52,7 +74,12 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
             <div
               key={item.id}
               /* Click hone par setActiveTab call hoga */
-              onClick={() => setActiveTab(item.id)}
+              onClick={() => {
+                setActiveTab(item.id);
+                if (typeof window !== 'undefined' && window.innerWidth <= 768) {
+                  setIsOpen(false);
+                }
+              }}
               /* Active class check karne ka logic */
               className={`nav-item ${activeTab === item.id ? 'active1' : ''}`}
             >

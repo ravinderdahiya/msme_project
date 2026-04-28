@@ -1344,6 +1344,16 @@ var COMMUNITY_SUMMARY_LAYER_SPECS = [
     layers: [{ url: SOC_MS, layerId: 3 }]
   },
   {
+    key: "hospitals",
+    label: "Hospitals",
+    layers: [
+      { url: SOC_MS, layerId: 5 },
+      { url: SOC_MS, layerId: 6 },
+      { url: SOC_MS, layerId: 7 },
+      { url: SOC_MS, layerId: 8 }
+    ]
+  },
+  {
     key: "electricPoles",
     label: "Electric poles",
     layers: [{ url: UTIL_MS, layerId: 14 }]
@@ -1387,6 +1397,188 @@ function queryLayerCountWithinGeometry(url, layerId, queryGeom32643) {
   });
 }
 
+function queryLayerObjectIdsWithinGeometry(url, layerId, queryGeom32643) {
+  return queryLayer(url, layerId, Object.assign({
+    where: "1=1",
+    returnGeometry: false,
+    returnIdsOnly: true
+  }, geometryToQueryParams(queryGeom32643))).then(function (data) {
+    var ids = data && Array.isArray(data.objectIds) ? data.objectIds : [];
+    return ids.filter(function (id) { return id != null; });
+  }).catch(function () {
+    return [];
+  });
+}
+
+function chunkArray(input, size) {
+  var out = [];
+  if (!Array.isArray(input) || !input.length) return out;
+  var n = Math.max(1, Number(size) || 1);
+  for (var i = 0; i < input.length; i += n) {
+    out.push(input.slice(i, i + n));
+  }
+  return out;
+}
+
+function queryLayerFeaturesByObjectIds(url, layerId, objectIds) {
+  var ids = Array.isArray(objectIds) ? objectIds : [];
+  if (!ids.length) return Promise.resolve([]);
+  var chunks = chunkArray(ids, 160);
+  var tasks = chunks.map(function (idChunk) {
+    return queryLayer(url, layerId, {
+      where: "1=1",
+      objectIds: idChunk.join(","),
+      returnGeometry: true,
+      outFields: "*",
+      outSR: 4326,
+      resultRecordCount: Math.max(200, idChunk.length + 20)
+    }).then(function (data) {
+      return {
+        features: data && Array.isArray(data.features) ? data.features : [],
+        spatialReference: data && data.spatialReference ? data.spatialReference : null
+      };
+    }).catch(function () {
+      return { features: [], spatialReference: null };
+    });
+  });
+  return Promise.all(tasks).then(function (parts) {
+    var merged = [];
+    (parts || []).forEach(function (part) {
+      var sr = part && part.spatialReference ? part.spatialReference : null;
+      (part && part.features ? part.features : []).forEach(function (feature) {
+        merged.push({ feature: feature, spatialReference: sr });
+      });
+    });
+    return merged;
+  });
+}
+
+function extractCommunityPlaceNameFromAttributes(attrs, categoryKey, fallbackIndex) {
+  var a = attrs || {};
+  var key = String(categoryKey || "").toLowerCase();
+  var hospitalFirst = [
+    a.hospital_name, a.HOSPITAL_NAME,
+    a.hospitalName, a.HOSPITALNAME,
+    a.health_centre, a.HEALTH_CENTRE,
+    a.phc_name, a.PHC_NAME
+  ];
+  var schoolFirst = [
+    a.school_name, a.SCHOOL_NAME,
+    a.schoolName, a.SCHOOLNAME,
+    a.sch_name, a.SCH_NAME
+  ];
+  var itiFirst = [
+    a.iti_name, a.ITI_NAME,
+    a.itiName, a.ITI_NAME_EN,
+    a.institute_name, a.INSTITUTE_NAME,
+    a.instituteName
+  ];
+  var candidates = [
+    a.name, a.NAME,
+    a.title, a.TITLE,
+    a.place_name, a.PLACE_NAME,
+    a.facility_name, a.FACILITY_NAME
+  ];
+  var ordered = candidates;
+  if (key === "schools") ordered = schoolFirst.concat(itiFirst, hospitalFirst, candidates);
+  else if (key === "iti") ordered = itiFirst.concat(schoolFirst, hospitalFirst, candidates);
+  else if (key === "hospitals") ordered = hospitalFirst.concat(schoolFirst, itiFirst, candidates);
+  else ordered = hospitalFirst.concat(schoolFirst, itiFirst, candidates);
+  for (var i = 0; i < ordered.length; i++) {
+    var val = ordered[i];
+    if (val != null) {
+      var txt = String(val).trim();
+      if (txt) return txt;
+    }
+  }
+  if (key === "schools") return "School " + String((fallbackIndex || 0) + 1);
+  if (key === "iti") return "ITI " + String((fallbackIndex || 0) + 1);
+  if (key === "hospitals") return "Hospital " + String((fallbackIndex || 0) + 1);
+  return "Location " + String((fallbackIndex || 0) + 1);
+}
+
+function extractWgs84PointFromFeature(feature, responseSr) {
+  var raw = geomFromJSON(feature && feature.geometry);
+  if (!raw) return null;
+  coerceMissingSpatialReference(raw, responseSr || SR4326);
+  var g = raw;
+  try {
+    var wkid = wkidValue(g.spatialReference);
+    if (wkid !== 4326) {
+      var projected = projection.project(g, SR4326);
+      if (projected) g = projected;
+    }
+  } catch (e0) {}
+
+  var point = g && g.type === "point" ? g : getGeometryCentroid(g);
+  if (!point) return null;
+  if (point.type !== "point") point = getGeometryCentroid(point);
+  if (!point) return null;
+
+  try {
+    var pointWkid = wkidValue(point.spatialReference);
+    if (pointWkid !== 4326) {
+      var projectedPoint = projection.project(point, SR4326);
+      if (projectedPoint) point = projectedPoint;
+    }
+  } catch (e1) {}
+
+  var lat = Number(point.y);
+  var lng = Number(point.x);
+  if (!isFinite(lat) || !isFinite(lng)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat: lat, lng: lng };
+}
+
+function fetchCommunityCategoryItems(spec, queryGeom32643) {
+  var layers = spec && spec.layers ? spec.layers : [];
+  if (!layers.length) return Promise.resolve({ count: 0, items: [] });
+  var key = String(spec && spec.key ? spec.key : "category").toLowerCase();
+
+  var tasks = layers.map(function (layerDef) {
+    return queryLayerObjectIdsWithinGeometry(layerDef.url, layerDef.layerId, queryGeom32643).then(function (objectIds) {
+      return queryLayerFeaturesByObjectIds(layerDef.url, layerDef.layerId, objectIds).then(function (records) {
+        return { count: objectIds.length, records: records };
+      });
+    });
+  });
+
+  return Promise.all(tasks).then(function (layerResults) {
+    var total = 0;
+    var items = [];
+    var seen = {};
+    var fallbackIdx = 0;
+    (layerResults || []).forEach(function (layerResult) {
+      total += Number(layerResult && layerResult.count) || 0;
+      (layerResult && layerResult.records ? layerResult.records : []).forEach(function (record) {
+        var feature = record && record.feature ? record.feature : null;
+        if (!feature) return;
+        var attrs = feature.attributes || {};
+        var point = extractWgs84PointFromFeature(feature, record.spatialReference);
+        var name = extractCommunityPlaceNameFromAttributes(attrs, key, fallbackIdx);
+        fallbackIdx += 1;
+        var oid = attrs.OBJECTID != null ? String(attrs.OBJECTID) : (attrs.objectid != null ? String(attrs.objectid) : "");
+        var dedupeKey = oid || (name.toLowerCase() + "|" + (point ? (point.lat.toFixed(6) + "," + point.lng.toFixed(6)) : "na"));
+        if (seen[dedupeKey]) return;
+        seen[dedupeKey] = true;
+        items.push({
+          id: oid || (key + "_" + String(items.length + 1)),
+          name: name,
+          lat: point ? point.lat : null,
+          lng: point ? point.lng : null,
+          properties: attrs
+        });
+      });
+    });
+    items.sort(function (a, b) {
+      return String(a && a.name ? a.name : "").localeCompare(String(b && b.name ? b.name : ""));
+    });
+    return { count: total, items: items };
+  }).catch(function () {
+    return { count: 0, items: [] };
+  });
+}
+
 function computeCommunitySummaryForGeometry(queryGeom, sourceKind) {
   if (!queryGeom) return Promise.resolve(null);
   return projection.load().then(function () {
@@ -1401,6 +1593,18 @@ function computeCommunitySummaryForGeometry(queryGeom, sourceKind) {
           label: spec.label,
           count: 0,
           available: false
+        });
+      }
+      var specKey = String(spec.key || "").toLowerCase();
+      if (specKey === "iti" || specKey === "schools" || specKey === "hospitals") {
+        return fetchCommunityCategoryItems(spec, g32643).then(function (data) {
+          return {
+            key: spec.key,
+            label: spec.label,
+            count: Number(data && data.count) || 0,
+            items: data && Array.isArray(data.items) ? data.items : [],
+            available: true
+          };
         });
       }
       return Promise.all(layers.map(function (layerDef) {
@@ -1936,10 +2140,12 @@ function applyInitialRequestedLayerPreset() {
   addOperationalLayerToMap(baseRefLayer);
   addOperationalLayerToMap(socialLayer);
   addOperationalLayerToMap(transLayer);
+  addOperationalLayerToMap(utilLayer);
   // Keep requested key layers ON by default without blocking on service load.
   baseRefLayer.visible = true;
   socialLayer.visible = true;
   transLayer.visible = true;
+  utilLayer.visible = true;
 
   function setWhenReady(layer, subLayerId, on) {
     layer.when(function () {
@@ -1949,6 +2155,7 @@ function applyInitialRequestedLayerPreset() {
   }
   setWhenReady(socialLayer, 1, true); // Government School
   setWhenReady(socialLayer, 2, true); // PM Shri/Sanskriti schools
+  setWhenReady(utilLayer, 14, true); // Electric poles
   setWhenReady(transLayer, 4, true); // Roads (line)
   setWhenReady(baseRefLayer, 2, true); // Canals
 
@@ -3629,6 +3836,29 @@ function bindParliamentaryDistrictAutoBuffer() {
   });
 }
 
+function runClearParliamentaryBoundary() {
+  var lokCb = document.getElementById("chkLokSabhaBoundary");
+  var parlCb = document.getElementById("chkParliamentaryBoundary");
+  var rajCb = document.getElementById("chkRajyaSabhaBoundary");
+
+  if (lokCb) lokCb.checked = false;
+  if (parlCb) parlCb.checked = false;
+  if (rajCb) rajCb.checked = false;
+  if (parliamentaryDistrictSelect) parliamentaryDistrictSelect.value = "";
+
+  return runParliamentaryDistrictBufferSelection("")
+    .then(function () {
+      return setConstituencyBoundaryVisibility(false, false);
+    })
+    .then(function () {
+      setStatus("Parliamentary boundary cleared.");
+    })
+    .catch(function (err) {
+      console.error("[parliamentary clear]", err);
+      setStatus("Parliamentary boundary clear failed - see console.");
+    });
+}
+
 function scrollAoiPanelToTop() {
   var aoiScrollEl = document.querySelector("#aoiPanel .ap-scroll");
   if (aoiScrollEl) aoiScrollEl.scrollTop = 0;
@@ -3639,6 +3869,8 @@ function clearAoiModalTabState() {
   aoiTabButtons.forEach(function (b) { b.classList.remove("active"); });
   document.querySelectorAll("#aoiPanel .modal-panel").forEach(function (p) { p.classList.remove("active"); });
 }
+/** Keep all AOI inner tabs collapsed on refresh; user opens by click. */
+clearAoiModalTabState();
 aoiTabButtons.forEach(function (btn) {
   btn.addEventListener("click", function () {
     var wasActive = btn.classList.contains("active");
@@ -3656,6 +3888,10 @@ aoiTabButtons.forEach(function (btn) {
 syncCurrentLocationFabVisibility();
 bindConstituencyBoundaryToggles();
 bindParliamentaryDistrictAutoBuffer();
+var btnParliamentaryClear = document.getElementById("btnParliamentaryClear");
+if (btnParliamentaryClear) {
+  btnParliamentaryClear.addEventListener("click", runClearParliamentaryBoundary);
+}
 
 function queryCadParcelGeometry() {
   var d = cadDistrictSelect.value ? String(cadDistrictSelect.value).trim() : "";
@@ -4633,17 +4869,45 @@ function hsvpPoint32643FromFeature(feat) {
   var gj = feat.geometry;
   var g = gj ? geomFromJSON(gj) : null;
   if (g && geometryIsUsable(g)) {
-    if (!g.spatialReference) g.spatialReference = SR4326;
+    if (!g.spatialReference) {
+      // HSVP layer queries run with outSR=32643; when SR is omitted in feature JSON,
+      // infer projected meters for large coordinate ranges instead of assuming WGS84.
+      if (g.type === "point" && isFinite(g.x) && isFinite(g.y)) {
+        var looksLikeWgs84 = Math.abs(Number(g.x)) <= 180 && Math.abs(Number(g.y)) <= 90;
+        g.spatialReference = looksLikeWgs84 ? SR4326 : SR_METER;
+      } else {
+        g.spatialReference = SR_METER;
+      }
+    }
     var p = g.type === "point" ? g : getGeometryCentroid(g);
     var p326 = p ? toEngineSR(p) : null;
     if (p326 && p326.type === "point" && geometryIsUsable(p326)) return p326;
   }
   var lat = Number(attrs.lat != null ? attrs.lat : attrs.LAT);
   var lon = Number(attrs.long != null ? attrs.long : (attrs.LONG != null ? attrs.LONG : (attrs.lon != null ? attrs.lon : attrs.LON)));
-  if (!isFinite(lat) || !isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
-  var pWgs = new Point({ x: lon, y: lat, spatialReference: SR4326 });
-  var p326Fallback = toEngineSR(pWgs);
-  if (p326Fallback && p326Fallback.type === "point" && geometryIsUsable(p326Fallback)) return p326Fallback;
+  if (isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+    var pWgs = new Point({ x: lon, y: lat, spatialReference: SR4326 });
+    var p326Fallback = toEngineSR(pWgs);
+    if (p326Fallback && p326Fallback.type === "point" && geometryIsUsable(p326Fallback)) return p326Fallback;
+  }
+  var xRaw =
+    attrs.x != null ? attrs.x :
+    (attrs.X != null ? attrs.X :
+    (attrs.easting != null ? attrs.easting :
+    (attrs.EASTING != null ? attrs.EASTING : null)));
+  var yRaw =
+    attrs.y != null ? attrs.y :
+    (attrs.Y != null ? attrs.Y :
+    (attrs.northing != null ? attrs.northing :
+    (attrs.NORTHING != null ? attrs.NORTHING : null)));
+  var x = Number(xRaw);
+  var y = Number(yRaw);
+  if (isFinite(x) && isFinite(y)) {
+    var isWgs = Math.abs(x) <= 180 && Math.abs(y) <= 90;
+    var pAny = new Point({ x: x, y: y, spatialReference: isWgs ? SR4326 : SR_METER });
+    var p326FromXY = toEngineSR(pAny);
+    if (p326FromXY && p326FromXY.type === "point" && geometryIsUsable(p326FromXY)) return p326FromXY;
+  }
   return null;
 }
 
@@ -4669,16 +4933,19 @@ function zoomToHsvpDistrict(dCode) {
   return queryAdministrativeGeometryForZoom(LAYER_DISTRICT, where, "OBJECTID").then(function (res) {
     var g = res && res.geometry ? res.geometry : null;
     if (!g || !geometryIsUsable(g)) return zoomApproxDistrict14();
-    var ctr = getGeometryCentroid(g);
-    if (!ctr && g.type === "point") ctr = g;
-    if (!ctr && g.extent && g.extent.center) ctr = g.extent.center;
-    if (!ctr) return zoomApproxDistrict14();
-    return projection.load().then(function () {
-      var c326 = toEngineSR(ensureSR32643(ctr));
-      if (!c326) return zoomApproxDistrict14();
-      var cWeb = projection.project(c326, SR_WEB);
-      if (!cWeb) return zoomApproxDistrict14();
-      return view.goTo({ center: cWeb, zoom: 14, padding: getUiZoomPadding() });
+    // Prefer full district extent zoom for clearer district-level focus.
+    return zoomToGeometry(g, { expandFactor: 1.08 }).catch(function () {
+      var ctr = getGeometryCentroid(g);
+      if (!ctr && g.type === "point") ctr = g;
+      if (!ctr && g.extent && g.extent.center) ctr = g.extent.center;
+      if (!ctr) return zoomApproxDistrict14();
+      return projection.load().then(function () {
+        var c326 = toEngineSR(ensureSR32643(ctr));
+        if (!c326) return zoomApproxDistrict14();
+        var cWeb = projection.project(c326, SR_WEB);
+        if (!cWeb) return zoomApproxDistrict14();
+        return view.goTo({ center: cWeb, zoom: 14, padding: getUiZoomPadding() });
+      });
     });
   }).catch(function (err) {
     console.warn("[hsvp district zoom]", err);
@@ -5158,6 +5425,18 @@ var btnOpenNavEl = document.getElementById("btnOpenNav");
 if (btnOpenNavEl) btnOpenNavEl.addEventListener("click", toggleAoiPanel);
 var btnNavCloseEl = document.getElementById("btnNavClose");
 if (btnNavCloseEl) btnNavCloseEl.addEventListener("click", closeAoiSheet);
+
+/** Always start with AOI sheet closed after refresh / first load. */
+(function enforceAoiClosedOnBoot() {
+  var aoi = document.getElementById("aoiPanel");
+  if (!aoi) return;
+  closeAoiRoutePanel();
+  aoi.classList.add("collapsed");
+  aoi.setAttribute("aria-hidden", "true");
+  var btn = document.getElementById("btnOpenNav");
+  if (btn) btn.classList.remove("active");
+})();
+
 function msmeGisKeydownEsc(ev) {
   if (ev.key !== "Escape") return;
   var sel = document.getElementById("selectToolsPanel");
@@ -5385,8 +5664,163 @@ var symBufferMark = new SimpleMarkerSymbol({
   size: 12,
   outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 1.5 })
 });
+var symCommunityZoomMark = new SimpleMarkerSymbol({
+  style: "circle",
+  color: [20, 104, 170, 0.95],
+  size: 14,
+  outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 2 })
+});
+var communityZoomMarkGraphic = null;
+var communityZoomLabelGraphic = null;
 
 function clearResults() { resultsLayer.removeAll(); }
+
+function clearCommunityZoomGraphic() {
+  try {
+    if (communityZoomMarkGraphic) identifyLayer.remove(communityZoomMarkGraphic);
+  } catch (e0) {}
+  try {
+    if (communityZoomLabelGraphic) identifyLayer.remove(communityZoomLabelGraphic);
+  } catch (e1) {}
+  communityZoomMarkGraphic = null;
+  communityZoomLabelGraphic = null;
+}
+
+function addCommunityZoomGraphic(ptWeb, labelText) {
+  if (!ptWeb) return;
+  clearCommunityZoomGraphic();
+  communityZoomMarkGraphic = new Graphic({
+    geometry: ptWeb,
+    symbol: symCommunityZoomMark
+  });
+  identifyLayer.add(communityZoomMarkGraphic);
+
+  var txt = String(labelText || "").trim();
+  if (!txt) return;
+  communityZoomLabelGraphic = new Graphic({
+    geometry: ptWeb,
+    symbol: new TextSymbol({
+      text: txt,
+      color: "#0f3b63",
+      haloColor: "#ffffff",
+      haloSize: 1.3,
+      yoffset: -18,
+      font: { size: 11, family: "Segoe UI", weight: "700" }
+    })
+  });
+  identifyLayer.add(communityZoomLabelGraphic);
+}
+
+function deriveCommunityZoomLabel(detail) {
+  if (!detail) return "Selected location";
+  var item = detail.item || {};
+  return item.name || item.Name || item.label || item.title || item.itiName || item.iti_name || "Selected location";
+}
+
+function resolveCommunityZoomPoint4326(detail) {
+  if (!detail) return null;
+
+  function toNum(v) {
+    var n = Number(v);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function tryLatLngFrom(obj) {
+    if (!obj) return null;
+    var latCandidates = [
+      obj.lat, obj.latitude, obj.Lat, obj.LAT, obj.y, obj.Y, obj.Latitude, obj.LATITUDE
+    ];
+    var lngCandidates = [
+      obj.lng, obj.lon, obj.long, obj.longitude, obj.Long, obj.LONG, obj.Lon, obj.LON, obj.x, obj.X, obj.Longitude, obj.LONGITUDE
+    ];
+    var lat = NaN;
+    var lng = NaN;
+    for (var i = 0; i < latCandidates.length; i++) {
+      lat = toNum(latCandidates[i]);
+      if (isFinite(lat)) break;
+    }
+    for (var j = 0; j < lngCandidates.length; j++) {
+      lng = toNum(lngCandidates[j]);
+      if (isFinite(lng)) break;
+    }
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      if (Math.abs(lng) <= 90 && Math.abs(lat) <= 180) {
+        var t = lat;
+        lat = lng;
+        lng = t;
+      }
+    }
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    return new Point({ x: lng, y: lat, spatialReference: SR4326 });
+  }
+
+  var direct = tryLatLngFrom(detail);
+  if (direct) return direct;
+
+  var item = detail.item || {};
+  var fromItem = tryLatLngFrom(item) || tryLatLngFrom(item.attributes || {}) || tryLatLngFrom(item.properties || {});
+  if (fromItem) return fromItem;
+
+  var rawGeom = null;
+  try {
+    rawGeom = geomFromJSON(item.geometry || item.geomJson || item.geometryJson);
+  } catch (e0) {
+    rawGeom = null;
+  }
+  if (!rawGeom && item.geometry && typeof item.geometry === "object") {
+    var gx = Number(item.geometry.x);
+    var gy = Number(item.geometry.y);
+    if (isFinite(gx) && isFinite(gy)) {
+      rawGeom = new Point({
+        x: gx,
+        y: gy,
+        spatialReference: item.geometry.spatialReference || SR4326
+      });
+    }
+  }
+  if (!rawGeom) return null;
+
+  coerceMissingSpatialReference(rawGeom, rawGeom.spatialReference || SR4326);
+  var g4326 = projection.project(rawGeom, SR4326) || rawGeom;
+  var pt = g4326 && g4326.type === "point" ? g4326 : getGeometryCentroid(g4326);
+  if (!pt) return null;
+
+  var latOut = Number(pt.y);
+  var lngOut = Number(pt.x);
+  if (!isFinite(latOut) || !isFinite(lngOut)) return null;
+  if (Math.abs(latOut) > 90 || Math.abs(lngOut) > 180) return null;
+  return new Point({ x: lngOut, y: latOut, spatialReference: SR4326 });
+}
+
+function resolveBufferCenterPoint32643() {
+  if (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") {
+    return bufferMarkPoint32643;
+  }
+  var ctx = lastBufferExportContext || {};
+  var candidates = [ctx.summaryGeometryJson, ctx.queryGeometryJson];
+  for (var i = 0; i < candidates.length; i++) {
+    var gj = candidates[i];
+    if (!gj) continue;
+    try {
+      var g = geomFromJSON(gj);
+      if (!g) continue;
+      var g326 = to32643WithSmartFallback(g, g.spatialReference || SR_METER);
+      if (!g326) continue;
+      if (g326.type === "point") return g326;
+      var ctr = getGeometryCentroid(g326);
+      if (ctr && ctr.type === "point") return ctr;
+    } catch (e0) {}
+  }
+  return null;
+}
+
+function formatDistanceLabel(meters) {
+  var m = Number(meters);
+  if (!isFinite(m) || m < 0) return "-";
+  if (m >= 1000) return (m / 1000).toFixed(2) + " km";
+  return Math.round(m) + " m";
+}
 
 function createSafeBuffer32643(geom, distM) {
   var d = Number(distM);
@@ -6648,6 +7082,55 @@ window.msmeGisClearMapSelection = function () {
   }
 })();
 
+function onCommunityZoomToLocation(event) {
+  if (!event || !event.detail) return;
+  if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
+
+  var detail = event.detail || {};
+  var zoom = Number(detail.zoom);
+  var zoomLvl = isFinite(zoom) && zoom > 0 ? zoom : 16;
+
+  projection.load().then(function () {
+    var p4326 = resolveCommunityZoomPoint4326(detail);
+    if (!p4326) {
+      console.warn("[community zoom] invalid coordinates:", detail);
+      setStatus("Selected location has no valid coordinates for zoom.");
+      return;
+    }
+    var pWeb = projection.project(p4326, SR_WEB) || p4326;
+    var p32643 = projection.project(p4326, SR_METER) || null;
+    if (!pWeb) return;
+    addCommunityZoomGraphic(pWeb, deriveCommunityZoomLabel(detail));
+    if (p32643) {
+      var bufferCenter = resolveBufferCenterPoint32643();
+      if (bufferCenter && bufferCenter.type === "point") {
+        drawConnectorBetweenFeatures(bufferCenter, p32643);
+        var dMeters = geometryEngine.distance(bufferCenter, p32643, "meters");
+        var dTxt = formatDistanceLabel(dMeters);
+        var cat0 = String(detail.category || "location");
+        setStatus("Zoomed to " + cat0 + ". Distance from buffer center: " + dTxt + ".");
+      } else {
+        clearConnectorGraphics();
+      }
+    }
+    return view.goTo({ center: pWeb, zoom: zoomLvl, padding: getUiZoomPadding() }).then(function () {
+      var cat = String(detail.category || "location");
+      if (!p32643) {
+        setStatus("Zoomed to " + cat + " location.");
+      } else {
+        var center = resolveBufferCenterPoint32643();
+        if (!center || center.type !== "point") {
+          setStatus("Zoomed to " + cat + " location.");
+        }
+      }
+    });
+  }).catch(function (err) {
+    console.warn("[community zoom] failed", err);
+  });
+}
+
+window.addEventListener("msme-gis-zoom-to-location", onCommunityZoomToLocation);
+
 view.on("click", function (event) {
   if (view && view.popup && view.popup.visible) {
     try { view.popup.close(); } catch (eClose) {}
@@ -6719,6 +7202,12 @@ if (typeof window !== "undefined") {
   window.__msmeGisCleanup = function () {
     window.__msmeGisInitialized = false;
     window.__msmeGisInitInProgress = false;
+    try {
+      window.removeEventListener("msme-gis-zoom-to-location", onCommunityZoomToLocation);
+    } catch (eZ) {}
+    try {
+      clearCommunityZoomGraphic();
+    } catch (eZG) {}
     try {
       document.removeEventListener("keydown", msmeGisKeydownEsc);
     } catch (eK) {}

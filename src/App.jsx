@@ -15,6 +15,7 @@ import Header from "./components/Header.jsx"
 import Sidebar from "../src/components/Sidebar"
 import { useState } from "react";
 import MSMEMapPage from "./pages/MSMEMapPage.jsx";
+import NotFound from "./components/InfoCards";
 // import LoginPage from "./pages/LoginPage";
 
 //import Main from "./Main";
@@ -64,15 +65,13 @@ function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           {/* <Route path="/LoginPage" element={<LoginPage />} /> */}
-          ][poiuhy
-          
-           ]
+         
           {/* Agar aap purana link preserve rakhna chahte hain */}
           <Route path="/" element={<Navigate to="/" replace />} />
 
           {/* 4. FALLBACK: Agar koi galat URL daale toh Login par bhej do */}
           {/* <Route path="*" element={<Navigate to="/Login" replace />} /> */}
-
+        <Route path="*" element={<NotFound />} />
         </Routes>
       </Suspense>
       <ToastContainer />

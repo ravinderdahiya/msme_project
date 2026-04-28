@@ -73,7 +73,7 @@ export default function HaryanaMap({ t }) {
 
       <LocationButton t={t} />
       <BufferButton t={t} />
-
+      <LocationButton t={t} />
       <div id="viewDiv"></div>
       <div id="basemapSlot" style={{ display: 'none' }}></div>
     </>

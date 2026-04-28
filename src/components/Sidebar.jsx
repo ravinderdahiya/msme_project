@@ -245,11 +245,11 @@ export default function Sidebar({ t }) {
 
         <div className="ap-scroll">
           <div className="modal-tabs" role="tablist">
-            <button type="button" className="active" id="tabAoi" data-mpanel="mpAoi">
+            <button type="button" id="tabAoi" data-mpanel="mpAoi">
               {t('tabAoi')}
             </button>
 
-            <div id="mpAoi" className="modal-panel active inline-tab-panel">
+            <div id="mpAoi" className="modal-panel inline-tab-panel">
               <section className="aoi-card">
                 <h3 className="aoi-card-title">{t('aoiSectionAdmin')}</h3>
                 <p className="aoi-card-desc">{t('aoiHelpAdmin')}</p>
@@ -327,6 +327,11 @@ export default function Sidebar({ t }) {
                     <input type="checkbox" id="chkRajyaSabhaBoundary" />
                     <span>{t('rajyaSabhaBoundary')}</span>
                   </label>
+                </div>
+                <div className="actions">
+                  <button type="button" className="btn-clear" id="btnParliamentaryClear">
+                    {t('clear')}
+                  </button>
                 </div>
               </section>
             </div>
@@ -432,7 +437,7 @@ export default function Sidebar({ t }) {
 
                 <div className="actions">
                   <button type="button" className="btn-go btn-go-accent" id="btnHsvpApply">
-                    {t('hsvpApply')}
+                    {t('ZOOM')}
                   </button>
                 </div>
               </section>

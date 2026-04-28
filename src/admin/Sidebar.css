@@ -139,10 +139,23 @@
   cursor: pointer;
 }
 
+.sidebar-backdrop {
+  display: none;
+}
+
 /* Responsive Logic */
 @media (max-width: 768px) {
   .mobile-toggle-btn {
     display: block;
+  }
+
+  .sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 999;
+    border: none;
+    background: rgba(0, 0, 0, 0.45);
   }
 
   .sidebar-container.closed {
