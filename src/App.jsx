@@ -14,8 +14,7 @@ import LoginPage from "./pages/LoginPage";
 import NewAdmin from "./newadmin/NewAdmin.jsx";
 
 import "./App.css";
-<<<<<<< HEAD
-=======
+
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"
 import Haryana_map from "./components/Haryana_map";
