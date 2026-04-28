@@ -1,6 +1,6 @@
 import axios from "axios";
 import axiosInstance from "../api/axios";
-import "./Login.css";
+// import "./Login.css";
 import React, { useState } from 'react';
 
 import { useNavigate } from "react-router-dom";
@@ -110,7 +110,8 @@ export default function Signup() {
                             <div className="login-card">
                                 {/* <div className="card-header"> */}
                                     <div className="left-logo">
-                                        <img src="/har_govt.png" alt="logo" />
+                                        {/* <img src="/har_govt.png" alt="logo" /> */}
+                                           <img src="/hepc-logo.png" alt="logo" />
                                     </div>
 
                                     <h2>Sign Up to Your Account</h2>

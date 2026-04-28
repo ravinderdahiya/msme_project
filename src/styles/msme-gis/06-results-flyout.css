@@ -1,0 +1,232 @@
+/* Results flyout */
+.results-flyout {
+  position: fixed;
+  z-index: 100;
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  box-shadow: var(--shadow-lg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-size: 12px;
+  backdrop-filter: blur(16px);
+}
+
+.results-flyout.minimized .results-flyout-body {
+  display: none;
+}
+
+.results-flyout.maximized {
+  border-radius: 20px;
+}
+
+.results-flyout-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, #fbfdff 0%, #f2f7fb 100%);
+  border-bottom: 1px solid var(--border);
+  cursor: grab;
+  user-select: none;
+}
+
+.results-flyout-head:active {
+  cursor: grabbing;
+}
+
+.results-flyout-title {
+  font-weight: 800;
+  font-size: 13px;
+  color: var(--heading-strong);
+}
+
+.results-flyout-winbtns {
+  display: flex;
+  gap: 5px;
+}
+
+.results-flyout .winbtn {
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #f4f8fb 100%);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+}
+
+.results-flyout .winbtn i {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.results-flyout .winbtn-glyph {
+  font-size: 15px;
+  line-height: 1;
+}
+
+.results-flyout .winbtn-zip {
+  color: var(--primary-dark);
+}
+
+.results-flyout .winbtn:hover {
+  background: var(--surface-3);
+  border-color: var(--rail-active-border);
+}
+
+.results-flyout-body {
+  padding: 12px 14px 16px;
+  overflow: auto;
+  flex: 1;
+  min-height: 0;
+}
+
+.results-subh {
+  margin: 12px 0 6px;
+  font-size: 11px;
+  font-weight: 800;
+  color: var(--heading-soft);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.results-table-wrap {
+  max-height: 180px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: #fff;
+}
+
+.results-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.results-table th,
+.results-table td {
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid #edf2f7;
+}
+
+.results-table th {
+  background: linear-gradient(180deg, #f9fbfd 0%, #f1f6fb 100%);
+  font-weight: 700;
+  position: sticky;
+  top: 0;
+  color: var(--primary-dark);
+}
+
+.results-table .muted,
+.lr-empty {
+  color: var(--copy-muted);
+  font-style: italic;
+}
+
+.results-hint {
+  font-size: 10px;
+  color: var(--copy-muted);
+  line-height: 1.45;
+  margin: 0 0 12px;
+  padding: 10px 12px;
+  background: linear-gradient(180deg, #f9fbfd 0%, #f2f7fb 100%);
+  border-radius: 14px;
+  border: 1px solid var(--border);
+}
+
+.results-section {
+  margin-bottom: 14px;
+}
+
+.results-class-filter {
+  margin-bottom: 10px;
+}
+
+.filter-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.filter-chips .chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--text);
+  cursor: pointer;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbfe 100%);
+}
+
+.filter-chips input {
+  margin: 0;
+}
+
+.results-group {
+  margin-bottom: 10px;
+  overflow: hidden;
+}
+
+.results-group-head {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: none;
+  background: linear-gradient(180deg, #fbfdff 0%, #f3f8fc 100%);
+  cursor: pointer;
+  text-align: left;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.results-group-head:hover {
+  background: var(--rail-active-bg);
+}
+
+.results-group-head .chev {
+  font-size: 10px;
+  color: var(--muted);
+  width: 14px;
+}
+
+.results-group-head .gcount {
+  color: var(--primary);
+  font-weight: 800;
+}
+
+.results-actions {
+  white-space: nowrap;
+}
+
+.results-actions .linkish {
+  background: transparent;
+  border: none;
+  color: var(--primary);
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  margin-right: 4px;
+  text-decoration: underline;
+  box-shadow: none;
+}
+
+.results-actions .linkish:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+  text-decoration: none;
+}
+

@@ -3,182 +3,145 @@ import React, { useState } from 'react';
 import { useNavigate } from "react-router-dom";
 import axiosInstance from "../api/axios";
 import { toast } from "react-toastify";
+
 export default function Login() {
     const navigate = useNavigate();
+    const [showOTP, setShowOTP] = useState(false); // OTP field control karne ke liye
+    const [mobileNumber, setMobileNumber] = useState("");
+    // const [otp, setOtp] = useState("");
+    const [otp, setOtp] = useState(["", "", "", ""]);
 
-    const [isLogin, setIsLogin] = useState(true);
-    const formModel={
-        email:"",
-        password:""
-    }
-
-    const [type,setType] = useState("password")
-
-    const [loginInput,setLoginInput] = useState(formModel)
-
-    const handleInput = (e) =>{
-        const input = e.target
-        const name = input.name
-        const value = input.value
-        setLoginInput({
-            ...loginInput,
-            [name] : value
-        })
-    }
-
-    const loginForm = async(e)=>{
-        try{
-            e.preventDefault()
-            // const user = {
-            //     email:"",
-            //     password:""
-            // }
-          console.log(loginInput)
-            const {data} = await axiosInstance.post("/user/login",loginInput)
-            console.log(data)
-            toast(data.message,{position:"top-center",type:"success"})
-            if(data.role === "admin")
-                return window.location = "/admin/dashboard"
-        
-             return window.location = "/msme-gis-map"
-
+    // Pehla step: OTP mangwane ke liye
+    const handleSendOTP = async (e) => {
+        e.preventDefault();
+        if (mobileNumber.length === 10) {
+            // Yahan aap apni API call kar sakte hain OTP bhejne ke liye
+            toast.info("OTP sent to your mobile number", { position: "top-center" });
+            setShowOTP(true); // OTP field dikhao
+        } else {
+            toast.error("Please enter a valid 10-digit mobile number");
         }
-        catch(err){
-            toast.error(err.response ? err.response.data.message : err.message,
-                {position:"top-center"}
-            )
+    };
+
+    // Doosra step: Login karne ke liye
+    const handleLogin = async (e) => {
+        e.preventDefault();
+        try {
+            // Yahan aap OTP verify karne ki API call karenge
+            console.log("Logging in with:", mobileNumber, otp);
+            // Temporary navigation for testing
+            navigate('/msme-gis-map');
+        } catch (err) {
+            toast.error("Invalid OTP", { position: "top-center" });
         }
+    };
+    // हैंडलर: एक बॉक्स से दूसरे पर ऑटो-फोकस करने के लिए
+const handleOtpChange = (element, index) => {
+    if (isNaN(element.value)) return false;
+
+    setOtp([...otp.map((d, idx) => (idx === index ? element.value : d))]);
+
+    // अगर वैल्यू डाली गई है, तो अगले बॉक्स पर फोकस करें
+    if (element.nextSibling && element.value) {
+        element.nextSibling.focus();
     }
-
-
-
-
-
+};
 
     return (
-        <>
-    
-            <div className="page-wrapper">
-                {/* <header className="transparent-header">
-                    <div className="header-container">
-                      
-                        <div className="left-logo">
-                            <img src="/har_govt.png" alt="logo" />
-                        </div>
-
-
-                       
-                        <div className="header-title">
-                            <h1>MSME GIS-Based Land & Investment</h1>
-                        </div>
-
-                      
-                        <div className="right-logo">
-                            <img src="/hepc-logo.png" alt="logo" />
+        <div className="page-wrapper">
+            <div className="hero-container">
+                <div className="hero-content">
+                    {/* Left Section: Text */}
+                    <div className="left-section">
+                        <h1 className="hero-title">
+                            Unlock Business Growth <br /> with GIS Insights!
+                        </h1>
+                        <p className="hero-description">
+                            Utilize GIS technology to find the most suitable land for your investment.
+                        </p>
+                        <div className="features-list">
+                            <div className="feature-item">
+                                <span className="check-badge">✓</span>
+                                <span>Analyze land and investment opportunities</span>
+                            </div>
+                            <div className="feature-item">
+                                <span className="check-badge">✓</span>
+                                <span>Identify prime industrial zones</span>
+                            </div>
                         </div>
                     </div>
-                </header> */}
 
-                {/* Aapka baaki content yahan aayega */}
-                <div className="hero-container">
-                    <div className="hero-content">
-
-                        {/* Left Side: Text and Features */}
-                        <div className="left-section">
-                            <h1 className="hero-title">
-                                Unlock Business Growth <br /> with GIS Insights!
-                            </h1>
-                            <p className="hero-description">
-                                Utilize GIS technology to find the most suitable land with optimal
-                                connectivity, infrastructure and resources for your investment
-                                and business expansion.
-                            </p>
-
-                            <div className="features-list">
-                                <div className="feature-item">
-                                    <span className="check-badge">✓</span>
-                                    <span>Analyze land and investment opportunities</span>
-                                </div>
-                                <div className="feature-item">
-                                    <span className="check-badge">✓</span>
-                                    <span>Identify prime industrial zones</span>
-                                </div>
-                                <div className="feature-item">
-                                    <span className="check-badge">✓</span>
-                                    <span>Make informed site selection decisions</span>
-                                </div>
+                    {/* Right Section: Login Card */}
+                    <div className="right-section">
+                        <div className="login-card">
+                            <div className="left-logo">
+                                <img src="/hepc-logo.png" alt="logo" />
                             </div>
+                            <h2>Welcome to <br /><b>MSME Investor Portal</b></h2>
+                            <p className="sub-text">One stop solution for MSME Investors</p>
+
+                            <form className="login-form">
+                                {/* Mobile Number Field */}
+                                <div className="mobile-input-container">
+                                    {/* <span className="country-code">+91 ⌵</span> */}
+                                    <input
+                                        type="text"
+                                        placeholder="Enter Mobile Number"
+                                        value={mobileNumber}
+                                        onChange={(e) => setMobileNumber(e.target.value)}
+                                        disabled={showOTP} // OTP aane ke baad field lock ho jaye
+                                        maxLength="10"
+                                    />
+                                </div>
+
+                                {/* OTP Field: Sirf tab dikhega jab showOTP true hoga */}
+                                {showOTP && (
+                                    <div className="otp-container otp-animation">
+                                        {otp.map((data, index) => {
+                                            return (
+                                                <input
+                                                    className="otp-box"
+                                                    type="text"
+                                                    name="otp"
+                                                    maxLength="1"
+                                                    key={index}
+                                                    value={data}
+                                                    onChange={e => handleOtpChange(e.target, index)}
+                                                    onFocus={e => e.target.select()}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                )}
+                                {/* Button Logic Change */}
+                                {!showOTP ? (
+                                    <button type="button" className="login-button" onClick={handleSendOTP}>
+                                        Send OTP
+                                    </button>
+                                ) : (
+                                    <button type="submit" className="login-button" onClick={handleLogin}>
+                                        Login
+                                    </button>
+                                )}
+
+                                {/* <p className="signup-text">
+                                    New to the portal? 
+                                    <span onClick={() => navigate('/Signup')}> Register Now</span>
+                                </p> */}
+                                <p className="signup-text">
+                                   New to the portal?
+                                    <span
+                                        style={{ cursor: 'pointer', color: '#4ade80', fontWeight: 'bold' }}
+                                        onClick={() => navigate('/Signup')}
+                                    >
+                                       Register now
+                                    </span>
+                                </p>
+                            </form>
                         </div>
-
-                        {/* Right Side: Login Card */}
-                        <div className="right-section">
-                            <div className="login-card">
-                                {/* <div className="card-header"> */}
-                                    <div className="left-logo">
-                                        <img src="/har_govt.png" alt="logo" />
-                                    </div>
-
-                                    <h2>Login to Your Account</h2>
-
-
-                                {/* </div> */}
-                                <form className="login-form"  onSubmit={loginForm}>
-                                    <div className="input-field">
-                                        {/* <i className="fa-solid fa-user"></i> */}
-                                        <input 
-                                        type="email" 
-                                        name="email"
-                                        onChange={handleInput}
-                                        placeholder="Email" 
-                                        required />
-                                    </div>
-
-                                    <div className="input-field">
-                                        {/* <i className="fa-solid fa-lock"></i> */}
-                                        <input 
-                                        type={type}
-                                        name="password"
-                                        onChange={handleInput}
-                                         placeholder="Password"
-                                         required />
-                                   
-                                    </div>
-
-                                    <div className="form-options">
-                                        <label className="checkbox-container">
-                                            <input type="checkbox" />
-                                            <span className="checkmark"></span>
-                                            Remember me
-                                        </label>
-                                    </div>
-
-                                    <button type="submit" className="login-button">Login</button>
-
-                                    <a href="/" className="forgot-link">Forgot password?</a>
-
-                                    <p className="signup-text">
-                                        Don't have an account?
-                                        <span
-                                            style={{ cursor: 'pointer', color: '#4ade80', fontWeight: 'bold' }}
-                                            onClick={() => navigate('/Signup')}
-                                        >
-                                            Sign Up
-                                        </span>
-                                    </p>
-                                </form>
-
-
-                            </div>
-                        </div>
-
                     </div>
                 </div>
             </div>
-
-        </>
-
-
-
+        </div>
     );
-};
-
+}

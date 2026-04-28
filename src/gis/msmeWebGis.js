@@ -1,4 +1,4 @@
-/* eslint-disable -- generated / legacy GIS bundle */
+﻿/* eslint-disable -- generated / legacy GIS bundle */
 import Map from "@arcgis/core/Map.js";
 import MapView from "@arcgis/core/views/MapView.js";
 import MapImageLayer from "@arcgis/core/layers/MapImageLayer.js";
@@ -29,6 +29,7 @@ import FeatureSet from "@arcgis/core/rest/support/FeatureSet.js";
 import Point from "@arcgis/core/geometry/Point.js";
 import Polyline from "@arcgis/core/geometry/Polyline.js";
 import Extent from "@arcgis/core/geometry/Extent.js";
+import { jsPDF } from "jspdf";
 import SketchViewModel from "@arcgis/core/widgets/Sketch/SketchViewModel.js";
 import "@arcgis/core/assets/esri/themes/light/main.css";
 
@@ -51,6 +52,8 @@ import {
   LAYER_FOREST,
   LAYER_INVESTMENT,
   LAYER_WATER,
+  LAYER_CON_ASSEMBLY,
+  LAYER_CON_PARLIAMENT,
   HR_DISTRICT_LONLAT,
   normalizeDistrictCodeKey,
   themeKeyFromUrl,
@@ -112,7 +115,8 @@ var GIS_UI_DEFAULTS = {
   allTehsils: "All tehsils",
   allVillages: "All villages",
   mapPopupTitle: "Features at this location",
-  hsvpPlot: "Plot"
+  hsvpSector: "Sector / area",
+  hsvpPlot: "Plot no"
 };
 var __gisUi = Object.assign({}, GIS_UI_DEFAULTS);
 var refreshGisPlaceholderLabelsImpl = function () {};
@@ -191,6 +195,7 @@ function readLandReportDomContext() {
     },
     hsvp: {
       district: tx("hsvpDistrictSelect"),
+      sector: tx("hsvpSectorSelect"),
       plot: tx("hsvpPlotSelect")
     }
   };
@@ -1256,6 +1261,662 @@ function publishAnalysisToolResult(toolId, summary, extra) {
     Object.keys(extra).forEach(function (k) { p[k] = extra[k]; });
   }
   publishAnalysisReportSnapshot(p);
+  return p;
+}
+
+var lastBufferExportContext = null;
+function setLastBufferExportContext(ctx) {
+  lastBufferExportContext = ctx && typeof ctx === "object" ? ctx : null;
+}
+
+function formatIsoForPdf(iso) {
+  if (!iso) return "-";
+  try {
+    return new Date(iso).toLocaleString();
+  } catch (e0) {
+    return String(iso);
+  }
+}
+
+function readBufferUiState() {
+  var srcEl = document.getElementById("bufRoadLayer");
+  var searchEl = document.getElementById("bufMarkQueryRadius");
+  var distEl = document.getElementById("bufDist");
+  var srcText = "-";
+  if (srcEl && srcEl.selectedOptions && srcEl.selectedOptions[0]) {
+    srcText = String(srcEl.selectedOptions[0].text || "").trim() || "-";
+  }
+  return {
+    roadSource: srcText,
+    searchRadiusM: searchEl ? parseInt(searchEl.value, 10) || null : null,
+    bufferDistanceM: distEl ? parseInt(distEl.value, 10) || null : null
+  };
+}
+
+function getBufferAnchorLatLonText() {
+  try {
+    if (!bufferMarkPoint32643 || bufferMarkPoint32643.type !== "point") return "-";
+    var wgs = projection.project(bufferMarkPoint32643, SR4326);
+    if (!wgs) return "-";
+    return Number(wgs.y).toFixed(6) + ", " + Number(wgs.x).toFixed(6);
+  } catch (e0) {
+    return "-";
+  }
+}
+
+function addPdfLine(doc, text, x, y, maxWidth) {
+  var parts = doc.splitTextToSize(String(text == null ? "" : text), maxWidth);
+  doc.text(parts, x, y);
+  return y + parts.length * 14;
+}
+
+function isMainRoadFeature(attrs) {
+  var a = attrs || {};
+  var cat = String(a.road_catog != null ? a.road_catog : (a.ROAD_CATOG != null ? a.ROAD_CATOG : "")).toUpperCase();
+  var nm = String(a.rd_name != null ? a.rd_name : (a.RD_NAME != null ? a.RD_NAME : "")).toUpperCase();
+  if (!cat && !nm) return false;
+  if (cat.indexOf("NH") >= 0 || cat.indexOf("SH") >= 0 || cat.indexOf("MDR") >= 0 || cat.indexOf("MAJOR") >= 0 || cat.indexOf("MAIN") >= 0) return true;
+  if (nm.indexOf("NH") >= 0 || nm.indexOf("SH") >= 0 || nm.indexOf("HIGHWAY") >= 0) return true;
+  return false;
+}
+
+function featureOid(attrs) {
+  var a = attrs || {};
+  if (a.OBJECTID != null) return String(a.OBJECTID);
+  if (a.objectid != null) return String(a.objectid);
+  return null;
+}
+
+var bufferCommunitySummaryToken = 0;
+var mapPointCommunitySummaryToken = 0;
+var COMMUNITY_SUMMARY_LAYER_SPECS = [
+  {
+    key: "schools",
+    label: "Schools",
+    layers: [
+      { url: SOC_MS, layerId: 1 },
+      { url: SOC_MS, layerId: 2 }
+    ]
+  },
+  {
+    key: "iti",
+    label: "ITI",
+    layers: [{ url: SOC_MS, layerId: 3 }]
+  },
+  {
+    key: "hospitals",
+    label: "Hospitals",
+    layers: [
+      { url: SOC_MS, layerId: 5 },
+      { url: SOC_MS, layerId: 6 },
+      { url: SOC_MS, layerId: 7 },
+      { url: SOC_MS, layerId: 8 }
+    ]
+  },
+  {
+    key: "electricPoles",
+    label: "Electric poles",
+    layers: [{ url: UTIL_MS, layerId: 14 }]
+  },
+  {
+    key: "roads",
+    label: "Roads",
+    layers: [{ url: TRANS_MS, layerId: LAYER_ROADS_LINE }]
+  },
+  {
+    key: "airports",
+    label: "Airports",
+    layers: [{ url: TRANS_MS, layerId: 0 }]
+  },
+  {
+    key: "mobileTowers",
+    label: "Mobile towers",
+    layers: [{ url: UTIL_MS, layerId: 0 }]
+  },
+  {
+    key: "canals",
+    label: "Canals",
+    layers: [{ url: BASE_MS, layerId: 2 }]
+  },
+  {
+    key: "entertainment",
+    label: "Entertainment",
+    layers: []
+  }
+];
+
+function queryLayerCountWithinGeometry(url, layerId, queryGeom32643) {
+  return queryLayer(url, layerId, Object.assign({
+    where: "1=1",
+    returnGeometry: false,
+    returnCountOnly: true
+  }, geometryToQueryParams(queryGeom32643))).then(function (data) {
+    return Number(data && data.count) || 0;
+  }).catch(function () {
+    return 0;
+  });
+}
+
+function queryLayerObjectIdsWithinGeometry(url, layerId, queryGeom32643) {
+  return queryLayer(url, layerId, Object.assign({
+    where: "1=1",
+    returnGeometry: false,
+    returnIdsOnly: true
+  }, geometryToQueryParams(queryGeom32643))).then(function (data) {
+    var ids = data && Array.isArray(data.objectIds) ? data.objectIds : [];
+    return ids.filter(function (id) { return id != null; });
+  }).catch(function () {
+    return [];
+  });
+}
+
+function chunkArray(input, size) {
+  var out = [];
+  if (!Array.isArray(input) || !input.length) return out;
+  var n = Math.max(1, Number(size) || 1);
+  for (var i = 0; i < input.length; i += n) {
+    out.push(input.slice(i, i + n));
+  }
+  return out;
+}
+
+function queryLayerFeaturesByObjectIds(url, layerId, objectIds) {
+  var ids = Array.isArray(objectIds) ? objectIds : [];
+  if (!ids.length) return Promise.resolve([]);
+  var chunks = chunkArray(ids, 160);
+  var tasks = chunks.map(function (idChunk) {
+    return queryLayer(url, layerId, {
+      where: "1=1",
+      objectIds: idChunk.join(","),
+      returnGeometry: true,
+      outFields: "*",
+      outSR: 4326,
+      resultRecordCount: Math.max(200, idChunk.length + 20)
+    }).then(function (data) {
+      return {
+        features: data && Array.isArray(data.features) ? data.features : [],
+        spatialReference: data && data.spatialReference ? data.spatialReference : null
+      };
+    }).catch(function () {
+      return { features: [], spatialReference: null };
+    });
+  });
+  return Promise.all(tasks).then(function (parts) {
+    var merged = [];
+    (parts || []).forEach(function (part) {
+      var sr = part && part.spatialReference ? part.spatialReference : null;
+      (part && part.features ? part.features : []).forEach(function (feature) {
+        merged.push({ feature: feature, spatialReference: sr });
+      });
+    });
+    return merged;
+  });
+}
+
+function extractCommunityPlaceNameFromAttributes(attrs, categoryKey, fallbackIndex) {
+  var a = attrs || {};
+  var key = String(categoryKey || "").toLowerCase();
+  var hospitalFirst = [
+    a.hospital_name, a.HOSPITAL_NAME,
+    a.hospitalName, a.HOSPITALNAME,
+    a.health_centre, a.HEALTH_CENTRE,
+    a.phc_name, a.PHC_NAME
+  ];
+  var schoolFirst = [
+    a.school_name, a.SCHOOL_NAME,
+    a.schoolName, a.SCHOOLNAME,
+    a.sch_name, a.SCH_NAME
+  ];
+  var itiFirst = [
+    a.iti_name, a.ITI_NAME,
+    a.itiName, a.ITI_NAME_EN,
+    a.institute_name, a.INSTITUTE_NAME,
+    a.instituteName
+  ];
+  var candidates = [
+    a.name, a.NAME,
+    a.title, a.TITLE,
+    a.place_name, a.PLACE_NAME,
+    a.facility_name, a.FACILITY_NAME
+  ];
+  var ordered = candidates;
+  if (key === "schools") ordered = schoolFirst.concat(itiFirst, hospitalFirst, candidates);
+  else if (key === "iti") ordered = itiFirst.concat(schoolFirst, hospitalFirst, candidates);
+  else if (key === "hospitals") ordered = hospitalFirst.concat(schoolFirst, itiFirst, candidates);
+  else ordered = hospitalFirst.concat(schoolFirst, itiFirst, candidates);
+  for (var i = 0; i < ordered.length; i++) {
+    var val = ordered[i];
+    if (val != null) {
+      var txt = String(val).trim();
+      if (txt) return txt;
+    }
+  }
+  if (key === "schools") return "School " + String((fallbackIndex || 0) + 1);
+  if (key === "iti") return "ITI " + String((fallbackIndex || 0) + 1);
+  if (key === "hospitals") return "Hospital " + String((fallbackIndex || 0) + 1);
+  return "Location " + String((fallbackIndex || 0) + 1);
+}
+
+function extractWgs84PointFromFeature(feature, responseSr) {
+  var raw = geomFromJSON(feature && feature.geometry);
+  if (!raw) return null;
+  coerceMissingSpatialReference(raw, responseSr || SR4326);
+  var g = raw;
+  try {
+    var wkid = wkidValue(g.spatialReference);
+    if (wkid !== 4326) {
+      var projected = projection.project(g, SR4326);
+      if (projected) g = projected;
+    }
+  } catch (e0) {}
+
+  var point = g && g.type === "point" ? g : getGeometryCentroid(g);
+  if (!point) return null;
+  if (point.type !== "point") point = getGeometryCentroid(point);
+  if (!point) return null;
+
+  try {
+    var pointWkid = wkidValue(point.spatialReference);
+    if (pointWkid !== 4326) {
+      var projectedPoint = projection.project(point, SR4326);
+      if (projectedPoint) point = projectedPoint;
+    }
+  } catch (e1) {}
+
+  var lat = Number(point.y);
+  var lng = Number(point.x);
+  if (!isFinite(lat) || !isFinite(lng)) return null;
+  if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+  return { lat: lat, lng: lng };
+}
+
+function fetchCommunityCategoryItems(spec, queryGeom32643) {
+  var layers = spec && spec.layers ? spec.layers : [];
+  if (!layers.length) return Promise.resolve({ count: 0, items: [] });
+  var key = String(spec && spec.key ? spec.key : "category").toLowerCase();
+
+  var tasks = layers.map(function (layerDef) {
+    return queryLayerObjectIdsWithinGeometry(layerDef.url, layerDef.layerId, queryGeom32643).then(function (objectIds) {
+      return queryLayerFeaturesByObjectIds(layerDef.url, layerDef.layerId, objectIds).then(function (records) {
+        return { count: objectIds.length, records: records };
+      });
+    });
+  });
+
+  return Promise.all(tasks).then(function (layerResults) {
+    var total = 0;
+    var items = [];
+    var seen = {};
+    var fallbackIdx = 0;
+    (layerResults || []).forEach(function (layerResult) {
+      total += Number(layerResult && layerResult.count) || 0;
+      (layerResult && layerResult.records ? layerResult.records : []).forEach(function (record) {
+        var feature = record && record.feature ? record.feature : null;
+        if (!feature) return;
+        var attrs = feature.attributes || {};
+        var point = extractWgs84PointFromFeature(feature, record.spatialReference);
+        var name = extractCommunityPlaceNameFromAttributes(attrs, key, fallbackIdx);
+        fallbackIdx += 1;
+        var oid = attrs.OBJECTID != null ? String(attrs.OBJECTID) : (attrs.objectid != null ? String(attrs.objectid) : "");
+        var dedupeKey = oid || (name.toLowerCase() + "|" + (point ? (point.lat.toFixed(6) + "," + point.lng.toFixed(6)) : "na"));
+        if (seen[dedupeKey]) return;
+        seen[dedupeKey] = true;
+        items.push({
+          id: oid || (key + "_" + String(items.length + 1)),
+          name: name,
+          lat: point ? point.lat : null,
+          lng: point ? point.lng : null,
+          properties: attrs
+        });
+      });
+    });
+    items.sort(function (a, b) {
+      return String(a && a.name ? a.name : "").localeCompare(String(b && b.name ? b.name : ""));
+    });
+    return { count: total, items: items };
+  }).catch(function () {
+    return { count: 0, items: [] };
+  });
+}
+
+function computeCommunitySummaryForGeometry(queryGeom, sourceKind) {
+  if (!queryGeom) return Promise.resolve(null);
+  return projection.load().then(function () {
+    var g32643 = toEngineSR(ensureSR32643(queryGeom));
+    if (!g32643) return null;
+
+    var tasks = COMMUNITY_SUMMARY_LAYER_SPECS.map(function (spec) {
+      var layers = spec && spec.layers ? spec.layers : [];
+      if (!layers.length) {
+        return Promise.resolve({
+          key: spec.key,
+          label: spec.label,
+          count: 0,
+          available: false
+        });
+      }
+      var specKey = String(spec.key || "").toLowerCase();
+      if (specKey === "iti" || specKey === "schools" || specKey === "hospitals") {
+        return fetchCommunityCategoryItems(spec, g32643).then(function (data) {
+          return {
+            key: spec.key,
+            label: spec.label,
+            count: Number(data && data.count) || 0,
+            items: data && Array.isArray(data.items) ? data.items : [],
+            available: true
+          };
+        });
+      }
+      return Promise.all(layers.map(function (layerDef) {
+        return queryLayerCountWithinGeometry(layerDef.url, layerDef.layerId, g32643);
+      })).then(function (counts) {
+        var total = 0;
+        counts.forEach(function (n) { total += Number(n) || 0; });
+        return {
+          key: spec.key,
+          label: spec.label,
+          count: total,
+          available: true
+        };
+      });
+    });
+
+    return Promise.all(tasks).then(function (categories) {
+      var total = 0;
+      categories.forEach(function (r) { total += Number(r && r.count) || 0; });
+      return {
+        generatedAt: new Date().toISOString(),
+        source: sourceKind || "buffer",
+        categories: categories,
+        totalCount: total
+      };
+    });
+  }).catch(function (e0) {
+    console.warn("[community summary] failed", e0);
+    return null;
+  });
+}
+
+function publishBufferCommunitySummaryInBackground(baseReportPayload, summaryGeom32643, ctxRef) {
+  if (!baseReportPayload || !summaryGeom32643) return;
+  var token = ++bufferCommunitySummaryToken;
+  computeCommunitySummaryForGeometry(summaryGeom32643, "buffer").then(function (communitySummary) {
+    if (!communitySummary) return;
+    if (token !== bufferCommunitySummaryToken) return;
+    if (ctxRef && lastBufferExportContext === ctxRef) {
+      ctxRef.communitySummary = communitySummary;
+    }
+    var enriched = {};
+    Object.keys(baseReportPayload).forEach(function (k) {
+      enriched[k] = baseReportPayload[k];
+    });
+    enriched.communitySummary = communitySummary;
+    publishAnalysisReportSnapshot(enriched);
+  }).catch(function (e0) {
+    console.warn("[buffer summary] background count failed", e0);
+  });
+}
+
+function publishMapPointCommunitySummaryInBackground(anchor32643Point, radiusM, summaryMeta) {
+  var radius = Number(radiusM);
+  if (!anchor32643Point || anchor32643Point.type !== "point") return;
+  if (!isFinite(radius) || radius <= 0) return;
+  var summaryGeom = geometryEngine.buffer(anchor32643Point, radius, "meters");
+  if (!summaryGeom) return;
+  var token = ++mapPointCommunitySummaryToken;
+  computeCommunitySummaryForGeometry(summaryGeom, "point").then(function (communitySummary) {
+    if (!communitySummary) return;
+    if (token !== mapPointCommunitySummaryToken) return;
+    communitySummary.radiusM = radius;
+    if (mapIdentifyClickSessions.length) {
+      var lastIdx = mapIdentifyClickSessions.length - 1;
+      mapIdentifyClickSessions[lastIdx].communitySummary = communitySummary;
+    }
+    var clicksPayload = mapIdentifyClickSessions.map(function (s, idx) {
+      return {
+        clickIndex: idx + 1,
+        lat: s.lat,
+        lon: s.lon,
+        radiusM: s.radiusM,
+        atClickRows: s.atClickRows,
+        nearbyRows: s.nearbyRows,
+        communitySummary: s.communitySummary || null
+      };
+    });
+    publishMapSelectionReportSnapshot({
+      generatedAt: new Date().toISOString(),
+      reportKind: "map-selection",
+      selectionSource: summaryMeta && summaryMeta.selectionSource ? summaryMeta.selectionSource : "map-click",
+      accumulate: mapSelectionAccumulateMode,
+      clicks: clicksPayload,
+      lat: summaryMeta && summaryMeta.lat != null ? summaryMeta.lat : null,
+      lon: summaryMeta && summaryMeta.lon != null ? summaryMeta.lon : null,
+      radiusM: radius,
+      atClickRows: summaryMeta && summaryMeta.atClickRows ? summaryMeta.atClickRows : [],
+      nearbyRows: summaryMeta && summaryMeta.nearbyRows ? summaryMeta.nearbyRows : [],
+      communitySummary: communitySummary,
+      domContext: {}
+    });
+  }).catch(function (e0) {
+    console.warn("[map point summary] background count failed", e0);
+  });
+}
+
+function countCanalsAndMainRoadsNearSchools(queryGeom, nearM) {
+  var distM = Number(nearM);
+  if (!queryGeom || !isFinite(distM) || distM <= 0) return Promise.resolve(null);
+  var qp = geometryToQueryParams(queryGeom);
+  var schoolLayers = [1, 2];
+
+  function q(url, layerId, outFields, count) {
+    return queryLayer(url, layerId, Object.assign({
+      where: "1=1",
+      returnGeometry: true,
+      outFields: outFields || "OBJECTID",
+      resultRecordCount: count || 1500
+    }, qp)).catch(function () { return { features: [] }; });
+  }
+
+  var schoolTasks = schoolLayers.map(function (lid) { return q(SOC_MS, lid, "OBJECTID", 3000); });
+  return Promise.all([Promise.all(schoolTasks), q(BASE_MS, 2, "OBJECTID,canal_name", 3000), q(TRANS_MS, LAYER_ROADS_LINE, "OBJECTID,road_catog,rd_name", 4000)]).then(function (all) {
+    var schoolResList = all[0] || [];
+    var canalRes = all[1] || { features: [] };
+    var roadRes = all[2] || { features: [] };
+
+    var schoolPts = [];
+    var schoolSeen = {};
+    schoolResList.forEach(function (sr) {
+      var srResponse = sr && sr.spatialReference ? sr.spatialReference : null;
+      (sr && sr.features ? sr.features : []).forEach(function (f) {
+        var g = to32643WithSmartFallback(geomFromJSON(f.geometry), srResponse);
+        if (!g || g.type !== "point") return;
+        var id = featureOid(f.attributes) || ("s@" + g.x + "," + g.y);
+        if (schoolSeen[id]) return;
+        schoolSeen[id] = true;
+        schoolPts.push(g);
+      });
+    });
+    if (!schoolPts.length) {
+      return {
+        schoolsCount: 0,
+        canalsNearSchoolsCount: 0,
+        mainRoadsNearSchoolsCount: 0,
+        nearDistanceM: distM
+      };
+    }
+
+    function isNearAnySchool(g) {
+      for (var i = 0; i < schoolPts.length; i++) {
+        var d = geometryEngine.distance(schoolPts[i], g, "meters");
+        if ((d == null || !isFinite(d)) && geodesicDistanceMetersFallback) {
+          d = geodesicDistanceMetersFallback(schoolPts[i], g);
+        }
+        if (d != null && isFinite(d) && d <= distM) return true;
+      }
+      return false;
+    }
+
+    var canalsNearSet = {};
+    (canalRes.features || []).forEach(function (f) {
+      var g = to32643WithSmartFallback(geomFromJSON(f.geometry), canalRes.spatialReference || null);
+      if (!g) return;
+      if (!isNearAnySchool(g)) return;
+      var id = featureOid(f.attributes) || JSON.stringify(f.geometry || {});
+      canalsNearSet[id] = true;
+    });
+
+    var mainRoadNearSet = {};
+    (roadRes.features || []).forEach(function (f) {
+      if (!isMainRoadFeature(f.attributes)) return;
+      var g = to32643WithSmartFallback(geomFromJSON(f.geometry), roadRes.spatialReference || null);
+      if (!g) return;
+      if (!isNearAnySchool(g)) return;
+      var id = featureOid(f.attributes) || JSON.stringify(f.geometry || {});
+      mainRoadNearSet[id] = true;
+    });
+
+    return {
+      schoolsCount: schoolPts.length,
+      canalsNearSchoolsCount: Object.keys(canalsNearSet).length,
+      mainRoadsNearSchoolsCount: Object.keys(mainRoadNearSet).length,
+      nearDistanceM: distM
+    };
+  });
+}
+
+function hydrateNearSchoolStatsInBackground(ctx) {
+  if (!ctx || ctx.nearSchoolsStats || !ctx.queryGeometryJson) return;
+  var g = geomFromJSON(ctx.queryGeometryJson);
+  if (!g) return;
+  var d = Number(ctx.bufferDistanceM);
+  if (!isFinite(d) || d <= 0) return;
+  projection.load().then(function () {
+    return countCanalsAndMainRoadsNearSchools(g, d);
+  }).then(function (stats) {
+    if (!stats) return;
+    if (lastBufferExportContext === ctx) {
+      ctx.nearSchoolsStats = stats;
+    }
+  }).catch(function (e0) {
+    console.warn("[buffer stats] near-schools stats failed", e0);
+  });
+}
+
+function buildBufferPdfReport() {
+  var report = window.msmeGisGetAnalysisReportSnapshot ? window.msmeGisGetAnalysisReportSnapshot() : null;
+  var ui = readBufferUiState();
+  var ctx = lastBufferExportContext || {};
+  var generatedAt = (report && report.tool === "buffer" && report.generatedAt) || ctx.generatedAt || new Date().toISOString();
+  var summary = (report && report.tool === "buffer" && report.summary) || ctx.summary || "Buffer report";
+
+  var filename = "buffer-report-" + new Date().toISOString().replace(/[:.]/g, "-") + ".pdf";
+  var doc = new jsPDF({ orientation: "portrait", unit: "pt", format: "a4" });
+  var pageW = doc.internal.pageSize.getWidth();
+  var pageH = doc.internal.pageSize.getHeight();
+  var margin = 34;
+  var y = 42;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(18);
+  doc.text("Spatial Analysis - Buffer Report", margin, y);
+  y += 20;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  y = addPdfLine(doc, "Generated: " + formatIsoForPdf(generatedAt), margin, y, pageW - margin * 2);
+  y = addPdfLine(doc, "Summary: " + summary, margin, y, pageW - margin * 2);
+  y += 4;
+
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(12);
+  doc.text("Run Settings", margin, y);
+  y += 14;
+
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(10);
+  function renderAndDownload(nearStats) {
+    y = addPdfLine(doc, "Road source: " + (ctx.roadSource || ui.roadSource || "-"), margin, y, pageW - margin * 2);
+    y = addPdfLine(doc, "Search radius around mark (m): " + String(ctx.searchRadiusM != null ? ctx.searchRadiusM : (ui.searchRadiusM != null ? ui.searchRadiusM : "-")), margin, y, pageW - margin * 2);
+    y = addPdfLine(doc, "Buffer distance (m): " + String(ctx.bufferDistanceM != null ? ctx.bufferDistanceM : (ui.bufferDistanceM != null ? ui.bufferDistanceM : "-")), margin, y, pageW - margin * 2);
+    y = addPdfLine(doc, "Anchor point (lat, lon): " + getBufferAnchorLatLonText(), margin, y, pageW - margin * 2);
+    y += 4;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Output", margin, y);
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    y = addPdfLine(doc, "Buffered features count: " + String(ctx.count != null ? ctx.count : ((report && report.tool === "buffer" && report.count != null) ? report.count : "-")), margin, y, pageW - margin * 2);
+    y = addPdfLine(doc, "Fallback mode: " + ((ctx.fallback || (report && report.fallback)) ? "Yes" : "No"), margin, y, pageW - margin * 2);
+    if (ctx.skipped != null) y = addPdfLine(doc, "Skipped geometries: " + String(ctx.skipped), margin, y, pageW - margin * 2);
+    if (ctx.objectIds && ctx.objectIds.length) {
+      y = addPdfLine(doc, "Buffered ObjectIDs (sample): " + ctx.objectIds.join(", "), margin, y, pageW - margin * 2);
+    }
+    y += 4;
+
+    doc.setFont("helvetica", "bold");
+    doc.text("Near Schools Summary", margin, y);
+    y += 14;
+    doc.setFont("helvetica", "normal");
+    if (nearStats) {
+      y = addPdfLine(doc, "Schools considered: " + String(nearStats.schoolsCount), margin, y, pageW - margin * 2);
+      y = addPdfLine(doc, "No. of canals near schools: " + String(nearStats.canalsNearSchoolsCount), margin, y, pageW - margin * 2);
+      y = addPdfLine(doc, "No. of main roads near schools: " + String(nearStats.mainRoadsNearSchoolsCount), margin, y, pageW - margin * 2);
+      y = addPdfLine(doc, "Near distance used: " + String(nearStats.nearDistanceM) + " m", margin, y, pageW - margin * 2);
+    } else {
+      y = addPdfLine(doc, "Near-schools counts: not available for this run.", margin, y, pageW - margin * 2);
+    }
+    y += 6;
+
+    function finalizeWithSave() {
+      doc.save(filename);
+      setStatus("Buffer PDF downloaded.");
+    }
+
+    if (!view || view.destroyed || typeof view.takeScreenshot !== "function") {
+      finalizeWithSave();
+      return;
+    }
+
+    var availW = pageW - margin * 2;
+    var availH = Math.max(160, pageH - y - margin);
+    view.takeScreenshot({ format: "png", quality: 0.92, width: 1400 }).then(function (shot) {
+      if (!shot || !shot.dataUrl) {
+        finalizeWithSave();
+        return;
+      }
+      var sw = Number(shot.width || 1);
+      var sh = Number(shot.height || 1);
+      var ratio = Math.min(availW / sw, availH / sh);
+      var drawW = Math.max(10, sw * ratio);
+      var drawH = Math.max(10, sh * ratio);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.text("Map Snapshot", margin, y + 10);
+      doc.addImage(shot.dataUrl, "PNG", margin, y + 18, drawW, drawH, undefined, "FAST");
+      finalizeWithSave();
+    }).catch(function (e0) {
+      console.warn("[pdf] screenshot failed", e0);
+      finalizeWithSave();
+    });
+  }
+
+  var nearStatsReady = ctx && ctx.nearSchoolsStats ? Promise.resolve(ctx.nearSchoolsStats) : (function () {
+    if (!ctx || !ctx.queryGeometryJson) return Promise.resolve(null);
+    var g = geomFromJSON(ctx.queryGeometryJson);
+    if (!g) return Promise.resolve(null);
+    var d = Number(ctx.bufferDistanceM != null ? ctx.bufferDistanceM : (ui.bufferDistanceM != null ? ui.bufferDistanceM : 1500));
+    if (!isFinite(d) || d <= 0) d = 1500;
+    return projection.load().then(function () {
+      return countCanalsAndMainRoadsNearSchools(g, d);
+    }).then(function (stats) {
+      if (stats && ctx) ctx.nearSchoolsStats = stats;
+      return stats || null;
+    }).catch(function () { return null; });
+  })();
+
+  nearStatsReady.then(function (nearStats) {
+    renderAndDownload(nearStats);
+  });
 }
 
 /** @deprecated Use getters per report type; returns map selection only for backward compatibility. */
@@ -1367,6 +2028,7 @@ var conLayer = new MapImageLayer({ url: CON_MS, title: "Constituencies", visible
 var cadSelectionLayer = null;
 var optionalOperationalLayers = [baseRefLayer, envLayer, invLayer, socialLayer, transLayer, utilLayer, cadLayer, conLayer];
 var optionalOperationalLayersPromise = null;
+var optionalOperationalLayersAdded = false;
 
 var map = new Map({
   basemap: "gray-vector",
@@ -1380,6 +2042,10 @@ var view = new MapView({
   constraints: { snapToZoom: false },
   background: { color: "#ffffff" }
 });
+if (view && view.popup) {
+  // Prevent ArcGIS default popup on plain map clicks.
+  view.popup.autoOpenEnabled = false;
+}
 
 var layerList = new LayerList({
   view: view,
@@ -1401,6 +2067,26 @@ var bgExpand = new Expand({
   collapseTooltip: "Close"
 });
 view.ui.add(bgExpand, "top-right");
+var basemapWatchHandle = null;
+
+function hideBasemapReferenceLabels() {
+  try {
+    var bm = map && map.basemap;
+    if (!bm || !bm.referenceLayers || typeof bm.referenceLayers.forEach !== "function") return;
+    bm.referenceLayers.forEach(function (ly) {
+      ly.visible = false;
+    });
+  } catch (e0) {
+    console.warn("[basemap labels] suppress failed", e0);
+  }
+}
+
+hideBasemapReferenceLabels();
+if (map && typeof map.watch === "function") {
+  basemapWatchHandle = map.watch("basemap", function () {
+    hideBasemapReferenceLabels();
+  });
+}
 
 function mapHasLayer(layer) {
   return !!(map && map.layers && map.layers.includes(layer));
@@ -1418,25 +2104,66 @@ function addOperationalLayerToMap(layer) {
 }
 
 function ensureOptionalOperationalLayers() {
-  if (optionalOperationalLayersPromise) return optionalOperationalLayersPromise;
-  optionalOperationalLayersPromise = Promise.resolve().then(function () {
-    var chain = Promise.resolve();
+  if (!optionalOperationalLayersAdded) {
     optionalOperationalLayers.forEach(function (layer) {
-      chain = chain.then(function () {
-        if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return null;
-        addOperationalLayerToMap(layer);
-        return layer.load().catch(function (err) {
-          console.warn("[layer bootstrap]", layer && layer.title, err);
-          return null;
-        });
-      });
+      if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
+      addOperationalLayerToMap(layer);
     });
-    return chain;
+    optionalOperationalLayersAdded = true;
+  }
+  if (optionalOperationalLayersPromise) return optionalOperationalLayersPromise;
+  optionalOperationalLayersPromise = Promise.all(optionalOperationalLayers.map(function (layer) {
+    if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return Promise.resolve(null);
+    return layer.load().catch(function (err) {
+      console.warn("[layer bootstrap]", layer && layer.title, err);
+      return null;
+    });
+  })).then(function () {
+    return null;
   }).catch(function (err) {
     optionalOperationalLayersPromise = null;
     throw err;
   });
   return optionalOperationalLayersPromise;
+}
+
+function setSubLayerVisibilityIfPresent(mapImageLayer, subLayerId, on) {
+  if (!mapImageLayer || subLayerId == null) return;
+  var sl = mapImageLayer.findSublayerById(subLayerId);
+  if (sl) sl.visible = !!on;
+}
+
+function applyInitialRequestedLayerPreset() {
+  if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) {
+    return Promise.resolve();
+  }
+  addOperationalLayerToMap(baseRefLayer);
+  addOperationalLayerToMap(socialLayer);
+  addOperationalLayerToMap(transLayer);
+  addOperationalLayerToMap(utilLayer);
+  // Keep requested key layers ON by default without blocking on service load.
+  baseRefLayer.visible = true;
+  socialLayer.visible = true;
+  transLayer.visible = true;
+  utilLayer.visible = true;
+
+  function setWhenReady(layer, subLayerId, on) {
+    layer.when(function () {
+      if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
+      setSubLayerVisibilityIfPresent(layer, subLayerId, on);
+    }).catch(function () {});
+  }
+  setWhenReady(socialLayer, 1, true); // Government School
+  setWhenReady(socialLayer, 2, true); // PM Shri/Sanskriti schools
+  setWhenReady(utilLayer, 14, true); // Electric poles
+  setWhenReady(transLayer, 4, true); // Roads (line)
+  setWhenReady(baseRefLayer, 2, true); // Canals
+
+  // Warm the remaining layers in background; do not block first usable paint.
+  ensureOptionalOperationalLayers().catch(function (err) {
+    console.warn("[layer preset] optional layer warmup failed", err);
+  });
+  return Promise.resolve();
 }
 
 function getInitialMapExtent() {
@@ -1517,6 +2244,20 @@ function fixAdminScales() {
   });
 }
 
+function enforceSingleDistrictLabelSource() {
+  return adminLayer.when(function () {
+    var districtBoundary = adminLayer.findSublayerById(LAYER_DISTRICT);
+    var ncrDistricts = adminLayer.findSublayerById(5);
+
+    adminLayer.allSublayers.forEach(function (sl) {
+      sl.labelsVisible = false;
+    });
+
+    if (districtBoundary) districtBoundary.labelsVisible = true;
+    if (ncrDistricts) ncrDistricts.visible = false;
+  });
+}
+
 function fixCadastralScales() {
   return cadLayer.when(function () {
     cadLayer.minScale = 0;
@@ -1524,7 +2265,10 @@ function fixCadastralScales() {
     cadLayer.allSublayers.forEach(function (sl) {
       sl.minScale = 0;
       sl.maxScale = 0;
+      sl.labelsVisible = false;
     });
+    var cadBoundaryOverlay = cadLayer.findSublayerById(25);
+    if (cadBoundaryOverlay) cadBoundaryOverlay.visible = false;
   });
 }
 
@@ -2093,6 +2837,7 @@ var selectedDistrictGeom = null;
 var selectedTehsilGeom = null;
 var selectedVillageGeom = null;
 var districtSelect = document.getElementById("districtSelect");
+var parliamentaryDistrictSelect = document.getElementById("parliamentaryDistrictSelect");
 var tehsilSelect = document.getElementById("tehsilSelect");
 var villageSelect = document.getElementById("villageSelect");
 var cadTehsilSelect = document.getElementById("cadTehsilSelect");
@@ -2117,12 +2862,14 @@ var lastCadHierarchyGeom32643 = null;
 refreshGisPlaceholderLabelsImpl = function () {
   var rows = [
     ["districtSelect", "district"],
+    ["parliamentaryDistrictSelect", "district"],
     ["cadDistrictSelect", "district"],
     ["hsvpDistrictSelect", "district"],
     ["cadTehsilSelect", "tehsil"],
     ["cadVillageSelect", "village"],
     ["cadMurabaSelect", "muraba"],
     ["cadKhasraSelect", "cadKhasraPlaceholder"],
+    ["hsvpSectorSelect", "hsvpSector"],
     ["hsvpPlotSelect", "hsvpPlot"]
   ];
   rows.forEach(function (row) {
@@ -2168,6 +2915,33 @@ function activeQueryGeometry() {
   return view.extent;
 }
 
+function resolveBufferQueryGeometry(searchRadiusM) {
+  var baseGeom = activeQueryGeometry();
+  if (!baseGeom) return { geometry: baseGeom, clippedFromAdminSelection: false };
+  if (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") {
+    return { geometry: baseGeom, clippedFromAdminSelection: false };
+  }
+  var isAdminSelection =
+    baseGeom === selectedVillageGeom ||
+    baseGeom === selectedTehsilGeom ||
+    baseGeom === selectedDistrictGeom;
+  if (!isAdminSelection) {
+    return { geometry: baseGeom, clippedFromAdminSelection: false };
+  }
+  var g32643 = toEngineSR(ensureSR32643(baseGeom));
+  var anchor = getGeometryCentroid(g32643);
+  if (!anchor || anchor.type !== "point") {
+    return { geometry: baseGeom, clippedFromAdminSelection: false };
+  }
+  var radiusM = Number(searchRadiusM);
+  if (!isFinite(radiusM) || radiusM < 200) radiusM = 5000;
+  var clipped = geometryEngine.buffer(anchor, radiusM, "meters");
+  if (!clipped) {
+    return { geometry: baseGeom, clippedFromAdminSelection: false };
+  }
+  return { geometry: ensureSR32643(clipped), clippedFromAdminSelection: true };
+}
+
 function setAdminFilters(dCode, tCode, vCode) {
   return adminLayer.when(function () {
     var d1 = adminLayer.findSublayerById(LAYER_DISTRICT);
@@ -2198,6 +2972,8 @@ function resetTehsilVillage() {
 }
 
 var cadDistrictSelect = document.getElementById("cadDistrictSelect");
+var adminTehsilOptionsCache = {};
+var adminVillageOptionsCache = {};
 
 function loadDistricts() {
   if (!districtSelect || !cadDistrictSelect) {
@@ -2208,15 +2984,34 @@ function loadDistricts() {
     where: "1=1", outFields: "n_d_code,n_d_name", returnGeometry: false, orderByFields: "n_d_name"
   }).then(function (data) {
     districtSelect.innerHTML = "<option value=\"\">" + gisPh("district") + "</option>";
+    if (parliamentaryDistrictSelect) {
+      parliamentaryDistrictSelect.innerHTML = "<option value=\"\">" + gisPh("district") + "</option>";
+    }
     cadDistrictSelect.innerHTML = "<option value=\"\">" + gisPh("district") + "</option>";
     var hsvpD0 = document.getElementById("hsvpDistrictSelect");
     if (hsvpD0) hsvpD0.innerHTML = "<option value=\"\">" + gisPh("district") + "</option>";
+    var hsvpS0 = document.getElementById("hsvpSectorSelect");
+    if (hsvpS0) {
+      hsvpS0.innerHTML = "<option value=\"\">" + gisPh("hsvpSector") + "</option>";
+      hsvpS0.disabled = true;
+    }
+    var hsvpP0 = document.getElementById("hsvpPlotSelect");
+    if (hsvpP0) {
+      hsvpP0.innerHTML = "<option value=\"\">" + gisPh("hsvpPlot") + "</option>";
+      hsvpP0.disabled = true;
+    }
     (data.features || []).forEach(function (f) {
       var a = f.attributes;
       var o = document.createElement("option");
       o.value = a.n_d_code;
       o.textContent = a.n_d_name || a.n_d_code;
       districtSelect.appendChild(o);
+      if (parliamentaryDistrictSelect) {
+        var oParl = document.createElement("option");
+        oParl.value = a.n_d_code;
+        oParl.textContent = a.n_d_name || a.n_d_code;
+        parliamentaryDistrictSelect.appendChild(oParl);
+      }
       var o2 = document.createElement("option");
       o2.value = a.n_d_code;
       o2.textContent = a.n_d_name || a.n_d_code;
@@ -2237,20 +3032,37 @@ function loadTehsils(d) {
   resetTehsilVillage();
   if (!tehsilSelect) return Promise.resolve();
   if (!d) return Promise.resolve();
+  var key = String(d).trim();
+  var cached = adminTehsilOptionsCache[key];
+  if (cached && cached.length) {
+    tehsilSelect.innerHTML = "<option value=\"\">" + gisPh("allTehsils") + "</option>";
+    cached.forEach(function (row) {
+      var o = document.createElement("option");
+      o.value = row.code;
+      o.textContent = row.name || row.code;
+      tehsilSelect.appendChild(o);
+    });
+    tehsilSelect.disabled = false;
+    return Promise.resolve();
+  }
   return queryLayer(ADMIN_MS, LAYER_TEHSIL, {
     where: "n_d_code = " + sqlQuote(d), outFields: "n_t_code,n_t_name", returnGeometry: false, orderByFields: "n_t_name", resultRecordCount: 2000
   }).then(function (data) {
     var seen = {};
+    var rows = [];
     tehsilSelect.innerHTML = "<option value=\"\">" + gisPh("allTehsils") + "</option>";
     (data.features || []).forEach(function (f) {
       var c = f.attributes.n_t_code;
       if (!c || seen[c]) return;
       seen[c] = true;
+      var nm = f.attributes.n_t_name || c;
+      rows.push({ code: c, name: nm });
       var o = document.createElement("option");
       o.value = c;
-      o.textContent = f.attributes.n_t_name || c;
+      o.textContent = nm;
       tehsilSelect.appendChild(o);
     });
+    adminTehsilOptionsCache[key] = rows;
     tehsilSelect.disabled = false;
   });
 }
@@ -2260,17 +3072,35 @@ function loadVillages(d, t) {
   villageSelect.innerHTML = "<option value=\"\">" + gisPh("village") + "</option>";
   villageSelect.disabled = true;
   if (!d || !t) return Promise.resolve();
+  var key = String(d).trim() + "|" + String(t).trim();
+  var cached = adminVillageOptionsCache[key];
+  if (cached && cached.length) {
+    villageSelect.innerHTML = "<option value=\"\">" + gisPh("allVillages") + "</option>";
+    cached.forEach(function (row) {
+      var o = document.createElement("option");
+      o.value = row.code;
+      o.textContent = row.name || row.code;
+      villageSelect.appendChild(o);
+    });
+    villageSelect.disabled = false;
+    return Promise.resolve();
+  }
   return queryLayer(ADMIN_MS, LAYER_VILLAGE, {
     where: "n_d_code = " + sqlQuote(d) + " AND n_t_code = " + sqlQuote(t),
     outFields: "n_v_code,n_v_name", returnGeometry: false, orderByFields: "n_v_name", resultRecordCount: 2000
   }).then(function (data) {
+    var rows = [];
     villageSelect.innerHTML = "<option value=\"\">" + gisPh("allVillages") + "</option>";
     (data.features || []).forEach(function (f) {
+      var code = f.attributes.n_v_code;
+      var nm = f.attributes.n_v_name || code;
+      rows.push({ code: code, name: nm });
       var o = document.createElement("option");
-      o.value = f.attributes.n_v_code;
-      o.textContent = f.attributes.n_v_name || f.attributes.n_v_code;
+      o.value = code;
+      o.textContent = nm;
       villageSelect.appendChild(o);
     });
+    adminVillageOptionsCache[key] = rows;
     villageSelect.disabled = false;
   });
 }
@@ -2799,18 +3629,269 @@ function syncCurrentLocationFabVisibility() {
   }
 }
 
-document.querySelectorAll(".modal-tabs button").forEach(function (btn) {
+function setConstituencyBoundaryVisibility(showLokSabha, showRajyaSabha) {
+  var showLok = !!showLokSabha;
+  var showRajya = !!showRajyaSabha;
+  addOperationalLayerToMap(conLayer);
+  return conLayer.when(function () {
+    var assemblySl = conLayer.findSublayerById(LAYER_CON_ASSEMBLY);
+    var parliamentSl = conLayer.findSublayerById(LAYER_CON_PARLIAMENT);
+
+    if (parliamentSl) parliamentSl.visible = showLok;
+    if (assemblySl) assemblySl.visible = showRajya;
+
+    if ((!parliamentSl || !assemblySl) && conLayer.allSublayers) {
+      conLayer.allSublayers.forEach(function (sl) {
+        var n = String((sl && sl.title) || (sl && sl.name) || "").toLowerCase();
+        if (!n) return;
+        if (n.indexOf("parliament") >= 0 || n.indexOf("lok sabha") >= 0) sl.visible = showLok;
+        if (n.indexOf("assembly") >= 0 || n.indexOf("vidhan") >= 0 || n.indexOf("rajya") >= 0) sl.visible = showRajya;
+      });
+    }
+
+    conLayer.visible = showLok || showRajya;
+  }).catch(function (err) {
+    console.warn("[constituency layer toggle]", err);
+  });
+}
+
+function bindConstituencyBoundaryToggles() {
+  var lokCb = document.getElementById("chkLokSabhaBoundary");
+  var parlCb = document.getElementById("chkParliamentaryBoundary");
+  var rajCb = document.getElementById("chkRajyaSabhaBoundary");
+  if (!lokCb || !rajCb) return;
+
+  var sync = function () {
+    var showParliament = !!lokCb.checked || !!(parlCb && parlCb.checked);
+    setConstituencyBoundaryVisibility(showParliament, rajCb.checked);
+  };
+
+  lokCb.addEventListener("change", sync);
+  if (parlCb) parlCb.addEventListener("change", sync);
+  rajCb.addEventListener("change", sync);
+  sync();
+}
+
+function optionTextByValue(selectEl, value) {
+  if (!selectEl || !selectEl.options) return "";
+  var code = String(value == null ? "" : value).trim();
+  if (!code) return "";
+  for (var i = 0; i < selectEl.options.length; i++) {
+    var opt = selectEl.options[i];
+    if (String(opt.value || "").trim() === code) {
+      return String(opt.textContent || opt.text || "").trim();
+    }
+  }
+  return "";
+}
+
+function projectToRenderableWebGeometry(geom) {
+  if (!geom) return null;
+  var gWeb = geom;
+  try {
+    if (!isWebMercatorWkid(wkidValue(gWeb.spatialReference))) {
+      gWeb = projection.project(ensureSR32643(gWeb), SR_WEB);
+    }
+  } catch (e0) {
+    gWeb = null;
+  }
+  if (!gWeb || !geometryIsUsable(gWeb)) return null;
+  var ext = gWeb.type === "extent" ? gWeb : gWeb.extent;
+  if (extentLooksEmpty(ext)) return null;
+  if (!ext || !isFinite(ext.xmin) || !isFinite(ext.xmax) || !isFinite(ext.ymin) || !isFinite(ext.ymax)) return null;
+  var maxAbs = 21000000;
+  if (Math.abs(ext.xmin) > maxAbs || Math.abs(ext.xmax) > maxAbs || Math.abs(ext.ymin) > maxAbs || Math.abs(ext.ymax) > maxAbs) {
+    return null;
+  }
+  return gWeb;
+}
+
+function runParliamentaryDistrictBufferSelection(dCode) {
+  var code = dCode ? String(dCode).trim() : "";
+  if (!code) {
+    userMapAnalysisGeometry32643 = null;
+    clearResults();
+    setStatus("Select a district in Parliamentary Boundary to apply district buffer.");
+    return Promise.resolve();
+  }
+
+  var where = "n_d_code = " + sqlQuote(code);
+  var districtName = optionTextByValue(parliamentaryDistrictSelect, code) || code;
+
+  return projection.load().catch(function () { return null; }).then(function () {
+    return setAdminFilters(code, null, null);
+  }).then(function () {
+    return queryAdministrativeGeometryForZoom(LAYER_DISTRICT, where, "n_d_code,n_d_name");
+  }).then(function (res) {
+    var gRaw = res && res.geometry;
+    var g32643 = to32643WithSmartFallback(gRaw, (gRaw && gRaw.spatialReference) || SR_METER) || ensureSR32643(gRaw);
+    var attrs = (res && res.attributes) || {};
+    if (attrs.n_d_name) districtName = String(attrs.n_d_name);
+
+    if (!g32643 || !geometryIsUsable(g32643)) {
+      alertNoData("geometry");
+      return;
+    }
+
+    selectedDistrictGeom = g32643;
+    selectedTehsilGeom = null;
+    selectedVillageGeom = null;
+
+    if (districtSelect) districtSelect.value = code;
+    if (tehsilSelect) {
+      tehsilSelect.innerHTML = "<option value=\"\">" + gisPh("tehsil") + "</option>";
+      tehsilSelect.disabled = true;
+    }
+    if (villageSelect) {
+      villageSelect.innerHTML = "<option value=\"\">" + gisPh("village") + "</option>";
+      villageSelect.disabled = true;
+    }
+    loadTehsils(code).catch(function () {});
+
+    bufferMarkPoint32643 = null;
+    bufferMarkLayer.removeAll();
+    bufferMarkModeActive = false;
+    var bbm = document.getElementById("btnBufferMarkPoint");
+    if (bbm) bbm.classList.remove("active");
+    if (view && view.container) view.container.style.cursor = "";
+    if (typeof syncBufferMapFabUi === "function") syncBufferMapFabUi();
+
+    var distM = setBufferDistanceMeters(1500);
+    var districtBuffer = createSafeBuffer32643(g32643, distM);
+    if (!districtBuffer) districtBuffer = g32643;
+    userMapAnalysisGeometry32643 = districtBuffer;
+
+    clearResults();
+    var drawGeom = projectToRenderableWebGeometry(districtBuffer) || projectToRenderableWebGeometry(g32643);
+    if (drawGeom) {
+      resultsLayer.add(new Graphic({
+        geometry: drawGeom,
+        symbol: symBuffer,
+        attributes: { n_d_code: code, n_d_name: districtName }
+      }));
+    } else {
+      console.warn("[parliamentary district buffer] could not project buffered district to map SR", code);
+    }
+
+    var qJson = districtBuffer && typeof districtBuffer.toJSON === "function" ? districtBuffer.toJSON() : null;
+    var msg = "District " + districtName + " selected. 1500 m buffer applied and data summary updated.";
+    var ctx = {
+      generatedAt: new Date().toISOString(),
+      summary: msg,
+      bufferDistanceM: distM,
+      roadSource: "District boundary",
+      roadLayerId: null,
+      count: 1,
+      total: 1,
+      withGeometry: 1,
+      skipped: 0,
+      queryGeometryJson: qJson,
+      objectIds: [],
+      featureSource: "parliamentary-district",
+      districtCode: code,
+      districtName: districtName,
+      clippedFromAdminSelection: false,
+      communitySummary: null
+    };
+    function hydrateAndPublishAfterZoom() {
+      setLastBufferExportContext(ctx);
+      hydrateNearSchoolStatsInBackground(ctx);
+      var baseReport = publishAnalysisToolResult("buffer", msg, {
+        count: 1,
+        total: 1,
+        withGeometry: 1,
+        skipped: 0,
+        bufferDistanceM: distM,
+        roadLayerId: null,
+        roadSource: "District boundary",
+        queryGeometryJson: qJson,
+        clippedFromAdminSelection: false,
+        districtCode: code,
+        districtName: districtName,
+        communitySummary: null
+      });
+      if (districtBuffer) publishBufferCommunitySummaryInBackground(baseReport, districtBuffer, ctx);
+    }
+
+    var zoomTarget = districtBuffer && geometryIsUsable(districtBuffer) ? districtBuffer : g32643;
+    var zoomPromise = projectToRenderableWebGeometry(zoomTarget)
+      ? zoomToGeometry(zoomTarget).catch(function () { return zoomGoToApproxSelection(code, "district"); })
+      : zoomGoToApproxSelection(code, "district");
+
+    return zoomPromise.then(function () {
+      setStatus(msg);
+      window.setTimeout(hydrateAndPublishAfterZoom, 0);
+    });
+  }).catch(function (err) {
+    console.error("[parliamentary district buffer]", err);
+    setStatus("District buffer failed - see console.");
+  });
+}
+
+function bindParliamentaryDistrictAutoBuffer() {
+  if (!parliamentaryDistrictSelect) return;
+  parliamentaryDistrictSelect.addEventListener("change", function () {
+    var code = parliamentaryDistrictSelect.value ? String(parliamentaryDistrictSelect.value).trim() : "";
+    runParliamentaryDistrictBufferSelection(code);
+  });
+}
+
+function runClearParliamentaryBoundary() {
+  var lokCb = document.getElementById("chkLokSabhaBoundary");
+  var parlCb = document.getElementById("chkParliamentaryBoundary");
+  var rajCb = document.getElementById("chkRajyaSabhaBoundary");
+
+  if (lokCb) lokCb.checked = false;
+  if (parlCb) parlCb.checked = false;
+  if (rajCb) rajCb.checked = false;
+  if (parliamentaryDistrictSelect) parliamentaryDistrictSelect.value = "";
+
+  return runParliamentaryDistrictBufferSelection("")
+    .then(function () {
+      return setConstituencyBoundaryVisibility(false, false);
+    })
+    .then(function () {
+      setStatus("Parliamentary boundary cleared.");
+    })
+    .catch(function (err) {
+      console.error("[parliamentary clear]", err);
+      setStatus("Parliamentary boundary clear failed - see console.");
+    });
+}
+
+function scrollAoiPanelToTop() {
+  var aoiScrollEl = document.querySelector("#aoiPanel .ap-scroll");
+  if (aoiScrollEl) aoiScrollEl.scrollTop = 0;
+}
+
+var aoiTabButtons = document.querySelectorAll("#aoiPanel .modal-tabs button[data-mpanel]");
+function clearAoiModalTabState() {
+  aoiTabButtons.forEach(function (b) { b.classList.remove("active"); });
+  document.querySelectorAll("#aoiPanel .modal-panel").forEach(function (p) { p.classList.remove("active"); });
+}
+/** Keep all AOI inner tabs collapsed on refresh; user opens by click. */
+clearAoiModalTabState();
+aoiTabButtons.forEach(function (btn) {
   btn.addEventListener("click", function () {
-    document.querySelectorAll(".modal-tabs button").forEach(function (b) { b.classList.remove("active"); });
-    document.querySelectorAll(".modal-panel").forEach(function (p) { p.classList.remove("active"); });
-    btn.classList.add("active");
-    var id = btn.getAttribute("data-mpanel");
-    var p = document.getElementById(id);
-    if (p) p.classList.add("active");
+    var wasActive = btn.classList.contains("active");
+    clearAoiModalTabState();
+    if (!wasActive) {
+      btn.classList.add("active");
+      var id = btn.getAttribute("data-mpanel");
+      var p = id ? document.getElementById(id) : null;
+      if (p) p.classList.add("active");
+      if (id === "mpAoi") scrollAoiPanelToTop();
+    }
     syncCurrentLocationFabVisibility();
   });
 });
 syncCurrentLocationFabVisibility();
+bindConstituencyBoundaryToggles();
+bindParliamentaryDistrictAutoBuffer();
+var btnParliamentaryClear = document.getElementById("btnParliamentaryClear");
+if (btnParliamentaryClear) {
+  btnParliamentaryClear.addEventListener("click", runClearParliamentaryBoundary);
+}
 
 function queryCadParcelGeometry() {
   var d = cadDistrictSelect.value ? String(cadDistrictSelect.value).trim() : "";
@@ -3677,105 +4758,536 @@ if (btnAoiRouteClose) {
   btnAoiRouteClose.addEventListener("click", closeAoiRoutePanel);
 }
 
-function loadHsvpPlots(dCode) {
+function normalizeDistrictName(v) {
+  return String(v == null ? "" : v).trim().toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+/**
+ * Investment dataset still carries older district names in some rows.
+ * Use aliases so newly carved districts can still resolve sectors.
+ */
+var HSVP_DISTRICT_ALIASES = {
+  charkhidadri: ["Bhiwani"],
+  nuh: ["Mewat"]
+};
+
+function getHsvpDistrictNameByCode(dCode) {
+  var hd = document.getElementById("hsvpDistrictSelect");
+  if (!hd || !dCode || !hd.options) return "";
+  var code = String(dCode).trim();
+  for (var i = 0; i < hd.options.length; i++) {
+    var opt = hd.options[i];
+    if (String(opt.value || "").trim() === code) {
+      return String(opt.text || "").trim();
+    }
+  }
+  return "";
+}
+
+var hsvpSectorBuckets = {};
+var hsvpFeatureByOid = {};
+
+function hsvpPlotOid(attrs) {
+  var a = attrs || {};
+  var oid = a.objectid != null ? a.objectid : (a.OBJECTID != null ? a.OBJECTID : null);
+  if (oid == null) return null;
+  var n = Number(oid);
+  return isFinite(n) ? n : null;
+}
+
+function hsvpPlotNo(attrs, oid) {
+  var a = attrs || {};
+  var plotNo =
+    a.alloted_reg_num != null ? a.alloted_reg_num :
+    (a.ALLOTED_REG_NUM != null ? a.ALLOTED_REG_NUM :
+    (a.reg_no != null ? a.reg_no :
+    (a.REG_NO != null ? a.REG_NO : "")));
+  var clean = String(plotNo || "").trim();
+  if (clean) return clean;
+  return String(oid);
+}
+
+function hsvpPlotName(attrs, oid) {
+  var a = attrs || {};
+  var nm =
+    a.firm_name != null ? a.firm_name :
+    (a.FIRM_NAME != null ? a.FIRM_NAME :
+    (a.n_name != null ? a.n_name :
+    (a.Name != null ? a.Name :
+    (a.NAME != null ? a.NAME :
+    (a.PLOT_NAME != null ? a.PLOT_NAME :
+    (a.REMARKS != null ? a.REMARKS : ""))))));
+  var clean = String(nm || "").trim();
+  if (clean) return clean;
+  return "Industrial plot " + String(oid);
+}
+
+function hsvpSectorAreaLabel(attrs) {
+  var a = attrs || {};
+  var addr = String(a.address != null ? a.address : (a.ADDRESS != null ? a.ADDRESS : "")).trim();
+  if (addr) {
+    var m = addr.match(/\bsector\s*[- ]*\s*([a-z0-9]+)/i);
+    if (m && m[1]) return "Sector " + String(m[1]).toUpperCase();
+    var first = addr.split(",")[0];
+    if (first) {
+      var cleanFirst = String(first).trim();
+      if (cleanFirst) return cleanFirst;
+    }
+  }
+  var cls = String(
+    a.classification_of_area != null
+      ? a.classification_of_area
+      : (a.CLASSIFICATION_OF_AREA != null ? a.CLASSIFICATION_OF_AREA : "")
+  ).trim();
+  if (cls) return cls;
+  return "Other area";
+}
+
+function hsvpSectorKey(label) {
+  var s = String(label || "").trim();
+  if (!s) return "otherarea";
+  var key = normalizeDistrictName(s);
+  return key || "otherarea";
+}
+
+function resetHsvpSectorAndPlotSelects() {
+  var secSel = document.getElementById("hsvpSectorSelect");
+  if (secSel) {
+    secSel.innerHTML = "<option value=\"\">" + gisPh("hsvpSector") + "</option>";
+    secSel.disabled = true;
+  }
+  var plotSel = document.getElementById("hsvpPlotSelect");
+  if (plotSel) {
+    plotSel.innerHTML = "<option value=\"\">" + gisPh("hsvpPlot") + "</option>";
+    plotSel.disabled = true;
+  }
+}
+
+function hsvpPoint32643FromFeature(feat) {
+  if (!feat) return null;
+  var attrs = feat.attributes || {};
+  var gj = feat.geometry;
+  var g = gj ? geomFromJSON(gj) : null;
+  if (g && geometryIsUsable(g)) {
+    if (!g.spatialReference) {
+      // HSVP layer queries run with outSR=32643; when SR is omitted in feature JSON,
+      // infer projected meters for large coordinate ranges instead of assuming WGS84.
+      if (g.type === "point" && isFinite(g.x) && isFinite(g.y)) {
+        var looksLikeWgs84 = Math.abs(Number(g.x)) <= 180 && Math.abs(Number(g.y)) <= 90;
+        g.spatialReference = looksLikeWgs84 ? SR4326 : SR_METER;
+      } else {
+        g.spatialReference = SR_METER;
+      }
+    }
+    var p = g.type === "point" ? g : getGeometryCentroid(g);
+    var p326 = p ? toEngineSR(p) : null;
+    if (p326 && p326.type === "point" && geometryIsUsable(p326)) return p326;
+  }
+  var lat = Number(attrs.lat != null ? attrs.lat : attrs.LAT);
+  var lon = Number(attrs.long != null ? attrs.long : (attrs.LONG != null ? attrs.LONG : (attrs.lon != null ? attrs.lon : attrs.LON)));
+  if (isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+    var pWgs = new Point({ x: lon, y: lat, spatialReference: SR4326 });
+    var p326Fallback = toEngineSR(pWgs);
+    if (p326Fallback && p326Fallback.type === "point" && geometryIsUsable(p326Fallback)) return p326Fallback;
+  }
+  var xRaw =
+    attrs.x != null ? attrs.x :
+    (attrs.X != null ? attrs.X :
+    (attrs.easting != null ? attrs.easting :
+    (attrs.EASTING != null ? attrs.EASTING : null)));
+  var yRaw =
+    attrs.y != null ? attrs.y :
+    (attrs.Y != null ? attrs.Y :
+    (attrs.northing != null ? attrs.northing :
+    (attrs.NORTHING != null ? attrs.NORTHING : null)));
+  var x = Number(xRaw);
+  var y = Number(yRaw);
+  if (isFinite(x) && isFinite(y)) {
+    var isWgs = Math.abs(x) <= 180 && Math.abs(y) <= 90;
+    var pAny = new Point({ x: x, y: y, spatialReference: isWgs ? SR4326 : SR_METER });
+    var p326FromXY = toEngineSR(pAny);
+    if (p326FromXY && p326FromXY.type === "point" && geometryIsUsable(p326FromXY)) return p326FromXY;
+  }
+  return null;
+}
+
+function zoomToHsvpDistrict(dCode) {
+  if (!dCode) return Promise.resolve();
+  var code = String(dCode).trim();
+  var where = "n_d_code = " + sqlQuote(code);
+  function zoomApproxDistrict14() {
+    var k = normalizeDistrictCodeKey(code);
+    var ll = HR_DISTRICT_LONLAT[k];
+    if (!ll) return zoomGoToApproxSelection(code, "district");
+    return view.when().then(function () {
+      return projection.load();
+    }).then(function () {
+      var pt = new Point({ x: ll[0], y: ll[1], spatialReference: SR4326 });
+      var ptWeb = projection.project(pt, SR_WEB);
+      if (!ptWeb) return zoomGoToApproxSelection(code, "district");
+      return view.goTo({ center: ptWeb, zoom: 14, padding: getUiZoomPadding() });
+    }).catch(function () {
+      return zoomGoToApproxSelection(code, "district");
+    });
+  }
+  return queryAdministrativeGeometryForZoom(LAYER_DISTRICT, where, "OBJECTID").then(function (res) {
+    var g = res && res.geometry ? res.geometry : null;
+    if (!g || !geometryIsUsable(g)) return zoomApproxDistrict14();
+    // Prefer full district extent zoom for clearer district-level focus.
+    return zoomToGeometry(g, { expandFactor: 1.08 }).catch(function () {
+      var ctr = getGeometryCentroid(g);
+      if (!ctr && g.type === "point") ctr = g;
+      if (!ctr && g.extent && g.extent.center) ctr = g.extent.center;
+      if (!ctr) return zoomApproxDistrict14();
+      return projection.load().then(function () {
+        var c326 = toEngineSR(ensureSR32643(ctr));
+        if (!c326) return zoomApproxDistrict14();
+        var cWeb = projection.project(c326, SR_WEB);
+        if (!cWeb) return zoomApproxDistrict14();
+        return view.goTo({ center: cWeb, zoom: 14, padding: getUiZoomPadding() });
+      });
+    });
+  }).catch(function (err) {
+    console.warn("[hsvp district zoom]", err);
+    return zoomApproxDistrict14();
+  });
+}
+
+function zoomToHsvpSectorArea(sectorKeyValue) {
+  var bucket = sectorKeyValue ? hsvpSectorBuckets[String(sectorKeyValue)] : null;
+  if (!bucket || !bucket.features || !bucket.features.length) return Promise.resolve();
+
+  var xmin = Infinity;
+  var ymin = Infinity;
+  var xmax = -Infinity;
+  var ymax = -Infinity;
+  var validCount = 0;
+  var firstPt = null;
+
+  bucket.features.forEach(function (f) {
+    var p = hsvpPoint32643FromFeature(f);
+    if (!p) return;
+    if (!firstPt) firstPt = p;
+    xmin = Math.min(xmin, p.x);
+    ymin = Math.min(ymin, p.y);
+    xmax = Math.max(xmax, p.x);
+    ymax = Math.max(ymax, p.y);
+    validCount++;
+  });
+
+  if (!validCount || !firstPt) return Promise.resolve();
+
+  if (validCount === 1) {
+    return projection.load().then(function () {
+      var pWeb = projection.project(firstPt, SR_WEB);
+      if (!pWeb) return Promise.resolve();
+      return view.goTo({ center: pWeb, zoom: 15, padding: getUiZoomPadding() });
+    }).catch(function () {
+      return Promise.resolve();
+    });
+  }
+
+  var ext = new Extent({
+    xmin: xmin,
+    ymin: ymin,
+    xmax: xmax,
+    ymax: ymax,
+    spatialReference: SR_METER
+  });
+  return zoomToGeometry(ext, { expandFactor: 1.28 });
+}
+
+function loadHsvpPlotsBySector(sectorKeyValue) {
   var plotSel = document.getElementById("hsvpPlotSelect");
   if (!plotSel) return Promise.resolve();
   plotSel.innerHTML = "<option value=\"\">" + gisPh("hsvpPlot") + "</option>";
   plotSel.disabled = true;
+
+  if (!sectorKeyValue) {
+    setStatus("Select sector/area to list plot numbers.");
+    return Promise.resolve();
+  }
+
+  var bucket = hsvpSectorBuckets[String(sectorKeyValue)];
+  if (!bucket || !bucket.features || !bucket.features.length) {
+    setStatus("No plots found for selected sector/area.");
+    return Promise.resolve();
+  }
+
+  var features = bucket.features.slice();
+  features.sort(function (fa, fb) {
+    var oa = hsvpPlotOid(fa && fa.attributes ? fa.attributes : {});
+    var ob = hsvpPlotOid(fb && fb.attributes ? fb.attributes : {});
+    var aa = fa && fa.attributes ? fa.attributes : {};
+    var bb = fb && fb.attributes ? fb.attributes : {};
+    var pa = hsvpPlotNo(aa, oa);
+    var pb = hsvpPlotNo(bb, ob);
+    var na = Number(pa);
+    var nb = Number(pb);
+    if (isFinite(na) && isFinite(nb) && na !== nb) return na - nb;
+    return String(pa).localeCompare(String(pb));
+  });
+
+  var added = 0;
+  features.forEach(function (f) {
+    var a = f && f.attributes ? f.attributes : {};
+    var oid = hsvpPlotOid(a);
+    if (oid == null) return;
+    var plotNo = hsvpPlotNo(a, oid);
+    var plotName = hsvpPlotName(a, oid);
+    var o = document.createElement("option");
+    o.value = String(oid);
+    o.textContent = "Plot " + plotNo + " - " + plotName;
+    o.setAttribute("data-plot-name", plotName);
+    o.setAttribute("data-plot-no", plotNo);
+    plotSel.appendChild(o);
+    added++;
+  });
+
+  plotSel.disabled = added === 0;
+  if (added > 0) setStatus("Loaded " + added + " plot number(s) in " + bucket.label + ".");
+  else setStatus("No plots found for selected sector/area.");
+  return Promise.resolve();
+}
+
+function loadHsvpPlots(dCode) {
+  var sectorSel = document.getElementById("hsvpSectorSelect");
+  if (!sectorSel) return Promise.resolve();
+
+  resetHsvpSectorAndPlotSelects();
+  hsvpSectorBuckets = {};
+  hsvpFeatureByOid = {};
   if (!dCode) return Promise.resolve();
-  return queryLayer(INV_MS, LAYER_INVESTMENT, {
-    where: "n_d_code = " + sqlQuote(dCode),
-    outFields: "*",
-    returnGeometry: false,
-    resultRecordCount: 800
-  }).then(function (data) {
-    (data.features || []).forEach(function (f) {
-      var a = f.attributes || {};
-      var oid = a.OBJECTID != null ? a.OBJECTID : a.objectid;
-      if (oid == null) return;
-      var label = String(a.n_name || a.Name || a.NAME || a.PLOT_NAME || a.REMARKS || "Plot") + " Ãƒâ€šÃ‚Â· " + oid;
-      var o = document.createElement("option");
-      o.value = String(oid);
-      o.textContent = label;
-      plotSel.appendChild(o);
-    });
-    plotSel.disabled = false;
-  }).catch(function () {
+
+  var districtName = getHsvpDistrictNameByCode(dCode);
+  if (!districtName) {
+    setStatus("Select district first.");
+    return Promise.resolve();
+  }
+
+  var hsvpDistrictOutFields =
+    "objectid,firm_name,district,address,alloted_reg_num,reg_no,classification_of_area";
+
+  function queryDistrictFeatures(whereClause) {
     return queryLayer(INV_MS, LAYER_INVESTMENT, {
-      where: "1=1",
-      outFields: "OBJECTID",
-      returnGeometry: false,
-      resultRecordCount: 400
-    }).then(function (data2) {
-      (data2.features || []).forEach(function (f) {
-        var oid = f.attributes && f.attributes.OBJECTID;
-        if (oid == null) return;
-        var o = document.createElement("option");
-        o.value = String(oid);
-        o.textContent = "Industrial plot " + oid;
-        plotSel.appendChild(o);
-      });
-      plotSel.disabled = false;
+      where: whereClause,
+      outFields: hsvpDistrictOutFields,
+      returnGeometry: true,
+      resultRecordCount: 2000
+    }).then(function (data) {
+      return data && data.features ? data.features : [];
+    }).catch(function () {
+      return [];
     });
+  }
+
+  function queryDistrictFeaturesByBoundary() {
+    var code = dCode ? String(dCode).trim() : "";
+    if (!code) return Promise.resolve([]);
+    var whereAdm = "n_d_code = " + sqlQuote(code);
+    return queryAdministrativeGeometryForZoom(LAYER_DISTRICT, whereAdm, "OBJECTID").then(function (res) {
+      var g = res && res.geometry ? res.geometry : null;
+      if (!g || !geometryIsUsable(g)) return [];
+      return queryLayer(INV_MS, LAYER_INVESTMENT, Object.assign({
+        where: "objectid IS NOT NULL",
+        outFields: hsvpDistrictOutFields,
+        returnGeometry: true,
+        resultRecordCount: 2000
+      }, geometryToQueryParams(g))).then(function (data) {
+        return data && data.features ? data.features : [];
+      }).catch(function () {
+        return [];
+      });
+    }).catch(function () {
+      return [];
+    });
+  }
+
+  function queryDistrictAliasFeatures() {
+    var aliasList = HSVP_DISTRICT_ALIASES[normalizeDistrictName(districtName)] || [];
+    if (!aliasList.length) return Promise.resolve([]);
+    var chain = Promise.resolve([]);
+    aliasList.forEach(function (name) {
+      chain = chain.then(function (found) {
+        if (found && found.length) return found;
+        return queryDistrictFeatures("UPPER(district) = " + sqlQuote(String(name).toUpperCase()));
+      });
+    });
+    return chain;
+  }
+
+  var whereExact = "district = " + sqlQuote(districtName);
+  var whereUpper = "UPPER(district) = " + sqlQuote(String(districtName).toUpperCase());
+  var loadSource = "name";
+
+  return queryDistrictFeatures(whereExact).then(function (f0) {
+    if (f0.length) return f0;
+    return queryDistrictFeatures(whereUpper);
+  }).then(function (f1) {
+    if (f1.length) return f1;
+    loadSource = "boundary";
+    return queryDistrictFeaturesByBoundary();
+  }).then(function (f2) {
+    if (f2.length) return f2;
+    loadSource = "alias";
+    return queryDistrictAliasFeatures();
+  }).then(function (features) {
+    if (!features.length) {
+      setStatus("No industrial plots found for selected district.");
+      return;
+    }
+
+    features.forEach(function (f) {
+      var a = f && f.attributes ? f.attributes : {};
+      var oid = hsvpPlotOid(a);
+      if (oid == null) return;
+      hsvpFeatureByOid[String(oid)] = f;
+      var label = hsvpSectorAreaLabel(a);
+      var key = hsvpSectorKey(label);
+      if (!hsvpSectorBuckets[key]) hsvpSectorBuckets[key] = { label: label, features: [] };
+      hsvpSectorBuckets[key].features.push(f);
+    });
+
+    var keys = Object.keys(hsvpSectorBuckets).sort(function (ka, kb) {
+      return String(hsvpSectorBuckets[ka].label || "").localeCompare(String(hsvpSectorBuckets[kb].label || ""));
+    });
+    if (!keys.length) {
+      setStatus("No sector/area found for selected district.");
+      return;
+    }
+
+    sectorSel.innerHTML = "<option value=\"\">" + gisPh("hsvpSector") + "</option>";
+    keys.forEach(function (k) {
+      var b = hsvpSectorBuckets[k];
+      var o = document.createElement("option");
+      o.value = k;
+      o.textContent = b.label + " (" + b.features.length + ")";
+      sectorSel.appendChild(o);
+    });
+    sectorSel.disabled = false;
+    if (loadSource === "boundary") {
+      setStatus("Loaded " + keys.length + " sector/area option(s) by district boundary match. Select sector/area to continue.");
+    } else if (loadSource === "alias") {
+      setStatus("Loaded " + keys.length + " sector/area option(s) using mapped district data. Select sector/area to continue.");
+    } else {
+      setStatus("Loaded " + keys.length + " sector/area option(s). Select sector/area to continue.");
+    }
+  }).catch(function (err) {
+    console.warn("[hsvp sectors] district load failed", err);
+    setStatus("Could not load sectors/areas for selected district.");
+    resetHsvpSectorAndPlotSelects();
+  });
+}
+
+function zoomToHsvpFeature(feat, oid) {
+  if (!feat) return Promise.resolve();
+  var attrs = feat.attributes || {};
+  var plotName = hsvpPlotName(attrs, oid);
+  var plotNo = hsvpPlotNo(attrs, oid);
+  var gj = feat.geometry;
+  var g = gj ? geomFromJSON(gj) : null;
+
+  if (!g || !geometryIsUsable(g)) {
+    var lat = Number(attrs.lat != null ? attrs.lat : attrs.LAT);
+    var lon = Number(attrs.long != null ? attrs.long : (attrs.LONG != null ? attrs.LONG : (attrs.lon != null ? attrs.lon : attrs.LON)));
+    if (isFinite(lat) && isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) {
+      g = new Point({ x: lon, y: lat, spatialReference: SR4326 });
+    }
+  }
+
+  if (!g || !geometryIsUsable(g)) {
+    setStatus("Selected plot has no usable geometry.");
+    return Promise.resolve();
+  }
+  if (!g.spatialReference) g.spatialReference = SR_WEB;
+  var g326 = toEngineSR(g);
+  if (!g326 || !geometryIsUsable(g326)) {
+    setStatus("Selected plot geometry could not be projected.");
+    return Promise.resolve();
+  }
+
+  var ctr = g326.type === "point" ? g326 : getGeometryCentroid(g326);
+  if (!ctr && g326.extent && g326.extent.center) ctr = g326.extent.center;
+  if (!ctr) {
+    setStatus("Plot geometry could not anchor a report point.");
+    return Promise.resolve();
+  }
+  lastIdentifyAnchor32643 = ctr;
+  identifyLayer.removeAll();
+  sketchLayer.removeAll();
+  selectionHighlightLayer.removeAll();
+  connectorLayer.removeAll();
+  var flat = [{
+    layerName: "Industrial / HSVP",
+    layerId: LAYER_INVESTMENT,
+    feature: feat,
+    _identifyUrl: INV_MS
+  }];
+  var mapPt = projection.project(ctr, SR_WEB);
+  setStatus("Zooming to plot no. " + plotNo + ": " + plotName);
+  function zoomToSelectedPlot() {
+    if (g326 && g326.type === "point") {
+      return projection.load().then(function () {
+        var pWeb = projection.project(g326, SR_WEB);
+        if (!pWeb) return zoomToGeometry(g326);
+        return view.goTo({ center: pWeb, zoom: 16, padding: getUiZoomPadding() });
+      }).catch(function () {
+        return zoomToGeometry(g326);
+      });
+    }
+    return zoomToGeometry(g326);
+  }
+  return zoomToSelectedPlot().then(function () {
+    return finalizeIdentifyResults(ctr, mapPt, flat, "hsvp");
   });
 }
 
 function performHsvpLandZoom() {
   var ps = document.getElementById("hsvpPlotSelect");
   if (!ps || !ps.value) {
-    setStatus("Select district and an HSVP / industrial plot.");
+    setStatus("Select district, sector/area and plot no.");
     return Promise.resolve();
   }
   var oid = parseInt(ps.value, 10);
   if (!isFinite(oid)) return Promise.resolve();
-  return invLayer.when(function () {
-    invLayer.visible = true;
-  }).then(function () {
+  var selOpt = ps.selectedOptions && ps.selectedOptions[0] ? ps.selectedOptions[0] : null;
+  var selPlotName = selOpt ? String(selOpt.getAttribute("data-plot-name") || selOpt.textContent || "").trim() : "";
+
+  function queryPlotByWhere(where) {
     return queryLayer(INV_MS, LAYER_INVESTMENT, {
-      where: "OBJECTID = " + oid,
+      where: where,
       outFields: "*",
       returnGeometry: true,
       resultRecordCount: 2
+    }).then(function (d) {
+      return d && d.features && d.features.length ? d : null;
+    }).catch(function () {
+      return null;
     });
+  }
+
+  return invLayer.when(function () {
+    invLayer.visible = true;
+  }).then(function () {
+    var cached = hsvpFeatureByOid[String(oid)];
+    if (cached) return { features: [cached] };
+    return queryPlotByWhere("objectid = " + oid);
   }).then(function (data) {
-    if (!data.features || !data.features.length) {
+    if (data) return data;
+    return queryPlotByWhere("OBJECTID = " + oid);
+  }).then(function (data) {
+    if (data) return data;
+    if (!selPlotName) return null;
+    return queryPlotByWhere("UPPER(firm_name) = " + sqlQuote(selPlotName.toUpperCase()));
+  }).then(function (data) {
+    if (!data || !data.features || !data.features.length) {
       alertNoData("HSVP / industrial plot");
       return;
     }
-    var feat = data.features[0];
-    var gj = feat.geometry;
-    var g = gj ? geomFromJSON(gj) : null;
-    if (!g || !geometryIsUsable(g)) {
-      setStatus("Plot geometry missing ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â choose another plot.");
-      return;
-    }
-    coerceMissingSpatialReference(g, SR_WEB);
-    var g326 = toEngineSR(g);
-    var ctr = g326.type === "point" ? g326 : getGeometryCentroid(g326);
-    if (!ctr && g326.extent && g326.extent.center) ctr = g326.extent.center;
-    if (!ctr) {
-      setStatus("Plot geometry could not anchor a report point.");
-      return;
-    }
-    lastIdentifyAnchor32643 = ctr;
-    identifyLayer.removeAll();
-    sketchLayer.removeAll();
-    selectionHighlightLayer.removeAll();
-    connectorLayer.removeAll();
-    var flat = [{
-      layerName: "Industrial / HSVP",
-      layerId: LAYER_INVESTMENT,
-      feature: feat,
-      _identifyUrl: INV_MS
-    }];
-    var mapPt = projection.project(ctr, SR_WEB);
-    setStatus("Building investor report for selected plotÃƒÂ¢Ã¢â€šÂ¬Ã‚Â¦");
-    return zoomToGeometry(g326).then(function () {
-      return finalizeIdentifyResults(ctr, mapPt, flat, "hsvp");
-    });
+    return zoomToHsvpFeature(data.features[0], oid);
   }).catch(function (e) {
     console.error(e);
-    setStatus("HSVP selection failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
+    setStatus("HSVP selection failed - see console.");
   });
 }
 
@@ -3783,11 +5295,56 @@ function performHsvpLandZoom() {
   var hd = document.getElementById("hsvpDistrictSelect");
   if (hd) {
     hd.addEventListener("change", function () {
-      loadHsvpPlots(this.value ? String(this.value).trim() : "");
+      var dCode = this.value ? String(this.value).trim() : "";
+      if (!dCode) {
+        resetHsvpSectorAndPlotSelects();
+        loadHsvpPlots("").catch(function (err0) {
+          console.warn("[hsvp district change: clear plots]", err0);
+        });
+        return;
+      }
+      loadHsvpPlots(dCode).catch(function (err1) {
+        console.warn("[hsvp district change: load plots]", err1);
+      });
+      zoomToHsvpDistrict(dCode).catch(function (err2) {
+        console.warn("[hsvp district change: zoom district]", err2);
+      });
     });
   }
+
+  var hs = document.getElementById("hsvpSectorSelect");
+  if (hs) {
+    hs.addEventListener("change", function () {
+      var sectorKeyValue = this.value ? String(this.value).trim() : "";
+      loadHsvpPlotsBySector(sectorKeyValue).catch(function (err2a) {
+        console.warn("[hsvp sector change: load plots]", err2a);
+      });
+      if (!sectorKeyValue) return;
+      zoomToHsvpSectorArea(sectorKeyValue).catch(function (err2b) {
+        console.warn("[hsvp sector change: zoom area]", err2b);
+      });
+    });
+  }
+
+  var hp = document.getElementById("hsvpPlotSelect");
+  if (hp) {
+    hp.addEventListener("change", function () {
+      if (this.value) {
+        performHsvpLandZoom().catch(function (err3) {
+          console.warn("[hsvp plot change: zoom]", err3);
+        });
+      }
+    });
+  }
+
   var hb = document.getElementById("btnHsvpApply");
-  if (hb) hb.addEventListener("click", performHsvpLandZoom);
+  if (hb) {
+    hb.addEventListener("click", function () {
+      performHsvpLandZoom().catch(function (err4) {
+        console.warn("[hsvp button: zoom]", err4);
+      });
+    });
+  }
 })();
 
 function closeAoiSheet() {
@@ -3854,6 +5411,7 @@ function openAoiSheet() {
   document.getElementById("toolsPanel").classList.add("collapsed");
   document.getElementById("btnTogglePanel").classList.remove("active");
   document.getElementById("btnOpenNav").classList.add("active");
+  scrollAoiPanelToTop();
   refreshMapViewPadding();
   window.setTimeout(function () { notifyViewLayoutChanged(); }, 280);
 }
@@ -3867,6 +5425,18 @@ var btnOpenNavEl = document.getElementById("btnOpenNav");
 if (btnOpenNavEl) btnOpenNavEl.addEventListener("click", toggleAoiPanel);
 var btnNavCloseEl = document.getElementById("btnNavClose");
 if (btnNavCloseEl) btnNavCloseEl.addEventListener("click", closeAoiSheet);
+
+/** Always start with AOI sheet closed after refresh / first load. */
+(function enforceAoiClosedOnBoot() {
+  var aoi = document.getElementById("aoiPanel");
+  if (!aoi) return;
+  closeAoiRoutePanel();
+  aoi.classList.add("collapsed");
+  aoi.setAttribute("aria-hidden", "true");
+  var btn = document.getElementById("btnOpenNav");
+  if (btn) btn.classList.remove("active");
+})();
+
 function msmeGisKeydownEsc(ev) {
   if (ev.key !== "Escape") return;
   var sel = document.getElementById("selectToolsPanel");
@@ -4094,45 +5664,562 @@ var symBufferMark = new SimpleMarkerSymbol({
   size: 12,
   outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 1.5 })
 });
+var symCommunityZoomMark = new SimpleMarkerSymbol({
+  style: "circle",
+  color: [20, 104, 170, 0.95],
+  size: 14,
+  outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 2 })
+});
+var communityZoomMarkGraphic = null;
+var communityZoomLabelGraphic = null;
 
 function clearResults() { resultsLayer.removeAll(); }
 
+function clearCommunityZoomGraphic() {
+  try {
+    if (communityZoomMarkGraphic) identifyLayer.remove(communityZoomMarkGraphic);
+  } catch (e0) {}
+  try {
+    if (communityZoomLabelGraphic) identifyLayer.remove(communityZoomLabelGraphic);
+  } catch (e1) {}
+  communityZoomMarkGraphic = null;
+  communityZoomLabelGraphic = null;
+}
+
+function addCommunityZoomGraphic(ptWeb, labelText) {
+  if (!ptWeb) return;
+  clearCommunityZoomGraphic();
+  communityZoomMarkGraphic = new Graphic({
+    geometry: ptWeb,
+    symbol: symCommunityZoomMark
+  });
+  identifyLayer.add(communityZoomMarkGraphic);
+
+  var txt = String(labelText || "").trim();
+  if (!txt) return;
+  communityZoomLabelGraphic = new Graphic({
+    geometry: ptWeb,
+    symbol: new TextSymbol({
+      text: txt,
+      color: "#0f3b63",
+      haloColor: "#ffffff",
+      haloSize: 1.3,
+      yoffset: -18,
+      font: { size: 11, family: "Segoe UI", weight: "700" }
+    })
+  });
+  identifyLayer.add(communityZoomLabelGraphic);
+}
+
+function deriveCommunityZoomLabel(detail) {
+  if (!detail) return "Selected location";
+  var item = detail.item || {};
+  return item.name || item.Name || item.label || item.title || item.itiName || item.iti_name || "Selected location";
+}
+
+function resolveCommunityZoomPoint4326(detail) {
+  if (!detail) return null;
+
+  function toNum(v) {
+    var n = Number(v);
+    return isFinite(n) ? n : NaN;
+  }
+
+  function tryLatLngFrom(obj) {
+    if (!obj) return null;
+    var latCandidates = [
+      obj.lat, obj.latitude, obj.Lat, obj.LAT, obj.y, obj.Y, obj.Latitude, obj.LATITUDE
+    ];
+    var lngCandidates = [
+      obj.lng, obj.lon, obj.long, obj.longitude, obj.Long, obj.LONG, obj.Lon, obj.LON, obj.x, obj.X, obj.Longitude, obj.LONGITUDE
+    ];
+    var lat = NaN;
+    var lng = NaN;
+    for (var i = 0; i < latCandidates.length; i++) {
+      lat = toNum(latCandidates[i]);
+      if (isFinite(lat)) break;
+    }
+    for (var j = 0; j < lngCandidates.length; j++) {
+      lng = toNum(lngCandidates[j]);
+      if (isFinite(lng)) break;
+    }
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) {
+      if (Math.abs(lng) <= 90 && Math.abs(lat) <= 180) {
+        var t = lat;
+        lat = lng;
+        lng = t;
+      }
+    }
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    return new Point({ x: lng, y: lat, spatialReference: SR4326 });
+  }
+
+  var direct = tryLatLngFrom(detail);
+  if (direct) return direct;
+
+  var item = detail.item || {};
+  var fromItem = tryLatLngFrom(item) || tryLatLngFrom(item.attributes || {}) || tryLatLngFrom(item.properties || {});
+  if (fromItem) return fromItem;
+
+  var rawGeom = null;
+  try {
+    rawGeom = geomFromJSON(item.geometry || item.geomJson || item.geometryJson);
+  } catch (e0) {
+    rawGeom = null;
+  }
+  if (!rawGeom && item.geometry && typeof item.geometry === "object") {
+    var gx = Number(item.geometry.x);
+    var gy = Number(item.geometry.y);
+    if (isFinite(gx) && isFinite(gy)) {
+      rawGeom = new Point({
+        x: gx,
+        y: gy,
+        spatialReference: item.geometry.spatialReference || SR4326
+      });
+    }
+  }
+  if (!rawGeom) return null;
+
+  coerceMissingSpatialReference(rawGeom, rawGeom.spatialReference || SR4326);
+  var g4326 = projection.project(rawGeom, SR4326) || rawGeom;
+  var pt = g4326 && g4326.type === "point" ? g4326 : getGeometryCentroid(g4326);
+  if (!pt) return null;
+
+  var latOut = Number(pt.y);
+  var lngOut = Number(pt.x);
+  if (!isFinite(latOut) || !isFinite(lngOut)) return null;
+  if (Math.abs(latOut) > 90 || Math.abs(lngOut) > 180) return null;
+  return new Point({ x: lngOut, y: latOut, spatialReference: SR4326 });
+}
+
+function resolveBufferCenterPoint32643() {
+  if (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") {
+    return bufferMarkPoint32643;
+  }
+  var ctx = lastBufferExportContext || {};
+  var candidates = [ctx.summaryGeometryJson, ctx.queryGeometryJson];
+  for (var i = 0; i < candidates.length; i++) {
+    var gj = candidates[i];
+    if (!gj) continue;
+    try {
+      var g = geomFromJSON(gj);
+      if (!g) continue;
+      var g326 = to32643WithSmartFallback(g, g.spatialReference || SR_METER);
+      if (!g326) continue;
+      if (g326.type === "point") return g326;
+      var ctr = getGeometryCentroid(g326);
+      if (ctr && ctr.type === "point") return ctr;
+    } catch (e0) {}
+  }
+  return null;
+}
+
+function formatDistanceLabel(meters) {
+  var m = Number(meters);
+  if (!isFinite(m) || m < 0) return "-";
+  if (m >= 1000) return (m / 1000).toFixed(2) + " km";
+  return Math.round(m) + " m";
+}
+
+function createSafeBuffer32643(geom, distM) {
+  var d = Number(distM);
+  if (!geom || !isFinite(d) || d <= 0) return null;
+
+  var g = toEngineSR(ensureSR32643(geom));
+  if (!g) return null;
+
+  function firstPoly(x) {
+    if (!x) return null;
+    if (Array.isArray(x)) return x.length ? x[0] : null;
+    return x;
+  }
+
+  function usablePoly(x) {
+    var p = firstPoly(x);
+    return geometryIsUsable(p) ? ensureSR32643(p) : null;
+  }
+
+  var out = null;
+  try {
+    out = usablePoly(geometryEngine.buffer(g, d, "meters"));
+    if (out) return out;
+  } catch (e0) {}
+
+  try {
+    var gs = geometryEngine.simplify(g) || g;
+    out = usablePoly(geometryEngine.buffer(gs, d, "meters"));
+    if (out) return out;
+  } catch (e1) {}
+
+  try {
+    var g4326 = projection.project(g, SR4326);
+    if (g4326) {
+      var geo = usablePoly(geometryEngine.geodesicBuffer(g4326, d, "meters"));
+      if (geo) {
+        var back = projection.project(geo, SR_METER);
+        if (geometryIsUsable(back)) return ensureSR32643(back);
+      }
+    }
+  } catch (e2) {}
+
+  return null;
+}
+
+function to32643WithSmartFallback(geom, responseSr) {
+  if (!geom) return null;
+
+  var raw = geom;
+  coerceMissingSpatialReference(raw, responseSr || SR_METER);
+  var g = toEngineSR(raw);
+  if (g) return g;
+
+  function firstXY(x) {
+    if (!x) return null;
+    if (x.type === "point") return [Number(x.x), Number(x.y)];
+    if (x.type === "polyline" && x.paths && x.paths[0] && x.paths[0][0]) {
+      return [Number(x.paths[0][0][0]), Number(x.paths[0][0][1])];
+    }
+    if (x.type === "polygon" && x.rings && x.rings[0] && x.rings[0][0]) {
+      return [Number(x.rings[0][0][0]), Number(x.rings[0][0][1])];
+    }
+    if (x.type === "extent") return [Number(x.xmin), Number(x.ymin)];
+    return null;
+  }
+
+  var xy = firstXY(raw);
+  var x0 = xy ? xy[0] : NaN;
+  var y0 = xy ? xy[1] : NaN;
+
+  try {
+    if (isFinite(x0) && isFinite(y0) && Math.abs(x0) <= 180 && Math.abs(y0) <= 90) {
+      raw.spatialReference = SR4326;
+      g = projection.project(raw, SR_METER);
+      if (g) return g;
+    }
+  } catch (e0) {}
+
+  try {
+    raw.spatialReference = SR_WEB;
+    g = projection.project(raw, SR_METER);
+    if (g) return g;
+  } catch (e1) {}
+
+  return null;
+}
+
+function buildFallbackAnchorBuffer32643(qg, distM) {
+  var anchor = null;
+  if (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") {
+    anchor = bufferMarkPoint32643;
+  } else if (qg && qg.type === "point") {
+    anchor = toEngineSR(ensureSR32643(qg));
+  } else if (qg) {
+    var qg32643 = toEngineSR(ensureSR32643(qg));
+    anchor = getGeometryCentroid(qg32643);
+    if (anchor && anchor.type !== "point") {
+      anchor = getGeometryCentroid(anchor);
+    }
+  }
+  if (!anchor || anchor.type !== "point") return null;
+  return createSafeBuffer32643(anchor, distM);
+}
+
 msmeBind("runBuffer", "click", function () {
   clearResults();
-  var roadLayerId = parseInt(document.getElementById("bufRoadLayer").value, 10);
-  var distM = parseFloat(document.getElementById("bufDist").value) || 1000;
-  var qg = activeQueryGeometry();
-  queryLayer(TRANS_MS, roadLayerId, Object.assign({
-    where: "1=1", returnGeometry: true, outFields: "OBJECTID", resultRecordCount: 100
-  }, geometryToQueryParams(qg))).then(function (data) {
-    if (!data.features || !data.features.length) { alertNoData("features in area"); return; }
+  bufferCommunitySummaryToken++;
+  var roadLayerEl = document.getElementById("bufRoadLayer");
+  var roadLayerId = parseInt(roadLayerEl.value, 10);
+  var roadSourceText = roadLayerEl && roadLayerEl.selectedOptions && roadLayerEl.selectedOptions[0]
+    ? String(roadLayerEl.selectedOptions[0].text || "").trim()
+    : "Road source";
+  var distM = parseFloat(document.getElementById("bufDist").value) || 1500;
+  var searchRadiusEl = document.getElementById("bufMarkQueryRadius");
+  var searchRadiusM = searchRadiusEl ? parseInt(searchRadiusEl.value, 10) || 5000 : 5000;
+  var runAtIso = new Date().toISOString();
+  var qGeomState = resolveBufferQueryGeometry(searchRadiusM);
+  var qg = qGeomState.geometry;
+  var clippedFromAdminSelection = !!qGeomState.clippedFromAdminSelection;
+  var qgJson = qg && typeof qg.toJSON === "function" ? qg.toJSON() : null;
+  var qp = geometryToQueryParams(qg);
+  var baseQuery = {
+    where: "1=1",
+    returnGeometry: true,
+    outFields: "OBJECTID",
+    resultRecordCount: 220
+  };
+  function setBufferContextAndHydrate(ctxObj) {
+    setLastBufferExportContext(ctxObj);
+    hydrateNearSchoolStatsInBackground(lastBufferExportContext);
+  }
+
+  function drawBuffersFromQueryData(data) {
+    var features = (data && data.features) || [];
+    var responseSr = (data && data.spatialReference) || null;
     var n = 0;
     var skipped = 0;
-    data.features.forEach(function (f) {
+    var withGeometry = 0;
+    var objectIds = [];
+    var bufferPolys32643 = [];
+
+    features.forEach(function (f) {
       var raw = geomFromJSON(f.geometry);
-      // Query responses often keep SR only at top-level; assume requested outSR (32643) when missing.
-      coerceMissingSpatialReference(raw, SR_METER);
-      var g = toEngineSR(raw);
-      if (!g) return;
-      var buf = geometryEngine.buffer(g, distM, "meters");
-      if (buf) {
-        resultsLayer.add(new Graphic({ geometry: projection.project(buf, SR_WEB), symbol: symBuffer, attributes: f.attributes }));
-        n++;
-      } else {
+      if (raw) withGeometry++;
+      // Prefer response-level SR when feature-level SR is missing; then try smart SR fallback.
+      var g = to32643WithSmartFallback(raw, responseSr);
+      if (!g) {
         skipped++;
+        return;
       }
+      var buf = createSafeBuffer32643(g, distM);
+      if (!buf) {
+        skipped++;
+        return;
+      }
+      var bufWeb = projection.project(buf, SR_WEB);
+      if (!bufWeb) {
+        skipped++;
+        return;
+      }
+      resultsLayer.add(new Graphic({ geometry: bufWeb, symbol: symBuffer, attributes: f.attributes }));
+      bufferPolys32643.push(buf);
+      var attrs = f.attributes || {};
+      var oid = attrs.OBJECTID != null ? attrs.OBJECTID : attrs.objectid;
+      if (oid != null && objectIds.length < 120) objectIds.push(String(oid));
+      n++;
     });
-    if (!n) {
-      setStatus("Buffer could not be created from selected features. Try another road source or zoom area.");
-      alertNoData("buffer");
+
+    var summaryGeometry32643 = null;
+    if (bufferPolys32643.length === 1) {
+      summaryGeometry32643 = bufferPolys32643[0];
+    } else if (bufferPolys32643.length > 1) {
+      try {
+        summaryGeometry32643 = geometryEngine.union(bufferPolys32643);
+      } catch (eUnion) {
+        console.warn("[buffer summary] union failed", eUnion);
+      }
+      if (!summaryGeometry32643) {
+        summaryGeometry32643 = bufferPolys32643[0];
+      }
     }
-    else {
-      var msg = "Buffer: " + n + " feature(s), " + distM + " m.";
-      if (skipped) msg += " (" + skipped + " skipped invalid geometry)";
-      setStatus(msg);
-      publishAnalysisToolResult("buffer", msg, { count: n, distanceM: distM });
+
+    return {
+      n: n,
+      skipped: skipped,
+      total: features.length,
+      withGeometry: withGeometry,
+      objectIds: objectIds,
+      summaryGeometry32643: summaryGeometry32643
+    };
+  }
+
+  function publishBufferSuccess(prefix, stats) {
+    var msg = prefix + stats.n + " feature(s), " + distM + " m.";
+    if (stats.skipped) msg += " (" + stats.skipped + " skipped)";
+    if (clippedFromAdminSelection) {
+      msg += " Search area limited to " + searchRadiusM + " m around AOI center.";
     }
+    var summaryGeomJson = stats.summaryGeometry32643 && typeof stats.summaryGeometry32643.toJSON === "function"
+      ? stats.summaryGeometry32643.toJSON()
+      : null;
+    setBufferContextAndHydrate({
+      generatedAt: runAtIso,
+      summary: msg,
+      roadSource: roadSourceText,
+      searchRadiusM: searchRadiusM,
+      bufferDistanceM: distM,
+      count: stats.n,
+      skipped: stats.skipped || 0,
+      fallback: false,
+      objectIds: stats.objectIds || [],
+      queryGeometryJson: qgJson,
+      summaryGeometryJson: summaryGeomJson,
+      communitySummary: null,
+      nearSchoolsStats: null
+    });
+    setStatus(msg);
+    var baseReport = publishAnalysisToolResult("buffer", msg, {
+      count: stats.n,
+      distanceM: distM,
+      searchRadiusM: searchRadiusM,
+      roadSource: roadSourceText
+    });
+    if (stats.summaryGeometry32643) {
+      publishBufferCommunitySummaryInBackground(baseReport, stats.summaryGeometry32643, lastBufferExportContext);
+    }
+  }
+
+  function showNoBufferError(stats, triedPolygonFallback) {
+    var reason = "";
+    if (!stats.total) reason = "No features found in selected search area.";
+    else if (!stats.withGeometry) reason = "Features returned without geometry.";
+    else reason = "Feature geometries could not be buffered at this location.";
+
+    var suffix = triedPolygonFallback
+      ? " Tried Roads (Line) and Roads (Polygon)."
+      : "";
+    if (clippedFromAdminSelection) {
+      suffix += " Search area limited to " + searchRadiusM + " m around AOI center.";
+    }
+    setBufferContextAndHydrate({
+      generatedAt: runAtIso,
+      summary: "No buffer drawn. " + reason + suffix,
+      roadSource: roadSourceText,
+      searchRadiusM: searchRadiusM,
+      bufferDistanceM: distM,
+      count: 0,
+      skipped: stats && stats.skipped != null ? stats.skipped : 0,
+      fallback: false,
+      objectIds: [],
+      queryGeometryJson: qgJson,
+      summaryGeometryJson: null,
+      communitySummary: null,
+      nearSchoolsStats: null
+    });
+    setStatus("No buffer drawn. " + reason + suffix);
+    window.alert("No buffer drawn.\n" + reason + suffix + "\nTry increasing search radius or changing Road source.");
+  }
+
+  projection.load().then(function () {
+    return queryLayer(TRANS_MS, roadLayerId, Object.assign({}, baseQuery, qp));
+  }).then(function (data) {
+    var stats = drawBuffersFromQueryData(data);
+    if (stats.n > 0) {
+      publishBufferSuccess("Buffer: ", stats);
+      return;
+    }
+
+    // Automatic fallback: when Roads (Line) fails, try Roads (Polygon) once.
+    if (roadLayerId === LAYER_ROADS_LINE) {
+      return queryLayer(TRANS_MS, 5, Object.assign({}, baseQuery, qp)).then(function (polyData) {
+        var polyStats = drawBuffersFromQueryData(polyData);
+        if (polyStats.n > 0) {
+          publishBufferSuccess("Buffer (roads polygon fallback): ", polyStats);
+          return;
+        }
+        var fallbackBuf = buildFallbackAnchorBuffer32643(qg, distM);
+        if (fallbackBuf) {
+          var fbWeb = projection.project(fallbackBuf, SR_WEB);
+          if (fbWeb) {
+            resultsLayer.add(new Graphic({ geometry: fbWeb, symbol: symBuffer }));
+            var fbMsg = "Fallback buffer shown around marked point (" + distM + " m). Roads geometry buffer was unavailable at this location.";
+            setBufferContextAndHydrate({
+              generatedAt: runAtIso,
+              summary: fbMsg,
+              roadSource: roadSourceText,
+              searchRadiusM: searchRadiusM,
+              bufferDistanceM: distM,
+              count: 1,
+              skipped: polyStats && polyStats.skipped != null ? polyStats.skipped : 0,
+              fallback: true,
+              objectIds: [],
+              queryGeometryJson: qgJson,
+              summaryGeometryJson: fallbackBuf.toJSON(),
+              communitySummary: null,
+              nearSchoolsStats: null
+            });
+            setStatus(fbMsg);
+            var fbReport = publishAnalysisToolResult("buffer", fbMsg, {
+              count: 1,
+              distanceM: distM,
+              fallback: true,
+              searchRadiusM: searchRadiusM,
+              roadSource: roadSourceText
+            });
+            publishBufferCommunitySummaryInBackground(fbReport, fallbackBuf, lastBufferExportContext);
+            return;
+          }
+        }
+        showNoBufferError(polyStats, true);
+      }).catch(function (e2) {
+        console.warn("[buffer] roads polygon fallback failed", e2);
+        var fallbackBuf2 = buildFallbackAnchorBuffer32643(qg, distM);
+        if (fallbackBuf2) {
+          var fbWeb2 = projection.project(fallbackBuf2, SR_WEB);
+          if (fbWeb2) {
+            resultsLayer.add(new Graphic({ geometry: fbWeb2, symbol: symBuffer }));
+            var fbMsg2 = "Fallback buffer shown around marked point (" + distM + " m). Roads query fallback failed.";
+            setBufferContextAndHydrate({
+              generatedAt: runAtIso,
+              summary: fbMsg2,
+              roadSource: roadSourceText,
+              searchRadiusM: searchRadiusM,
+              bufferDistanceM: distM,
+              count: 1,
+              skipped: stats && stats.skipped != null ? stats.skipped : 0,
+              fallback: true,
+              objectIds: [],
+              queryGeometryJson: qgJson,
+              summaryGeometryJson: fallbackBuf2.toJSON(),
+              communitySummary: null,
+              nearSchoolsStats: null
+            });
+            setStatus(fbMsg2);
+            var fbReport2 = publishAnalysisToolResult("buffer", fbMsg2, {
+              count: 1,
+              distanceM: distM,
+              fallback: true,
+              searchRadiusM: searchRadiusM,
+              roadSource: roadSourceText
+            });
+            publishBufferCommunitySummaryInBackground(fbReport2, fallbackBuf2, lastBufferExportContext);
+            return;
+          }
+        }
+        showNoBufferError(stats, true);
+      });
+    }
+
+    var fallbackBuf3 = buildFallbackAnchorBuffer32643(qg, distM);
+    if (fallbackBuf3) {
+      var fbWeb3 = projection.project(fallbackBuf3, SR_WEB);
+      if (fbWeb3) {
+        resultsLayer.add(new Graphic({ geometry: fbWeb3, symbol: symBuffer }));
+        var fbMsg3 = "Fallback buffer shown around marked point (" + distM + " m).";
+        setBufferContextAndHydrate({
+          generatedAt: runAtIso,
+          summary: fbMsg3,
+          roadSource: roadSourceText,
+          searchRadiusM: searchRadiusM,
+          bufferDistanceM: distM,
+          count: 1,
+          skipped: stats && stats.skipped != null ? stats.skipped : 0,
+          fallback: true,
+          objectIds: [],
+          queryGeometryJson: qgJson,
+          summaryGeometryJson: fallbackBuf3.toJSON(),
+          communitySummary: null,
+          nearSchoolsStats: null
+        });
+        setStatus(fbMsg3);
+        var fbReport3 = publishAnalysisToolResult("buffer", fbMsg3, {
+          count: 1,
+          distanceM: distM,
+          fallback: true,
+          searchRadiusM: searchRadiusM,
+          roadSource: roadSourceText
+        });
+        publishBufferCommunitySummaryInBackground(fbReport3, fallbackBuf3, lastBufferExportContext);
+        return;
+      }
+    }
+    showNoBufferError(stats, false);
   }).catch(function (e) { console.error(e); setStatus("Buffer failed."); });
+});
+
+window.msmeGisDownloadBufferPdf = function () {
+  var report = window.msmeGisGetAnalysisReportSnapshot ? window.msmeGisGetAnalysisReportSnapshot() : null;
+  if ((!report || report.tool !== "buffer") && !lastBufferExportContext) {
+    window.alert("Run Buffer once, then download PDF.");
+    return;
+  }
+  buildBufferPdfReport();
+};
+
+msmeBind("btnBufferPdf", "click", function () {
+  if (window.msmeGisDownloadBufferPdf) {
+    window.msmeGisDownloadBufferPdf();
+  }
 });
 
 msmeBind("runProximity", "click", function () {
@@ -4376,11 +6463,60 @@ view.on("pointer-move", function (evt) {
     var p = view.toMap(evt);
     var g = projection.project(p, new SpatialReference({ wkid: 4326 }));
     var el = document.getElementById("coordBar");
-    if (el && g) el.textContent = "Lat " + g.y.toFixed(5) + "Ãƒâ€šÃ‚Â° Ãƒâ€šÃ‚Â· Lon " + g.x.toFixed(5) + "Ãƒâ€šÃ‚Â°";
+    if (el && g) el.textContent = "Lat " + g.y.toFixed(5) + "°· Lon " + g.x.toFixed(5) + "°";
   });
 });
 
 var selectParcelToolActive = false;
+var quickBufferAutoRunAfterAnchorPick = false;
+
+function setBufferDistanceMeters(nextMeters) {
+  var d = parseInt(nextMeters, 10);
+  if (!isFinite(d) || d <= 0) d = 1500;
+  var slider = document.getElementById("bufDist");
+  var out = document.getElementById("bufDistVal");
+  if (slider) {
+    var minV = parseInt(slider.min, 10);
+    var maxV = parseInt(slider.max, 10);
+    if (isFinite(minV)) d = Math.max(minV, d);
+    if (isFinite(maxV)) d = Math.min(maxV, d);
+    slider.value = String(d);
+    try {
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    } catch (e0) {
+      if (out) out.textContent = String(d);
+    }
+  } else if (out) {
+    out.textContent = String(d);
+  }
+  return d;
+}
+
+function syncBufferMapFabUi() {
+  var fab = document.getElementById("bufferMapFab");
+  if (!fab) return;
+  fab.classList.toggle("active", !!bufferMarkModeActive);
+  fab.setAttribute("aria-pressed", bufferMarkModeActive ? "true" : "false");
+}
+
+function clearBufferAnchorMarker() {
+  bufferMarkPoint32643 = null;
+  bufferMarkLayer.removeAll();
+}
+
+function setBufferMarkMode(on, announce) {
+  bufferMarkModeActive = !!on;
+  var bMark = document.getElementById("btnBufferMarkPoint");
+  if (bMark) bMark.classList.toggle("active", bufferMarkModeActive);
+  if (bufferMarkModeActive) {
+    setSelectParcelTool(false);
+    if (view && view.container) view.container.style.cursor = "crosshair";
+    if (announce !== false) setStatus("Click the map to place the buffer anchor point.");
+  } else if (view && view.container) {
+    view.container.style.cursor = "";
+  }
+  syncBufferMapFabUi();
+}
 
 function setSelectParcelTool(on) {
   selectParcelToolActive = !!on;
@@ -4393,10 +6529,11 @@ function setSelectParcelTool(on) {
     view.container.style.cursor = on ? "crosshair" : "";
   }
   if (on) {
-    bufferMarkModeActive = false;
-    var bbm0 = document.getElementById("btnBufferMarkPoint");
-    if (bbm0) bbm0.classList.remove("active");
+    quickBufferAutoRunAfterAnchorPick = false;
+    setBufferMarkMode(false, false);
     setStatus("Select tool ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â click the map. Results appear in the left panel with distances.");
+  } else {
+    syncBufferMapFabUi();
   }
 }
 
@@ -4405,26 +6542,54 @@ function setSelectParcelTool(on) {
   var bClr = document.getElementById("btnBufferClearMark");
   if (bMark) {
     bMark.addEventListener("click", function () {
-      bufferMarkModeActive = !bufferMarkModeActive;
-      bMark.classList.toggle("active", bufferMarkModeActive);
-      if (bufferMarkModeActive) {
-        setSelectParcelTool(false);
-        if (view && view.container) view.container.style.cursor = "crosshair";
-        setStatus("Click the map to place the buffer anchor point.");
-      } else if (view && view.container) view.container.style.cursor = "";
+      var turningOn = !bufferMarkModeActive;
+      var hadAnchor = !!(bufferMarkPoint32643 && bufferMarkPoint32643.type === "point");
+      quickBufferAutoRunAfterAnchorPick = false;
+      if (turningOn && hadAnchor) {
+        clearBufferAnchorMarker();
+        setBufferMarkMode(true, false);
+        setStatus("Old buffer point removed. Click map to place a new buffer point.");
+        return;
+      }
+      setBufferMarkMode(turningOn, true);
     });
   }
   if (bClr) {
     bClr.addEventListener("click", function () {
-      bufferMarkPoint32643 = null;
-      bufferMarkLayer.removeAll();
-      bufferMarkModeActive = false;
-      if (bMark) bMark.classList.remove("active");
-      if (view && view.container) view.container.style.cursor = "";
+      clearBufferAnchorMarker();
+      quickBufferAutoRunAfterAnchorPick = false;
+      setBufferMarkMode(false, false);
       setStatus("Buffer anchor cleared.");
     });
   }
+  syncBufferMapFabUi();
 })();
+
+window.msmeGisStartQuickBuffer = function () {
+  setBufferDistanceMeters(1500);
+  if (bufferMarkModeActive) {
+    quickBufferAutoRunAfterAnchorPick = false;
+    setBufferMarkMode(false, false);
+    setStatus("Buffer mode OFF.");
+    return;
+  }
+  if (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") {
+    clearBufferAnchorMarker();
+    quickBufferAutoRunAfterAnchorPick = true;
+    setBufferMarkMode(true, false);
+    setStatus("Old buffer point removed. Click new location to run 1500 m buffer.");
+    return;
+  }
+  quickBufferAutoRunAfterAnchorPick = true;
+  setBufferMarkMode(true, false);
+  setStatus("Buffer mode active. Click the map to place anchor and run 1500 m buffer.");
+};
+
+window.msmeGisStopQuickBuffer = function () {
+  quickBufferAutoRunAfterAnchorPick = false;
+  setBufferMarkMode(false, false);
+  setStatus("Buffer mode OFF.");
+};
 
 /**
  * When identify returns cadastral polygon(s), prefer the smallest polygon (usually parcel vs village/district).
@@ -4673,7 +6838,8 @@ function finalizeIdentifyResults(anchor32643, mapPoint, flat, selectionSource) {
       lon: lon,
       radiusM: radiusM,
       atClickRows: atClickRows,
-      nearbyRows: nearbyRows
+      nearbyRows: nearbyRows,
+      communitySummary: null
     });
     var clicksPayload = mapIdentifyClickSessions.map(function (s, idx) {
       return {
@@ -4682,7 +6848,8 @@ function finalizeIdentifyResults(anchor32643, mapPoint, flat, selectionSource) {
         lon: s.lon,
         radiusM: s.radiusM,
         atClickRows: s.atClickRows,
-        nearbyRows: s.nearbyRows
+        nearbyRows: s.nearbyRows,
+        communitySummary: s.communitySummary || null
       };
     });
     publishMapSelectionReportSnapshot({
@@ -4696,6 +6863,7 @@ function finalizeIdentifyResults(anchor32643, mapPoint, flat, selectionSource) {
       radiusM: radiusM,
       atClickRows: atClickRows,
       nearbyRows: nearbyRows,
+      communitySummary: null,
       domContext: {}
     });
     try {
@@ -4732,7 +6900,7 @@ function finalizeIdentifyResults(anchor32643, mapPoint, flat, selectionSource) {
         popName = "Administrative boundary";
       }
       var popupHtml = buildSimpleIdentifyPopupHtml(lat, lon, popName, popDist, gisPh("mapPopupTitle"));
-      if (view.popup && mapPoint) {
+      if (selectionSource !== "map-click" && view.popup && mapPoint) {
         view.popup.open({
           title: "",
           content: popupHtml,
@@ -4752,6 +6920,13 @@ function finalizeIdentifyResults(anchor32643, mapPoint, flat, selectionSource) {
     if (selectParcelToolActive) {
       setSelectParcelTool(false);
     }
+    publishMapPointCommunitySummaryInBackground(anchor32643, radiusM, {
+      selectionSource: selectionSource || "map-click",
+      lat: lat,
+      lon: lon,
+      atClickRows: atClickRows,
+      nearbyRows: nearbyRows
+    });
   });
 }
 
@@ -4809,10 +6984,8 @@ function initSketchViewModel() {
 window.msmeGisStartSketch = function (mode) {
   initSketchViewModel();
   setSelectParcelTool(false);
-  bufferMarkModeActive = false;
-  var bbm = document.getElementById("btnBufferMarkPoint");
-  if (bbm) bbm.classList.remove("active");
-  if (view && view.container) view.container.style.cursor = "";
+  quickBufferAutoRunAfterAnchorPick = false;
+  setBufferMarkMode(false, false);
   var tool = "polygon";
   if (mode === "point") tool = "point";
   else if (mode === "polyline" || mode === "line") tool = "polyline";
@@ -4876,6 +7049,7 @@ window.msmeGisApplyMapSelectionToAnalysis = function () {
 
 window.msmeGisClearMapSelection = function () {
   if (sketchVM) sketchVM.cancel();
+  mapPointCommunitySummaryToken++;
   sketchLayer.removeAll();
   selectionHighlightLayer.removeAll();
   connectorLayer.removeAll();
@@ -4889,6 +7063,7 @@ window.msmeGisClearMapSelection = function () {
     bMs.classList.remove("active");
     bMs.setAttribute("aria-pressed", "false");
   }
+  publishMapSelectionReportSnapshot(null);
   setStatus("Selection graphics cleared.");
 };
 
@@ -4907,19 +7082,76 @@ window.msmeGisClearMapSelection = function () {
   }
 })();
 
+function onCommunityZoomToLocation(event) {
+  if (!event || !event.detail) return;
+  if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
+
+  var detail = event.detail || {};
+  var zoom = Number(detail.zoom);
+  var zoomLvl = isFinite(zoom) && zoom > 0 ? zoom : 16;
+
+  projection.load().then(function () {
+    var p4326 = resolveCommunityZoomPoint4326(detail);
+    if (!p4326) {
+      console.warn("[community zoom] invalid coordinates:", detail);
+      setStatus("Selected location has no valid coordinates for zoom.");
+      return;
+    }
+    var pWeb = projection.project(p4326, SR_WEB) || p4326;
+    var p32643 = projection.project(p4326, SR_METER) || null;
+    if (!pWeb) return;
+    addCommunityZoomGraphic(pWeb, deriveCommunityZoomLabel(detail));
+    if (p32643) {
+      var bufferCenter = resolveBufferCenterPoint32643();
+      if (bufferCenter && bufferCenter.type === "point") {
+        drawConnectorBetweenFeatures(bufferCenter, p32643);
+        var dMeters = geometryEngine.distance(bufferCenter, p32643, "meters");
+        var dTxt = formatDistanceLabel(dMeters);
+        var cat0 = String(detail.category || "location");
+        setStatus("Zoomed to " + cat0 + ". Distance from buffer center: " + dTxt + ".");
+      } else {
+        clearConnectorGraphics();
+      }
+    }
+    return view.goTo({ center: pWeb, zoom: zoomLvl, padding: getUiZoomPadding() }).then(function () {
+      var cat = String(detail.category || "location");
+      if (!p32643) {
+        setStatus("Zoomed to " + cat + " location.");
+      } else {
+        var center = resolveBufferCenterPoint32643();
+        if (!center || center.type !== "point") {
+          setStatus("Zoomed to " + cat + " location.");
+        }
+      }
+    });
+  }).catch(function (err) {
+    console.warn("[community zoom] failed", err);
+  });
+}
+
+window.addEventListener("msme-gis-zoom-to-location", onCommunityZoomToLocation);
+
 view.on("click", function (event) {
+  if (view && view.popup && view.popup.visible) {
+    try { view.popup.close(); } catch (eClose) {}
+  }
   if (sketchVM && sketchVM.state === "active") return;
   if (bufferMarkModeActive) {
     projection.load().then(function () {
       bufferMarkPoint32643 = projection.project(event.mapPoint, SR_METER);
-      bufferMarkModeActive = false;
-      var bbm = document.getElementById("btnBufferMarkPoint");
-      if (bbm) bbm.classList.remove("active");
+      setBufferMarkMode(false, false);
       bufferMarkLayer.removeAll();
       var gw = projection.project(bufferMarkPoint32643, SR_WEB);
       bufferMarkLayer.add(new Graphic({ geometry: gw, symbol: symBufferMark }));
-      setStatus("Buffer anchor point set ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â adjust search radius, then Run buffer.");
-      if (view && view.container) view.container.style.cursor = "";
+      var shouldQuickRun = !!quickBufferAutoRunAfterAnchorPick;
+      quickBufferAutoRunAfterAnchorPick = false;
+      if (shouldQuickRun) {
+        setStatus("Buffer anchor point set. Running 1500 m buffer...");
+        var runBtn = document.getElementById("runBuffer");
+        if (runBtn) runBtn.click();
+      } else {
+        setStatus("Buffer anchor point set ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â adjust search radius, then Run buffer.");
+      }
     }).catch(function (err) { console.error(err); });
     return;
   }
@@ -4971,6 +7203,12 @@ if (typeof window !== "undefined") {
     window.__msmeGisInitialized = false;
     window.__msmeGisInitInProgress = false;
     try {
+      window.removeEventListener("msme-gis-zoom-to-location", onCommunityZoomToLocation);
+    } catch (eZ) {}
+    try {
+      clearCommunityZoomGraphic();
+    } catch (eZG) {}
+    try {
       document.removeEventListener("keydown", msmeGisKeydownEsc);
     } catch (eK) {}
     try {
@@ -4980,6 +7218,10 @@ if (typeof window !== "undefined") {
     try {
       if (basemapGallery && typeof basemapGallery.destroy === "function") basemapGallery.destroy();
     } catch (eG) {}
+    try {
+      if (basemapWatchHandle && typeof basemapWatchHandle.remove === "function") basemapWatchHandle.remove();
+    } catch (eW) {}
+    basemapWatchHandle = null;
     try {
       if (bgExpand && typeof bgExpand.destroy === "function") bgExpand.destroy();
     } catch (eE) {}
@@ -5000,10 +7242,7 @@ projection.load().then(function () {
   return fixAdminScales();
 }).then(function () {
   if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
-  return buildCadastralLayerIndex();
-}).then(function () {
-  if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
-  return loadDistricts();
+  return enforceSingleDistrictLabelSource();
 }).then(function () {
   if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
   view.extent = getInitialMapExtent();
@@ -5012,12 +7251,25 @@ projection.load().then(function () {
     if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
     refreshMapViewPadding();
     initSketchViewModel();
+    applyInitialRequestedLayerPreset();
+    setStatus("Ready. Map is interactive; loading layers and dropdown data...");
+  });
+  // Non-blocking background warmups.
+  Promise.resolve().then(function () {
+    return loadDistricts();
+  }).catch(function (err) {
+    console.warn("[init] district list load failed", err);
+  });
+  Promise.resolve().then(function () {
+    return buildCadastralLayerIndex();
+  }).catch(function (err) {
+    console.warn("[init] cadastral index load failed", err);
   });
   if (typeof window !== "undefined" && window.__msmeGisBootId === myBootId) {
     window.__msmeGisInitialized = true;
     window.__msmeGisInitInProgress = false;
   }
-  setStatus("Ready. Haryana administrative boundaries are loaded; open Layers to load additional map services.");
+  setStatus("Ready. Haryana administrative boundaries are loaded.");
 }).catch(function (e) {
   if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
   if (typeof window !== "undefined" && window.__msmeGisBootId === myBootId) {

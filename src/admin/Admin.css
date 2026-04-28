@@ -8,6 +8,8 @@
   background-position: center;
   background-attachment: fixed; /* Taaki scroll karne par image wahi rahe */
   color: #ffffff;
+  width: 100%;
+  overflow-x: hidden;
 }
 
 .admin-content {
@@ -16,6 +18,8 @@
   margin-left: 260px; 
   padding: 30px;
   overflow-y: auto;
+  overflow-x: auto;
+  min-width: 0;
   /* Glassmorphism effect ke liye halka blur (optional) */
   backdrop-filter: blur(5px);
 }
@@ -26,7 +30,12 @@
 }
 
 @media (max-width: 768px) {
+  .admin-layout {
+    background-attachment: scroll;
+  }
+
   .admin-content {
     margin-left: 0;
+    padding: 72px 14px 18px;
   }
 }
