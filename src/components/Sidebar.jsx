@@ -1,5 +1,6 @@
-import ResultsFlyout from './ResultsFlyout.jsx'
+// import ResultsFlyout from './ResultsFlyout.jsx'
 import LandLocationReport from './LandLocationReport.jsx'
+import CommunitySummaryPanel from './CommunitySummaryPanel.jsx'
 
 export default function Sidebar({ t }) {
   return (
@@ -61,8 +62,8 @@ export default function Sidebar({ t }) {
                     <option value="0">{t('bufRoadOptAir')}</option>
                   </select>
                   <span className="lbl">{t('bufferDistance')}</span>
-                  <input type="range" id="bufDist" min="100" max="5000" step="100" defaultValue="1000" />
-                  <span className="val" id="bufDistVal">1000</span>
+                  <input type="range" id="bufDist" min="100" max="5000" step="100" defaultValue="1500" />
+                  <span className="val" id="bufDistVal">1500</span>
                   <button type="button" className="btn-run" id="runBuffer">
                     {t('runBuffer')}
                   </button>
@@ -240,173 +241,207 @@ export default function Sidebar({ t }) {
               ×
             </button>
           </div>
-          <div className="modal-tabs" role="tablist">
-            <button type="button" className="active" id="tabAoi" data-mpanel="mpAoi">
-              {t('tabAoi')}
-            </button>
-            <button type="button" id="tabCad" data-mpanel="mpCad">
-              {t('tabCad')}
-            </button>
-            <button type="button" id="tabHsvp" data-mpanel="mpHsvp">
-              {t('tabHsvp')}
-            </button>
-          </div>
         </div>
 
         <div className="ap-scroll">
-          <div id="mpAoi" className="modal-panel active">
-            <section className="aoi-card">
-              <h3 className="aoi-card-title">{t('aoiSectionAdmin')}</h3>
-              <p className="aoi-card-desc">{t('aoiHelpAdmin')}</p>
+          <div className="modal-tabs" role="tablist">
+            <button type="button" id="tabAoi" data-mpanel="mpAoi">
+              {t('tabAoi')}
+            </button>
 
-              <label>{t('state')}</label>
-              <select id="stateSelect" disabled>
-                <option>HARYANA</option>
-              </select>
+            <div id="mpAoi" className="modal-panel inline-tab-panel">
+              <section className="aoi-card">
+                <h3 className="aoi-card-title">{t('aoiSectionAdmin')}</h3>
+                <p className="aoi-card-desc">{t('aoiHelpAdmin')}</p>
 
-              <label>{t('district')}</label>
-              <select id="districtSelect">
-                <option value="">{t('placeholderDistrict')}</option>
-              </select>
+                <label>{t('state')}</label>
+                <select id="stateSelect" disabled>
+                  <option>HARYANA</option>
+                </select>
 
-              <label>{t('tehsil')}</label>
-              <select id="tehsilSelect" disabled>
-                <option value="">{t('placeholderTehsil')}</option>
-              </select>
+                <label>{t('district')}</label>
+                <select id="districtSelect">
+                  <option value="">{t('placeholderDistrict')}</option>
+                </select>
 
-              <label>{t('village')}</label>
-              <select id="villageSelect" disabled>
-                <option value="">{t('placeholderVillage')}</option>
-              </select>
+                <label>{t('tehsil')}</label>
+                <select id="tehsilSelect" disabled>
+                  <option value="">{t('placeholderTehsil')}</option>
+                </select>
 
-              <div className="actions">
-                <button type="button" className="btn-go" id="btnNavApply">
-                  {t('applyZoom')}
-                </button>
-                <button type="button" className="btn-clear" id="btnNavClear">
-                  {t('clear')}
-                </button>
-                <button type="button" className="btn-clear btn-route" id="btnRouteFromCurrentToAoi">
-                  Tracking
-                </button>
-              </div>
+                <label>{t('village')}</label>
+                <select id="villageSelect" disabled>
+                  <option value="">{t('placeholderVillage')}</option>
+                </select>
 
-              <div id="aoiRoutePanel" className="aoi-route-panel" aria-live="polite">
-                <div className="aoi-route-head">
-                  <strong>Route details</strong>
-                  <button type="button" className="aoi-route-close" id="btnAoiRouteClose">
-                    Hide
+                <div className="actions">
+                  <button type="button" className="btn-go" id="btnNavApply">
+                    {/* {t('applyZoom')} */}
+                    Analyze
+                  </button>
+                  <button type="button" className="btn-clear" id="btnNavClear">
+                    {t('clear')}
+                  </button>
+                  <button type="button" className="btn-clear btn-route" id="btnRouteFromCurrentToAoi">
+                   Plan  Route 
                   </button>
                 </div>
-                <div id="aoiRouteSummary" className="aoi-route-summary">
-                  Select AOI and click Route to view directions.
+
+                <div id="aoiRoutePanel" className="aoi-route-panel" aria-live="polite">
+                  <div className="aoi-route-head">
+                    <strong>Route details</strong>
+                    <button type="button" className="aoi-route-close" id="btnAoiRouteClose">
+                      Hide
+                    </button>
+                  </div>
+                  <div id="aoiRouteSummary" className="aoi-route-summary">
+                    Select AOI and click Route to view directions.
+                  </div>
+                  <ol id="aoiRouteSteps" className="aoi-route-steps"></ol>
                 </div>
-                <ol id="aoiRouteSteps" className="aoi-route-steps"></ol>
-              </div>
-            </section>
-          </div>
+              </section>
+            </div>
 
-          <div id="mpCad" className="modal-panel">
-            <section className="aoi-card">
-              <h3 className="aoi-card-title">{t('aoiSectionCad')}</h3>
-              <p className="aoi-card-desc">{t('cadIntro')}</p>
+            <button type="button" id="tabParliamentary" data-mpanel="mpParliamentary">
+              {t('tabParliamentaryBoundary')}
+            </button>
+            <div id="mpParliamentary" className="modal-panel inline-tab-panel">
+              <section className="aoi-card">
+                <h3 className="aoi-card-title">{t('tabParliamentaryBoundary')}</h3>
+                <p className="aoi-card-desc">{t('parliamentaryBoundaryHelp')}</p>
+               <label>{t('district')}</label>
+                <select id="parliamentaryDistrictSelect">
+                  <option value="">{t('placeholderDistrict')}</option>
+                </select>
+                <label>{t('constituencyBoundaries')}</label>
+                <div className="const-boundary-grid" role="group" aria-label={t('constituencyBoundaries')}>
+                  <label className="const-boundary-item">
+                    <input type="checkbox" id="chkLokSabhaBoundary" />
+                    <span>{t('lokSabhaBoundary')}</span>
+                  </label>
+                  <label className="const-boundary-item">
+                    <input type="checkbox" id="chkParliamentaryBoundary" />
+                    <span>{t('parliamentaryBoundary')}</span>
+                  </label>
+                  <label className="const-boundary-item">
+                    <input type="checkbox" id="chkRajyaSabhaBoundary" />
+                    <span>{t('rajyaSabhaBoundary')}</span>
+                  </label>
+                </div>
+                <div className="actions">
+                  <button type="button" className="btn-clear" id="btnParliamentaryClear">
+                    {t('clear')}
+                  </button>
+                </div>
+              </section>
+            </div>
+            <button type="button" id="tabCad" data-mpanel="mpCad">
+              {t('tabCad')}
+            </button>
+            <div id="mpCad" className="modal-panel inline-tab-panel">
+              <section className="aoi-card">
+                <h3 className="aoi-card-title">{t('aoiSectionCad')}</h3>
+                <p className="aoi-card-desc">{t('cadIntro')}</p>
 
-              <label>{t('cadDistrict')}</label>
-              <select id="cadDistrictSelect">
-                <option value="">{t('placeholderDistrict')}</option>
-              </select>
+                <label>{t('cadDistrict')}</label>
+                <select id="cadDistrictSelect">
+                  <option value="">{t('placeholderDistrict')}</option>
+                </select>
 
-              <label>{t('cadTehsil')}</label>
-              <select id="cadTehsilSelect" disabled>
-                <option value="">{t('placeholderTehsil')}</option>
-              </select>
+                <label>{t('cadTehsil')}</label>
+                <select id="cadTehsilSelect" disabled>
+                  <option value="">{t('placeholderTehsil')}</option>
+                </select>
 
-              <label>{t('cadVillage')}</label>
-              <select id="cadVillageSelect" disabled>
-                <option value="">{t('placeholderVillage')}</option>
-              </select>
+                <label>{t('cadVillage')}</label>
+                <select id="cadVillageSelect" disabled>
+                  <option value="">{t('placeholderVillage')}</option>
+                </select>
 
-              <label>{t('cadMuraba')}</label>
-              <select id="cadMurabaSelect" disabled>
-                <option value="">{t('placeholderMuraba')}</option>
-              </select>
+                <label>{t('cadMuraba')}</label>
+                <select id="cadMurabaSelect" disabled>
+                  <option value="">{t('placeholderMuraba')}</option>
+                </select>
 
-              <label>{t('cadKhasra')}</label>
-              <select id="cadKhasraSelect" disabled>
-                <option value="">{t('placeholderParcel')}</option>
-              </select>
+                <label>{t('cadKhasra')}</label>
+                <select id="cadKhasraSelect" disabled>
+                  <option value="">{t('placeholderParcel')}</option>
+                </select>
 
-              <label>{t('cadRadius')}</label>
-              <input
-                type="range"
-                id="cadNearM"
-                min="200"
-                max="10000"
-                step="100"
-                defaultValue="2000"
-                style={{ width: '100%' }}
-              />
-              <div className="cad-radius-val">
-                <span id="cadNearMVal">2000</span> m
-              </div>
+                <label>{t('cadRadius')}</label>
+                <input
+                  type="range"
+                  id="cadNearM"
+                  min="200"
+                  max="10000"
+                  step="100"
+                  defaultValue="2000"
+                  style={{ width: '100%' }}
+                />
+                <div className="cad-radius-val">
+                  <span id="cadNearMVal">2000</span> m
+                </div>
 
-              <details className="cad-near-dropdown">
-                <summary className="cad-near-summary">{t('cadFeatures')}</summary>
-                <div id="cadNearChecks" className="chk-grid cad-near-grid"></div>
-              </details>
+                <details className="cad-near-dropdown">
+                  <summary className="cad-near-summary">{t('cadFeatures')}</summary>
+                  <div id="cadNearChecks" className="chk-grid cad-near-grid"></div>
+                </details>
 
-              <label className="cad-near-all">
-                <input type="checkbox" id="cadNearAll" /> {t('cadSelectAll')}
-              </label>
+                <label className="cad-near-all">
+                  <input type="checkbox" id="cadNearAll" /> {t('cadSelectAll')}
+                </label>
 
-              <div className="actions actions-spaced">
-                <button type="button" className="btn-go" id="btnCadShow">
-                  {t('cadShow')}
-                </button>
-                <button type="button" className="btn-go btn-go-accent" id="btnCadNearby">
-                  {t('Features near me')}
-                </button>
-              </div>
+                <div className="actions actions-spaced">
+                  <button type="button" className="btn-go" id="btnCadShow">
+                    {t('cadShow')}
+                  </button>
+                  <button type="button" className="btn-go btn-go-accent" id="btnCadNearby">
+                    {t('Features near me')}
+                  </button>
+                </div>
 
-              <div className="actions">
-                <button type="button" className="btn-clear" id="btnCadRoute" title={t('cadRoute')}>
-                  {t('cadRoute')}
-                </button>
-                <button type="button" className="btn-clear" id="btnCadClear">
-                  {t('cadClear')}
-                </button>
-              </div>
+                <div className="actions">
+                  <button type="button" className="btn-clear" id="btnCadRoute" title={t('cadRoute')}>
+                    {t('cadRoute')}
+                  </button>
+                  <button type="button" className="btn-clear" id="btnCadClear">
+                    {t('cadClear')}
+                  </button>
+                </div>
 
-              <div id="cadResults" className="cad-results"></div>
-            </section>
-          </div>
+                <div id="cadResults" className="cad-results"></div>
+              </section>
+            </div>
+            <button type="button" id="tabHsvp" data-mpanel="mpHsvp">
+              {t('tabHsvp')}
+            </button>
+            <div id="mpHsvp" className="modal-panel inline-tab-panel">
+              <section className="aoi-card">
+                <h3 className="aoi-card-title">{t('hsvpTitle')}</h3>
+                <p className="aoi-card-desc">{t('hsvpIntro')}</p>
 
-          <div id="mpHsvp" className="modal-panel">
-            <section className="aoi-card">
-              <h3 className="aoi-card-title">{t('hsvpTitle')}</h3>
-              <p className="aoi-card-desc">{t('hsvpIntro')}</p>
+                <label>{t('district')}</label>
+                <select id="hsvpDistrictSelect">
+                  <option value="">{t('placeholderDistrict')}</option>
+                </select>
 
-              <label>{t('district')}</label>
-              <select id="hsvpDistrictSelect">
-                <option value="">{t('placeholderDistrict')}</option>
-              </select>
+                <label>{t('hsvpSector')}</label>
+                <select id="hsvpSectorSelect" disabled>
+                  <option value="">{t('placeholderHsvpSector')}</option>
+                </select>
 
-              <label>{t('hsvpSector')}</label>
-              <select id="hsvpSectorSelect" disabled>
-                <option value="">{t('placeholderHsvpSector')}</option>
-              </select>
+                <label>{t('hsvpPlot')}</label>
+                <select id="hsvpPlotSelect" disabled>
+                  <option value="">{t('placeholderHsvpPlot')}</option>
+                </select>
 
-              <label>{t('hsvpPlot')}</label>
-              <select id="hsvpPlotSelect" disabled>
-                <option value="">{t('placeholderHsvpPlot')}</option>
-              </select>
-
-              <div className="actions">
-                <button type="button" className="btn-go btn-go-accent" id="btnHsvpApply">
-                  {t('hsvpApply')}
-                </button>
-              </div>
-            </section>
+                <div className="actions">
+                  <button type="button" className="btn-go btn-go-accent" id="btnHsvpApply">
+                    {t('ZOOM')}
+                  </button>
+                </div>
+              </section>
+            </div>
           </div>
         </div>
       </aside>
@@ -543,7 +578,8 @@ export default function Sidebar({ t }) {
         </div>
       </aside>
 
-      <ResultsFlyout />
+      {/* <ResultsFlyout /> */}
+      <CommunitySummaryPanel />
       <LandLocationReport />
     </>
   )

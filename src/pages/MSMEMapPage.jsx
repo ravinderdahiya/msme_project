@@ -8,10 +8,21 @@ import "../msme-webgis.css";
 
 const MSMEGISPage = () => {
   const { t, lang, setLang, languages } = useI18n();
-  const [theme, setTheme] = useState("hepc-blue");
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem("msme-ui-theme") || "white";
+    } catch {
+      return "white";
+    }
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    try {
+      localStorage.setItem("msme-ui-theme", theme);
+    } catch {
+      /* ignore */
+    }
   }, [theme]);
 
   useEffect(() => {
@@ -56,6 +67,8 @@ const MSMEGISPage = () => {
         lang={lang}
         setLang={setLang}
         languages={languages}
+        theme={theme}
+        setTheme={setTheme}
       />
       <Sidebar t={t} />
       <HaryanaMap t={t} />

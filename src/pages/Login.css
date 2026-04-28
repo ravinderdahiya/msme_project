@@ -335,6 +335,43 @@
     justify-content: center;
   }
 }
+
+@media (max-width: 480px) {
+  .hero-container {
+    padding: 20px 14px;
+  }
+
+  .hero-title {
+    font-size: 26px;
+  }
+
+  .hero-description {
+    font-size: 15px;
+  }
+
+  .login-card {
+    max-width: 100%;
+    padding: 22px 16px;
+  }
+
+  .header-title h1 {
+    font-size: 17px;
+  }
+
+  .logo-text {
+    font-size: 12px;
+  }
+
+  .otp-container {
+    gap: 10px;
+  }
+
+  .otp-box {
+    width: 42px;
+    height: 48px;
+    font-size: 20px;
+  }
+}
 /* Mobile input with Country Code */
 .mobile-input-container {
     display: flex;

@@ -1,0 +1,243 @@
+/* Responsive */
+@media (max-width: 900px) {
+  #appHeader .sub {
+    max-width: 100%;
+  }
+
+  .header-links a {
+    display: none;
+  }
+
+  .header-auth,
+  .lang-block,
+  .header-tone-switcher {
+    border-right: none;
+  }
+
+  .header-controls {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .lang-block {
+    align-items: flex-start;
+    max-width: 100%;
+  }
+
+  .logo-motion-btn {
+    padding: 6px 9px;
+    font-size: 10px;
+  }
+
+  .ui-theme-btn {
+    padding: 5px 8px;
+    font-size: 10px;
+  }
+
+  .investor-dash-inner {
+    padding: 8px 10px;
+  }
+
+  .investor-dash-hint {
+    display: none;
+  }
+
+  .select-tool-dock {
+    right: 8px;
+    bottom: 52px;
+    max-height: 40vh;
+    overflow-y: auto;
+  }
+
+  :root {
+    --panel-w: 300px;
+  }
+}
+
+@media (max-width: 768px) {
+  :root {
+    --rail-w: 0px;
+    --panel-w: min(92vw, 340px);
+  }
+
+  #appHeader {
+    padding: 10px 12px;
+    gap: 10px;
+  }
+
+  #appHeader h1,
+  #appHeader h2 {
+    font-size: clamp(17px, 4.8vw, 21px);
+  }
+
+  #appHeader .brand {
+    width: 100%;
+  }
+
+  .hepc-logo {
+    height: 42px;
+    max-width: 112px;
+  }
+
+  .app-nav {
+    width: 100%;
+  }
+
+  #viewDiv {
+    left: 0;
+  }
+
+  #spatialPanel,
+  #selectToolsPanel,
+  #toolsPanel,
+  #aoiPanel {
+    left: 0;
+    width: var(--panel-w);
+    bottom: 68px;
+  }
+
+  #rail {
+    position: fixed;
+    top: auto;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    height: auto;
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 8px;
+    padding: 8px 10px calc(8px + env(safe-area-inset-bottom));
+    overflow-x: auto;
+    overflow-y: hidden;
+    border-top: 1px solid var(--border);
+    border-right: 0;
+  }
+
+  #rail .rail-tip {
+    display: none;
+  }
+
+  #rail button.rail-btn {
+    width: 44px;
+    min-width: 44px;
+    height: 44px;
+  }
+
+  #rail button.rail-btn .rail-ico-wrap {
+    width: 36px;
+    height: 36px;
+  }
+
+  #legendFab {
+    left: 12px;
+    bottom: 138px;
+  }
+
+  #legendPanel {
+    left: 12px;
+    right: 12px;
+    width: auto;
+    bottom: 136px;
+    max-height: min(34vh, 220px);
+  }
+
+  #coordBar {
+    left: 12px;
+    right: 12px;
+    bottom: 74px;
+    border-radius: 12px;
+    text-align: center;
+  }
+
+  .select-tool-dock--icons {
+    right: 10px;
+    top: calc(var(--header-h) + 78px);
+    max-width: 50px;
+  }
+
+  .map-export-fab {
+    right: 12px;
+    top: 404px;
+    bottom: auto;
+  }
+
+  .current-location-fab {
+    right: 12px;
+    top: 236px;
+    bottom: auto;
+  }
+
+  .buffer-map-fab {
+    right: 12px;
+    top: 292px;
+    bottom: auto;
+  }
+
+  .land-report-fab {
+    right: 12px;
+    top: 348px;
+    bottom: auto;
+  }
+
+  .community-summary-panel {
+    top: calc(var(--header-h) + 8px);
+    right: 8px;
+    left: 8px;
+    width: auto;
+    bottom: 74px;
+  }
+
+  .land-report-overlay {
+    padding: 8px;
+  }
+
+  .land-report-panel {
+    margin-top: calc(var(--header-h) + 6px);
+    max-height: calc(100vh - var(--header-h) - 18px);
+  }
+}
+
+@media (max-width: 560px) {
+  #appHeader {
+    padding: 8px 10px;
+  }
+
+  .header-controls {
+    padding: 6px 8px;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .user-pill {
+    max-width: 90px;
+    padding: 6px 9px;
+  }
+
+  .lang-select {
+    min-width: 92px;
+    font-size: 11px;
+  }
+
+  .header-tone-label {
+    display: none;
+  }
+
+  .header-tone-swatch {
+    width: 15px;
+    height: 15px;
+  }
+
+  .ui-theme-btn {
+    padding: 4px 7px;
+    font-size: 10px;
+  }
+
+  #spatialPanel,
+  #selectToolsPanel,
+  #toolsPanel,
+  #aoiPanel {
+    width: 100%;
+  }
+}
+

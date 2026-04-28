@@ -3,28 +3,12 @@ export default function LocationButton({ t }) {
     <button
       type="button"
       id="currentLocationFab"
+      className="current-location-fab"
       title={t?.('currentLocation') || 'Current Location'}
       onClick={() =>
         window.msmeGisShowCurrentLocation &&
         window.msmeGisShowCurrentLocation()
       }
-      style={{
-        position: 'absolute',
-        top: '300px',
-        right: '52px',
-        zIndex: 46,
-        width: '46px',
-        height: '46px',
-        borderRadius: '50%',
-        border: '1px solid #d7e0ea',
-        background: 'rgba(255,255,255,0.92)',
-        cursor: 'pointer',
-        boxShadow: '0 8px 18px rgba(0,0,0,0.15)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 0,
-      }}
     >
       <svg
         viewBox="0 0 24 24"
