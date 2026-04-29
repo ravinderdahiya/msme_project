@@ -109,6 +109,8 @@ var GIS_UI_DEFAULTS = {
   district: "District",
   tehsil: "Tehsil",
   village: "Village",
+  vidhanSabha: "Vidhan Sabha constituency",
+  lokSabha: "Lok Sabha constituency",
   muraba: "Muraba",
   parcel: "Parcel",
   cadKhasraPlaceholder: "Select khasra (optional ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â or zoom muraba only)",
@@ -1329,14 +1331,17 @@ function featureOid(attrs) {
 
 var bufferCommunitySummaryToken = 0;
 var mapPointCommunitySummaryToken = 0;
+var SCHOOL_LAYER_DEFS = [
+  { url: SOC_MS, layerId: 0 }, // School (includes private schools in this service)
+  { url: SOC_MS, layerId: 1 }, // Government School
+  { url: SOC_MS, layerId: 2 }, // PM Shri/Sanskriti schools
+  { url: SOC_MS, layerId: 19 } // Haryana Police Public Schools (Points)
+];
 var COMMUNITY_SUMMARY_LAYER_SPECS = [
   {
     key: "schools",
     label: "Schools",
-    layers: [
-      { url: SOC_MS, layerId: 1 },
-      { url: SOC_MS, layerId: 2 }
-    ]
+    layers: SCHOOL_LAYER_DEFS
   },
   {
     key: "iti",
@@ -1446,7 +1451,7 @@ function queryLayerFeaturesByObjectIds(url, layerId, objectIds) {
     (parts || []).forEach(function (part) {
       var sr = part && part.spatialReference ? part.spatialReference : null;
       (part && part.features ? part.features : []).forEach(function (feature) {
-        merged.push({ feature: feature, spatialReference: sr });
+        merged.push({ feature: feature, spatialReference: sr, layerId: layerId });
       });
     });
     return merged;
@@ -1558,7 +1563,12 @@ function fetchCommunityCategoryItems(spec, queryGeom32643) {
         var name = extractCommunityPlaceNameFromAttributes(attrs, key, fallbackIdx);
         fallbackIdx += 1;
         var oid = attrs.OBJECTID != null ? String(attrs.OBJECTID) : (attrs.objectid != null ? String(attrs.objectid) : "");
-        var dedupeKey = oid || (name.toLowerCase() + "|" + (point ? (point.lat.toFixed(6) + "," + point.lng.toFixed(6)) : "na"));
+        var layerKey = record && record.layerId != null ? String(record.layerId) : "na";
+        var pointKey = point ? (point.lat.toFixed(6) + "," + point.lng.toFixed(6)) : "na";
+        var nameKey = String(name || "").trim().toLowerCase();
+        var dedupeKey = (nameKey && point && pointKey !== "na")
+          ? (nameKey + "|" + pointKey)
+          : (layerKey + ":" + (oid || (nameKey + "|" + pointKey)));
         if (seen[dedupeKey]) return;
         seen[dedupeKey] = true;
         items.push({
@@ -1706,7 +1716,6 @@ function countCanalsAndMainRoadsNearSchools(queryGeom, nearM) {
   var distM = Number(nearM);
   if (!queryGeom || !isFinite(distM) || distM <= 0) return Promise.resolve(null);
   var qp = geometryToQueryParams(queryGeom);
-  var schoolLayers = [1, 2];
 
   function q(url, layerId, outFields, count) {
     return queryLayer(url, layerId, Object.assign({
@@ -1717,7 +1726,11 @@ function countCanalsAndMainRoadsNearSchools(queryGeom, nearM) {
     }, qp)).catch(function () { return { features: [] }; });
   }
 
-  var schoolTasks = schoolLayers.map(function (lid) { return q(SOC_MS, lid, "OBJECTID", 3000); });
+  var schoolTasks = SCHOOL_LAYER_DEFS.map(function (def) {
+    return q(def.url, def.layerId, "OBJECTID,school_name,SCHOOL_NAME,schoolName,SCHOOLNAME", 3000).then(function (res) {
+      return { layerId: def.layerId, data: res || { features: [] } };
+    });
+  });
   return Promise.all([Promise.all(schoolTasks), q(BASE_MS, 2, "OBJECTID,canal_name", 3000), q(TRANS_MS, LAYER_ROADS_LINE, "OBJECTID,road_catog,rd_name", 4000)]).then(function (all) {
     var schoolResList = all[0] || [];
     var canalRes = all[1] || { features: [] };
@@ -1726,11 +1739,20 @@ function countCanalsAndMainRoadsNearSchools(queryGeom, nearM) {
     var schoolPts = [];
     var schoolSeen = {};
     schoolResList.forEach(function (sr) {
-      var srResponse = sr && sr.spatialReference ? sr.spatialReference : null;
-      (sr && sr.features ? sr.features : []).forEach(function (f) {
+      var srLayerId = sr && sr.layerId != null ? sr.layerId : "na";
+      var srData = sr && sr.data ? sr.data : { features: [] };
+      var srResponse = srData && srData.spatialReference ? srData.spatialReference : null;
+      (srData && srData.features ? srData.features : []).forEach(function (f) {
         var g = to32643WithSmartFallback(geomFromJSON(f.geometry), srResponse);
         if (!g || g.type !== "point") return;
-        var id = featureOid(f.attributes) || ("s@" + g.x + "," + g.y);
+        var attrs = f.attributes || {};
+        var schoolName0 = String(
+          attrs.school_name || attrs.SCHOOL_NAME || attrs.schoolName || attrs.SCHOOLNAME || ""
+        ).trim().toLowerCase();
+        var id = (schoolName0 ? (schoolName0 + "|") : "") + g.x.toFixed(4) + "," + g.y.toFixed(4);
+        if (!schoolName0) {
+          id = "l" + String(srLayerId) + ":" + (featureOid(attrs) || ("s@" + g.x + "," + g.y));
+        }
         if (schoolSeen[id]) return;
         schoolSeen[id] = true;
         schoolPts.push(g);
@@ -2838,6 +2860,8 @@ var selectedTehsilGeom = null;
 var selectedVillageGeom = null;
 var districtSelect = document.getElementById("districtSelect");
 var parliamentaryDistrictSelect = document.getElementById("parliamentaryDistrictSelect");
+var parliamentaryAssemblySelect = document.getElementById("parliamentaryAssemblySelect");
+var parliamentaryLokSabhaSelect = document.getElementById("parliamentaryLokSabhaSelect");
 var tehsilSelect = document.getElementById("tehsilSelect");
 var villageSelect = document.getElementById("villageSelect");
 var cadTehsilSelect = document.getElementById("cadTehsilSelect");
@@ -2863,6 +2887,8 @@ refreshGisPlaceholderLabelsImpl = function () {
   var rows = [
     ["districtSelect", "district"],
     ["parliamentaryDistrictSelect", "district"],
+    ["parliamentaryAssemblySelect", "vidhanSabha"],
+    ["parliamentaryLokSabhaSelect", "lokSabha"],
     ["cadDistrictSelect", "district"],
     ["hsvpDistrictSelect", "district"],
     ["cadTehsilSelect", "tehsil"],
@@ -2987,6 +3013,14 @@ function loadDistricts() {
     if (parliamentaryDistrictSelect) {
       parliamentaryDistrictSelect.innerHTML = "<option value=\"\">" + gisPh("district") + "</option>";
     }
+    if (parliamentaryAssemblySelect) {
+      parliamentaryAssemblySelect.innerHTML = "<option value=\"\">" + gisPh("vidhanSabha") + "</option>";
+      parliamentaryAssemblySelect.disabled = true;
+    }
+    if (parliamentaryLokSabhaSelect) {
+      parliamentaryLokSabhaSelect.innerHTML = "<option value=\"\">" + gisPh("lokSabha") + "</option>";
+      parliamentaryLokSabhaSelect.disabled = true;
+    }
     cadDistrictSelect.innerHTML = "<option value=\"\">" + gisPh("district") + "</option>";
     var hsvpD0 = document.getElementById("hsvpDistrictSelect");
     if (hsvpD0) hsvpD0.innerHTML = "<option value=\"\">" + gisPh("district") + "</option>";
@@ -3024,6 +3058,9 @@ function loadDistricts() {
         o3.textContent = a.n_d_name || a.n_d_code;
         hsvpD.appendChild(o3);
       }
+    });
+    return loadAllParliamentaryConstituencies().catch(function () {
+      return Promise.resolve();
     });
   });
 }
@@ -3685,6 +3722,378 @@ function optionTextByValue(selectEl, value) {
   return "";
 }
 
+function resetParliamentaryConstituencySelects() {
+  if (parliamentaryAssemblySelect) {
+    parliamentaryAssemblySelect.innerHTML = "<option value=\"\">" + gisPh("vidhanSabha") + "</option>";
+    parliamentaryAssemblySelect.disabled = true;
+  }
+  if (parliamentaryLokSabhaSelect) {
+    parliamentaryLokSabhaSelect.innerHTML = "<option value=\"\">" + gisPh("lokSabha") + "</option>";
+    parliamentaryLokSabhaSelect.disabled = true;
+  }
+}
+
+function constituencyRowsFromFeatures(features, codeField, nameField) {
+  var rows = [];
+  var seen = {};
+  (features || []).forEach(function (f) {
+    var attrs = f && f.attributes ? f.attributes : {};
+    var code = attrs[codeField];
+    if (code == null || code === "") return;
+    var key = String(code).trim();
+    if (!key || seen[key]) return;
+    seen[key] = true;
+    rows.push({
+      code: key,
+      name: String(attrs[nameField] || key).trim() || key
+    });
+  });
+  rows.sort(function (a, b) {
+    return String(a.name || "").localeCompare(String(b.name || ""));
+  });
+  return rows;
+}
+
+function fillParliamentaryConstituencySelect(selectEl, rows, placeholderKey) {
+  if (!selectEl) return;
+  selectEl.innerHTML = "<option value=\"\">" + gisPh(placeholderKey) + "</option>";
+  (rows || []).forEach(function (row) {
+    var o = document.createElement("option");
+    o.value = row.code;
+    o.textContent = row.name;
+    selectEl.appendChild(o);
+  });
+  selectEl.disabled = !(rows && rows.length);
+}
+
+function loadParliamentaryConstituenciesForDistrictGeom(districtGeom32643) {
+  if (!parliamentaryAssemblySelect && !parliamentaryLokSabhaSelect) return Promise.resolve();
+  if (!districtGeom32643 || !geometryIsUsable(districtGeom32643)) {
+    resetParliamentaryConstituencySelects();
+    return Promise.resolve();
+  }
+  var qp = geometryToQueryParams(districtGeom32643);
+  var qAssembly = queryLayer(CON_MS, LAYER_CON_ASSEMBLY, Object.assign({
+    where: "1=1",
+    outFields: "ac_code,ac_name",
+    returnGeometry: false,
+    orderByFields: "ac_name",
+    resultRecordCount: 2000
+  }, qp)).catch(function () {
+    return { features: [] };
+  });
+  var qLok = queryLayer(CON_MS, LAYER_CON_PARLIAMENT, Object.assign({
+    where: "1=1",
+    outFields: "pc_code,pc_name",
+    returnGeometry: false,
+    orderByFields: "pc_name",
+    resultRecordCount: 2000
+  }, qp)).catch(function () {
+    return { features: [] };
+  });
+  return Promise.all([qAssembly, qLok]).then(function (all) {
+    var assemblyRows = constituencyRowsFromFeatures(all[0] && all[0].features, "ac_code", "ac_name");
+    var lokRows = constituencyRowsFromFeatures(all[1] && all[1].features, "pc_code", "pc_name");
+    if (!assemblyRows.length && !lokRows.length) {
+      return loadAllParliamentaryConstituencies();
+    }
+    fillParliamentaryConstituencySelect(parliamentaryAssemblySelect, assemblyRows, "vidhanSabha");
+    fillParliamentaryConstituencySelect(parliamentaryLokSabhaSelect, lokRows, "lokSabha");
+  });
+}
+
+function loadAllParliamentaryConstituencies() {
+  var qAssembly = queryLayer(CON_MS, LAYER_CON_ASSEMBLY, {
+    where: "1=1",
+    outFields: "ac_code,ac_name",
+    returnGeometry: false,
+    orderByFields: "ac_name",
+    resultRecordCount: 2000
+  }).catch(function () {
+    return { features: [] };
+  });
+  var qLok = queryLayer(CON_MS, LAYER_CON_PARLIAMENT, {
+    where: "1=1",
+    outFields: "pc_code,pc_name",
+    returnGeometry: false,
+    orderByFields: "pc_name",
+    resultRecordCount: 2000
+  }).catch(function () {
+    return { features: [] };
+  });
+  return Promise.all([qAssembly, qLok]).then(function (all) {
+    var assemblyRows = constituencyRowsFromFeatures(all[0] && all[0].features, "ac_code", "ac_name");
+    var lokRows = constituencyRowsFromFeatures(all[1] && all[1].features, "pc_code", "pc_name");
+    fillParliamentaryConstituencySelect(parliamentaryAssemblySelect, assemblyRows, "vidhanSabha");
+    fillParliamentaryConstituencySelect(parliamentaryLokSabhaSelect, lokRows, "lokSabha");
+  });
+}
+
+function loadParliamentaryConstituenciesForDistrictCode(dCode) {
+  var code = dCode ? String(dCode).trim() : "";
+  if (!code) {
+    return loadAllParliamentaryConstituencies();
+  }
+  return queryLayer(ADMIN_MS, LAYER_DISTRICT, {
+    where: "n_d_code = " + sqlQuote(code),
+    outFields: "n_d_code",
+    returnGeometry: true,
+    resultRecordCount: 1
+  }).then(function (data) {
+    var feature = data && data.features && data.features[0] ? data.features[0] : null;
+    var gRaw = feature && feature.geometry ? feature.geometry : null;
+    var g32643 = to32643WithSmartFallback(geomFromJSON(gRaw), data && data.spatialReference)
+      || to32643WithSmartFallback(gRaw, (gRaw && gRaw.spatialReference) || SR_METER)
+      || ensureSR32643(gRaw);
+    if (g32643 && geometryIsUsable(g32643)) {
+      return loadParliamentaryConstituenciesForDistrictGeom(g32643);
+    }
+    return loadAllParliamentaryConstituencies();
+  }).catch(function () {
+    return loadAllParliamentaryConstituencies();
+  });
+}
+
+function geocodeConstituencyAnchor32643(name) {
+  var nm = String(name || "").trim();
+  if (!nm) return Promise.resolve(null);
+  var nmClean = nm.replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim();
+  var baseNames = [];
+  var seenBase = {};
+  function addBase(v) {
+    var k = String(v || "").trim();
+    if (!k || seenBase[k]) return;
+    seenBase[k] = true;
+    baseNames.push(k);
+  }
+  addBase(nm);
+  addBase(nmClean);
+
+  var attempts = [];
+  var seenAttempt = {};
+  function addAttempt(v) {
+    var k = String(v || "").trim();
+    if (!k || seenAttempt[k]) return;
+    seenAttempt[k] = true;
+    attempts.push(k);
+  }
+  for (var bi = 0; bi < baseNames.length; bi++) {
+    var bn = baseNames[bi];
+    addAttempt(bn + ", Haryana, India");
+    addAttempt(bn + " constituency, Haryana, India");
+    addAttempt(bn + " assembly constituency, Haryana, India");
+    addAttempt(bn + " parliamentary constituency, Haryana, India");
+    addAttempt(bn + ", India");
+  }
+  function run(i) {
+    if (i >= attempts.length) return Promise.resolve(null);
+    return requestArcGisJson(
+      "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates",
+      {
+        query: {
+          f: "pjson",
+          maxLocations: 1,
+          outFields: "Match_addr",
+          singleLine: attempts[i]
+        },
+        responseType: "json"
+      }
+    ).then(function (res) {
+      var data = res && res.data ? res.data : null;
+      var c0 = data && data.candidates && data.candidates[0] ? data.candidates[0] : null;
+      var loc = c0 && c0.location ? c0.location : null;
+      var x = loc ? Number(loc.x) : NaN;
+      var y = loc ? Number(loc.y) : NaN;
+      if (!isFinite(x) || !isFinite(y)) return run(i + 1);
+      var p4326 = new Point({ x: x, y: y, spatialReference: SR4326 });
+      var p32643 = projection.project(p4326, SR_METER);
+      return p32643 && p32643.type === "point" ? p32643 : run(i + 1);
+    }).catch(function () {
+      return run(i + 1);
+    });
+  }
+  return projection.load().catch(function () { return null; }).then(function () {
+    return run(0);
+  });
+}
+
+function runParliamentaryConstituencySelection(kind, rawCode) {
+  var type = String(kind || "").toLowerCase() === "lok" ? "lok" : "vidhan";
+  var cfg = type === "lok"
+    ? { layerId: LAYER_CON_PARLIAMENT, codeField: "pc_code", nameField: "pc_name", label: "Lok Sabha constituency" }
+    : { layerId: LAYER_CON_ASSEMBLY, codeField: "ac_code", nameField: "ac_name", label: "Vidhan Sabha constituency" };
+  var code = rawCode != null ? String(rawCode).trim() : "";
+  if (!code) return Promise.resolve();
+
+  var selectEl = type === "lok" ? parliamentaryLokSabhaSelect : parliamentaryAssemblySelect;
+  var nameHint = optionTextByValue(selectEl, code);
+  var whereList = [];
+  var seenWhere = {};
+  function pushWhere(w) {
+    var k = String(w || "").trim();
+    if (!k || seenWhere[k]) return;
+    seenWhere[k] = true;
+    whereList.push(k);
+  }
+  pushWhere(cfg.codeField + " = " + sqlQuote(code));
+  var numericCode = Number(code);
+  if (isFinite(numericCode)) {
+    pushWhere(cfg.codeField + " = " + String(Math.trunc(numericCode)));
+  }
+  if (nameHint) {
+    pushWhere("UPPER(" + cfg.nameField + ") = " + sqlQuote(String(nameHint).toUpperCase()));
+  }
+
+  function queryFeatureByWhereCandidates(idx) {
+    if (idx >= whereList.length) return Promise.resolve(null);
+    return queryLayer(CON_MS, cfg.layerId, {
+      where: whereList[idx],
+      outFields: "objectid," + cfg.codeField + "," + cfg.nameField,
+      returnGeometry: true,
+      resultRecordCount: 1
+    }).then(function (data) {
+      var feature = data && data.features && data.features[0] ? data.features[0] : null;
+      if (feature && feature.geometry) {
+        return { feature: feature, response: data };
+      }
+      return queryFeatureByWhereCandidates(idx + 1);
+    }).catch(function () {
+      return queryFeatureByWhereCandidates(idx + 1);
+    });
+  }
+
+  function finalizeWithGeom(g32643, attrs, name, opts) {
+    var opt = opts && typeof opts === "object" ? opts : {};
+    var isApproxCenter = !!opt.approxCenter;
+    if (!g32643 || !geometryIsUsable(g32643)) return Promise.resolve(false);
+    var lokCb = document.getElementById("chkLokSabhaBoundary");
+    var parlCb = document.getElementById("chkParliamentaryBoundary");
+    var rajCb = document.getElementById("chkRajyaSabhaBoundary");
+    if (type === "lok") {
+      if (lokCb) lokCb.checked = true;
+      if (parlCb) parlCb.checked = true;
+    } else {
+      if (rajCb) rajCb.checked = true;
+    }
+    setConstituencyBoundaryVisibility(
+      !!(lokCb && lokCb.checked) || !!(parlCb && parlCb.checked),
+      !!(rajCb && rajCb.checked)
+    );
+
+    var distM = setBufferDistanceMeters(1500);
+    var constituencyBuffer = createSafeBuffer32643(g32643, distM);
+    if (!constituencyBuffer) constituencyBuffer = g32643;
+    userMapAnalysisGeometry32643 = constituencyBuffer;
+
+    clearResults();
+    var drawGeom = projectToRenderableWebGeometry(constituencyBuffer) || projectToRenderableWebGeometry(g32643);
+    if (drawGeom) {
+      resultsLayer.add(new Graphic({
+        geometry: drawGeom,
+        symbol: symBuffer,
+        attributes: attrs || {}
+      }));
+    }
+
+    var sourceLabel = type === "lok" ? "Lok Sabha boundary" : "Vidhan Sabha boundary";
+    if (isApproxCenter) sourceLabel = sourceLabel + " (approx center)";
+    var qJson = constituencyBuffer && typeof constituencyBuffer.toJSON === "function" ? constituencyBuffer.toJSON() : null;
+    var msg = cfg.label + " " + name + " selected. 1500 m buffer applied" +
+      (isApproxCenter ? " (approximate center; service has no polygon geometry)." : ".") +
+      " Data summary updated.";
+    var ctx = {
+      generatedAt: new Date().toISOString(),
+      summary: msg,
+      bufferDistanceM: distM,
+      roadSource: sourceLabel,
+      roadLayerId: null,
+      count: 1,
+      total: 1,
+      withGeometry: 1,
+      skipped: 0,
+      queryGeometryJson: qJson,
+      objectIds: [],
+      featureSource: type === "lok" ? "parliamentary-lok" : "parliamentary-vidhan",
+      constituencyType: type,
+      constituencyCode: code,
+      constituencyName: name,
+      approximateCenter: isApproxCenter,
+      clippedFromAdminSelection: false,
+      communitySummary: null
+    };
+    function hydrateAndPublishAfterZoom() {
+      setLastBufferExportContext(ctx);
+      hydrateNearSchoolStatsInBackground(ctx);
+      var baseReport = publishAnalysisToolResult("buffer", msg, {
+        count: 1,
+        total: 1,
+        withGeometry: 1,
+        skipped: 0,
+        bufferDistanceM: distM,
+        roadLayerId: null,
+        roadSource: sourceLabel,
+        queryGeometryJson: qJson,
+        clippedFromAdminSelection: false,
+        constituencyType: type,
+        constituencyCode: code,
+        constituencyName: name,
+        approximateCenter: isApproxCenter,
+        communitySummary: null
+      });
+      if (constituencyBuffer) publishBufferCommunitySummaryInBackground(baseReport, constituencyBuffer, ctx);
+    }
+
+    return zoomToGeometry(constituencyBuffer).catch(function () {
+      var center = getGeometryCentroid(constituencyBuffer);
+      if (!center) return Promise.resolve();
+      return goCenterFromGeom(center, 10);
+    }).then(function () {
+      setStatus(msg);
+      window.setTimeout(hydrateAndPublishAfterZoom, 0);
+      return true;
+    });
+  }
+
+  return projection.load().catch(function () { return null; }).then(function () {
+    return queryFeatureByWhereCandidates(0);
+  }).then(function (hit) {
+    var feature = hit && hit.feature ? hit.feature : null;
+    var data = hit && hit.response ? hit.response : null;
+    var attrs = feature && feature.attributes ? feature.attributes : {};
+    var name = String(attrs[cfg.nameField] || nameHint || code).trim() || code;
+    var gRaw = feature && feature.geometry ? feature.geometry : null;
+    var g32643 = gRaw
+      ? (to32643WithSmartFallback(geomFromJSON(gRaw), data && data.spatialReference)
+        || to32643WithSmartFallback(gRaw, (gRaw && gRaw.spatialReference) || SR_METER)
+        || ensureSR32643(gRaw))
+      : null;
+
+    if (g32643 && geometryIsUsable(g32643)) {
+      return finalizeWithGeom(g32643, attrs, name);
+    }
+
+    return geocodeConstituencyAnchor32643(name).then(function (anchor32643) {
+      if (!anchor32643 && selectedDistrictGeom && geometryIsUsable(selectedDistrictGeom)) {
+        var dCenter = getGeometryCentroid(selectedDistrictGeom);
+        if (dCenter && dCenter.type === "point") anchor32643 = toEngineSR(ensureSR32643(dCenter));
+      }
+      if (!anchor32643 && view && view.center) {
+        var vCenter32643 = to32643WithSmartFallback(view.center, view.center.spatialReference || SR_WEB)
+          || ensureSR32643(view.center);
+        if (vCenter32643 && vCenter32643.type === "point") anchor32643 = toEngineSR(vCenter32643);
+      }
+      if (!anchor32643) {
+        setStatus("Could not resolve constituency center for buffer.");
+        return;
+      }
+      return finalizeWithGeom(anchor32643, attrs, name, { approxCenter: true });
+    });
+  }).catch(function (err) {
+    console.error("[parliamentary constituency select]", err);
+    setStatus("Could not apply constituency selection - see console.");
+  });
+}
+
 function projectToRenderableWebGeometry(geom) {
   if (!geom) return null;
   var gWeb = geom;
@@ -3711,8 +4120,11 @@ function runParliamentaryDistrictBufferSelection(dCode) {
   if (!code) {
     userMapAnalysisGeometry32643 = null;
     clearResults();
-    setStatus("Select a district in Parliamentary Boundary to apply district buffer.");
-    return Promise.resolve();
+    return loadAllParliamentaryConstituencies().catch(function () {
+      return Promise.resolve();
+    }).then(function () {
+      setStatus("District optional hai. Aap seedha Vidhan Sabha ya Lok Sabha select kar sakte hain.");
+    });
   }
 
   var where = "n_d_code = " + sqlQuote(code);
@@ -3747,6 +4159,7 @@ function runParliamentaryDistrictBufferSelection(dCode) {
       villageSelect.disabled = true;
     }
     loadTehsils(code).catch(function () {});
+    loadParliamentaryConstituenciesForDistrictGeom(g32643).catch(function () {});
 
     bufferMarkPoint32643 = null;
     bufferMarkLayer.removeAll();
@@ -3832,8 +4245,24 @@ function bindParliamentaryDistrictAutoBuffer() {
   if (!parliamentaryDistrictSelect) return;
   parliamentaryDistrictSelect.addEventListener("change", function () {
     var code = parliamentaryDistrictSelect.value ? String(parliamentaryDistrictSelect.value).trim() : "";
+    loadParliamentaryConstituenciesForDistrictCode(code).catch(function () {});
     runParliamentaryDistrictBufferSelection(code);
   });
+}
+
+function bindParliamentaryConstituencySelects() {
+  if (parliamentaryAssemblySelect) {
+    parliamentaryAssemblySelect.addEventListener("change", function () {
+      var code = parliamentaryAssemblySelect.value != null ? String(parliamentaryAssemblySelect.value).trim() : "";
+      runParliamentaryConstituencySelection("vidhan", code);
+    });
+  }
+  if (parliamentaryLokSabhaSelect) {
+    parliamentaryLokSabhaSelect.addEventListener("change", function () {
+      var code = parliamentaryLokSabhaSelect.value != null ? String(parliamentaryLokSabhaSelect.value).trim() : "";
+      runParliamentaryConstituencySelection("lok", code);
+    });
+  }
 }
 
 function runClearParliamentaryBoundary() {
@@ -3888,6 +4317,7 @@ aoiTabButtons.forEach(function (btn) {
 syncCurrentLocationFabVisibility();
 bindConstituencyBoundaryToggles();
 bindParliamentaryDistrictAutoBuffer();
+bindParliamentaryConstituencySelects();
 var btnParliamentaryClear = document.getElementById("btnParliamentaryClear");
 if (btnParliamentaryClear) {
   btnParliamentaryClear.addEventListener("click", runClearParliamentaryBoundary);
@@ -6589,6 +7019,70 @@ window.msmeGisStopQuickBuffer = function () {
   quickBufferAutoRunAfterAnchorPick = false;
   setBufferMarkMode(false, false);
   setStatus("Buffer mode OFF.");
+};
+
+window.msmeGisSetBufferAnchorFromWgs = function (lat, lon, opts) {
+  var latNum = Number(lat);
+  var lonNum = Number(lon);
+  if (!isFinite(latNum) || !isFinite(lonNum)) {
+    setStatus("Invalid search coordinates.");
+    return Promise.resolve(false);
+  }
+  if (Math.abs(latNum) > 90 || Math.abs(lonNum) > 180) {
+    if (Math.abs(lonNum) <= 90 && Math.abs(latNum) <= 180) {
+      var swap = latNum;
+      latNum = lonNum;
+      lonNum = swap;
+    }
+  }
+  if (Math.abs(latNum) > 90 || Math.abs(lonNum) > 180) {
+    setStatus("Search point is outside valid latitude/longitude range.");
+    return Promise.resolve(false);
+  }
+  if (!view || !bufferMarkLayer) {
+    setStatus("Map is not ready yet.");
+    return Promise.resolve(false);
+  }
+  return projection.load().then(function () {
+    var p4326 = new Point({ x: lonNum, y: latNum, spatialReference: SR4326 });
+    var p32643 = projection.project(p4326, SR_METER);
+    var pWeb = projection.project(p4326, SR_WEB) || p4326;
+    if (!p32643 || p32643.type !== "point") {
+      setStatus("Could not project searched place for buffer.");
+      return false;
+    }
+
+    bufferMarkPoint32643 = p32643;
+    quickBufferAutoRunAfterAnchorPick = false;
+    setBufferMarkMode(false, false);
+    bufferMarkLayer.removeAll();
+    bufferMarkLayer.add(new Graphic({ geometry: pWeb, symbol: symBufferMark }));
+
+    var requestedDist = opts && opts.distanceM != null ? Number(opts.distanceM) : 1500;
+    setBufferDistanceMeters(isFinite(requestedDist) && requestedDist > 0 ? requestedDist : 1500);
+
+    var zoomLvl = opts && opts.zoom != null ? Number(opts.zoom) : 14;
+    var targetZoom = isFinite(zoomLvl) && zoomLvl > 0 ? zoomLvl : 14;
+    var placeLabel = opts && opts.label ? String(opts.label) : "searched place";
+    var autoRun = !(opts && opts.autoRun === false);
+
+    return view.goTo({ center: pWeb, zoom: targetZoom, padding: getUiZoomPadding() }).catch(function () {
+      return null;
+    }).then(function () {
+      if (autoRun) {
+        var runBtn = document.getElementById("runBuffer");
+        if (runBtn) runBtn.click();
+        setStatus("Buffer anchor set from search: " + placeLabel + ". Running buffer...");
+      } else {
+        setStatus("Buffer anchor set from search: " + placeLabel + ". Click Run buffer.");
+      }
+      return true;
+    });
+  }).catch(function (err) {
+    console.error("[search buffer anchor]", err);
+    setStatus("Search to buffer failed.");
+    return false;
+  });
 };
 
 /**

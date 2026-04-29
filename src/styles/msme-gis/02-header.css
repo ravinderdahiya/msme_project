@@ -26,6 +26,9 @@
   border-bottom: 1px solid rgba(27, 40, 61, 0.14);
   box-shadow: 0 5px 14px rgba(24, 39, 63, 0.10);
   backdrop-filter: blur(10px);
+  box-sizing: border-box;
+  max-width: 100%;
+  overflow-x: clip;
 }
 
 #appHeader[data-tone='mist'] {
@@ -61,6 +64,7 @@
   align-items: center;
   gap: 14px;
   min-width: 0;
+  flex: 1 1 420px;
 }
 
 .logo-shell {
@@ -126,7 +130,8 @@
   gap: 12px;
   justify-content: flex-end;
   flex-wrap: wrap;
-  flex-shrink: 0;
+  flex: 1 1 520px;
+  min-width: 0;
   font-size: 13px;
 }
 
@@ -134,6 +139,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-wrap: wrap;
   padding: 6px 10px;
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.45);

@@ -7,3 +7,8 @@
 @import "./styles/msme-gis/07-map-overlays.css";
 @import "./styles/msme-gis/08-dark-theme.css";
 @import "./styles/msme-gis/09-responsive.css";
+
+html,
+body {
+  overflow-x: hidden;
+}

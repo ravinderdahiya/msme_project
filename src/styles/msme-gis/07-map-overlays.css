@@ -11,6 +11,71 @@
     #ffffff;
 }
 
+.gis-top-search {
+  position: fixed;
+  top: calc(var(--header-h) + 10px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 58;
+  width: 30%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+
+.gis-top-search__input {
+  width: 100%;
+  min-width: 0;
+  height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 0 14px;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--shadow-sm);
+  backdrop-filter: blur(10px);
+}
+
+.gis-top-search__input:focus {
+  outline: none;
+  border-color: var(--selection-ring);
+  box-shadow: 0 0 0 2px color-mix(in srgb, var(--selection-ring) 30%, transparent), var(--shadow-sm);
+}
+
+.gis-top-search.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.gis-top-search__btn {
+  height: 42px;
+  width: 42px;
+  min-width: 42px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  padding: 0;
+  cursor: pointer;
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--primary-dark);
+  box-shadow: var(--shadow-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gis-top-search__btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.gis-top-search__btn:disabled {
+  opacity: 0.7;
+  cursor: wait;
+}
+
 /* Legend */
 #legendFab {
   position: absolute;

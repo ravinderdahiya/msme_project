@@ -1,0 +1,46 @@
+.app-header {
+  width: 100%;
+  color: #fff;
+  background: linear-gradient(90deg, #1e3c72, #2a5298);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  padding: clamp(10px, 2.2vw, 15px);
+}
+
+.app-header__top-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.app-header__title {
+  margin: 0;
+  font-size: clamp(1rem, 2.6vw, 1.5rem);
+  line-height: 1.25;
+  word-break: break-word;
+}
+
+.app-header__dropdown {
+  overflow: hidden;
+  transition: all 0.4s ease;
+  background: #fff;
+  color: #333;
+  border-radius: 10px;
+  margin-top: 10px;
+}
+
+@media (max-width: 768px) {
+  .app-header {
+    padding: 10px 12px;
+  }
+
+  .app-header__top-row {
+    justify-content: center;
+  }
+
+  .app-header__title {
+    text-align: center;
+    font-size: 1rem;
+  }
+}
