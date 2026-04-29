@@ -309,9 +309,17 @@ export default function Sidebar({ t }) {
               <section className="aoi-card">
                 <h3 className="aoi-card-title">{t('tabParliamentaryBoundary')}</h3>
                 <p className="aoi-card-desc">{t('parliamentaryBoundaryHelp')}</p>
-               <label>{t('district')}</label>
+                <label>{t('district')}</label>
                 <select id="parliamentaryDistrictSelect">
                   <option value="">{t('placeholderDistrict')}</option>
+                </select>
+                <label>{t('vidhanSabha')}</label>
+                <select id="parliamentaryAssemblySelect" disabled>
+                  <option value="">{t('placeholderVidhanSabha')}</option>
+                </select>
+                <label>{t('lokSabha')}</label>
+                <select id="parliamentaryLokSabhaSelect" disabled>
+                  <option value="">{t('placeholderLokSabha')}</option>
                 </select>
                 <label>{t('constituencyBoundaries')}</label>
                 <div className="const-boundary-grid" role="group" aria-label={t('constituencyBoundaries')}>

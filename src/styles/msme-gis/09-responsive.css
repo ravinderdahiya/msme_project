@@ -1,10 +1,54 @@
 /* Responsive */
+@media (max-width: 1200px) {
+  #appHeader {
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  #appHeader .brand {
+    flex: 1 1 100%;
+  }
+
+  #appHeader .sub {
+    max-width: 100%;
+  }
+
+  .app-nav {
+    width: 100%;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .header-controls {
+    flex: 1 1 640px;
+    min-width: 0;
+  }
+
+  .header-links {
+    flex: 0 0 auto;
+    margin-left: auto;
+  }
+
+  .header-links a {
+    padding: 8px 8px;
+  }
+}
+
 @media (max-width: 900px) {
+  .gis-top-search {
+    width: min(480px, calc(100vw - 24px));
+  }
+
   #appHeader .sub {
     max-width: 100%;
   }
 
   .header-links a {
+    display: none;
+  }
+
+  .header-links {
     display: none;
   }
 
@@ -55,6 +99,27 @@
 }
 
 @media (max-width: 768px) {
+  .gis-top-search {
+    left: 10px;
+    right: 10px;
+    transform: none;
+    width: auto;
+    top: calc(var(--header-h) + 8px);
+    gap: 6px;
+  }
+
+  .gis-top-search__input {
+    height: 40px;
+    padding: 0 12px;
+    font-size: 14px;
+  }
+
+  .gis-top-search__btn {
+    width: 40px;
+    min-width: 40px;
+    height: 40px;
+  }
+
   :root {
     --rail-w: 0px;
     --panel-w: min(92vw, 340px);
@@ -72,6 +137,7 @@
 
   #appHeader .brand {
     width: 100%;
+    align-items: flex-start;
   }
 
   .hepc-logo {
@@ -81,6 +147,55 @@
 
   .app-nav {
     width: 100%;
+    min-width: 0;
+    flex: none;
+    display: block;
+    gap: 0;
+  }
+
+  .header-controls {
+    width: 100%;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 8px;
+    padding: 8px;
+    flex: none;
+    align-content: start;
+  }
+
+  .header-auth,
+  .lang-block,
+  .header-tone-switcher {
+    border-right: none;
+    padding-right: 0;
+    margin-right: 0;
+  }
+
+  .lang-block {
+    display: block;
+    flex: none;
+    max-width: 100%;
+  }
+
+  .lang-label {
+    display: block;
+    width: 100%;
+  }
+
+  .lang-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .header-tone-switcher {
+    flex: none;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
+
+  .ui-theme-switcher {
+    margin-left: 0;
+    justify-self: start;
   }
 
   #viewDiv {
@@ -103,6 +218,7 @@
     right: 0;
     bottom: 0;
     width: 100%;
+    box-sizing: border-box;
     height: auto;
     flex-direction: row;
     justify-content: flex-start;
@@ -199,6 +315,24 @@
 }
 
 @media (max-width: 560px) {
+  .gis-top-search {
+    left: 8px;
+    right: 8px;
+    top: calc(var(--header-h) + 6px);
+  }
+
+  .gis-top-search__input {
+    height: 38px;
+    font-size: 13px;
+    padding: 0 10px;
+  }
+
+  .gis-top-search__btn {
+    width: 38px;
+    min-width: 38px;
+    height: 38px;
+  }
+
   #appHeader {
     padding: 8px 10px;
   }
@@ -207,6 +341,18 @@
     padding: 6px 8px;
     gap: 6px;
     flex-wrap: wrap;
+  }
+
+  .header-auth {
+    flex: 0 0 auto;
+  }
+
+  .lang-block {
+    flex: 1 1 100%;
+  }
+
+  .header-tone-switcher {
+    flex: 1 1 auto;
   }
 
   .user-pill {
