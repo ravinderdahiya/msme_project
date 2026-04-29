@@ -1,0 +1,637 @@
+.about-page {
+    min-height: 100vh;
+    color: #0f2340;
+    background: #f6fbff;
+    font-family: "Segoe UI", "Trebuchet MS", sans-serif;
+}
+
+.ap-header {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+    padding: 16px 32px;
+    background: rgba(255, 255, 255, 0.96);
+    border-bottom: 1px solid rgba(15, 35, 64, 0.08);
+    backdrop-filter: blur(12px);
+}
+
+.ap-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.ap-flip-logo {
+    width: 56px;
+    height: 56px;
+    flex: 0 0 56px;
+    perspective: 900px;
+}
+
+.ap-flip-logo-inner {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    transform-style: preserve-3d;
+    animation: apFlipLogo 4s infinite ease-in-out;
+}
+
+.ap-flip-logo-face {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 1px solid rgba(15, 35, 64, 0.1);
+    box-shadow: 0 10px 24px rgba(15, 35, 64, 0.12);
+    backface-visibility: hidden;
+}
+
+.ap-flip-logo-face img {
+    width: 42px;
+    height: 42px;
+    object-fit: contain;
+    border-radius: 50%;
+}
+
+.ap-flip-logo-back {
+    transform: rotateY(180deg);
+}
+
+@keyframes apFlipLogo {
+    0%, 38% { transform: rotateY(0deg); }
+    50%, 88% { transform: rotateY(180deg); }
+    100% { transform: rotateY(360deg); }
+}
+
+.ap-brand strong {
+    display: block;
+    color: #1950b5;
+    font-size: 1.75rem;
+    line-height: 1;
+}
+
+.ap-brand span {
+    display: block;
+    color: #17873c;
+    font-size: 0.98rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.ap-nav,
+.ap-actions {
+    display: flex;
+    align-items: center;
+}
+
+.ap-nav {
+    gap: 22px;
+}
+
+.ap-nav a {
+    color: #0f2340;
+    text-decoration: none;
+    font-weight: 700;
+    padding-bottom: 8px;
+    border-bottom: 3px solid transparent;
+    transition: color 0.2s ease, border-color 0.2s ease;
+}
+
+.ap-nav a:hover,
+.ap-nav a.active {
+    color: #17873c;
+    border-color: #17873c;
+}
+
+.ap-actions {
+    gap: 12px;
+}
+
+.ap-icon-btn,
+.ap-menu-btn,
+.ap-btn,
+.ap-outline-btn {
+    border: none;
+    cursor: pointer;
+    font: inherit;
+}
+
+.ap-icon-btn,
+.ap-menu-btn {
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    background: #eef4fb;
+    color: #0f2340;
+    display: grid;
+    place-items: center;
+}
+
+.ap-menu-btn {
+    display: none;
+}
+
+.ap-btn,
+.ap-outline-btn {
+    min-height: 46px;
+    padding: 0 24px;
+    border-radius: 12px;
+    font-weight: 800;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.ap-btn:hover,
+.ap-outline-btn:hover {
+    transform: translateY(-1px);
+}
+
+.ap-btn-ghost,
+.ap-outline-btn {
+    background: #ffffff;
+    color:  #1950b5;
+    border: 1px solid rgba(23, 135, 60, 0.38);
+}
+
+.ap-btn-primary {
+    background: linear-gradient(135deg, #17873c, #0d6d31);
+    color: #ffffff;
+    box-shadow: 0 16px 30px rgba(23, 135, 60, 0.18);
+}
+
+.ap-outline-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 24px;
+}
+
+.ap-hero {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    grid-template-columns: minmax(320px, 0.8fr) minmax(480px, 1.2fr);
+    gap: 30px;
+    align-items: center;
+    min-height: 520px;
+    padding: 58px 0 58px 9vw;
+    background: linear-gradient(90deg, #f6fbff 0%, #f6fbff 38%, rgba(246, 251, 255, 0.78) 48%, rgba(246, 251, 255, 0) 62%);
+}
+
+.ap-hero-copy {
+    position: relative;
+    z-index: 2;
+    max-width: 560px;
+}
+
+.ap-hero-copy > span,
+.ap-section-head > span {
+    color: #17873c;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.ap-hero h1 {
+    margin-top: 12px;
+    font-size: clamp(2.6rem, 5vw, 4.4rem);
+    line-height: 1.04;
+}
+
+.ap-hero p,
+.ap-section-head p,
+.ap-purpose-card p {
+    color: #60728c;
+    line-height: 1.75;
+}
+
+.ap-hero p {
+    margin-top: 18px;
+    font-size: 1.14rem;
+}
+
+.ap-hero-visual {
+    position: relative;
+    min-height: 430px;
+    align-self: stretch;
+}
+
+.ap-hero-visual img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.ap-map-overlay {
+    position: absolute;
+    inset: 34% 18% 20% 34%;
+    border: 4px solid rgba(255, 255, 255, 0.94);
+    clip-path: polygon(8% 30%, 75% 10%, 96% 54%, 72% 88%, 14% 80%);
+    background: rgba(138, 222, 22, 0.48);
+    box-shadow: 0 24px 34px rgba(7, 36, 21, 0.22);
+}
+
+.ap-map-pin {
+    position: absolute;
+    top: 22%;
+    right: 31%;
+    width: 78px;
+    height: 94px;
+    display: grid;
+    place-items: center;
+    color: #ffffff;
+    border-radius: 42px 42px 42px 42px / 42px 42px 62px 62px;
+    background: linear-gradient(180deg, #2563eb 0%, #1950b5 100%);
+    box-shadow: 0 20px 32px rgba(25, 80, 181, 0.34);
+}
+
+.ap-section {
+    padding: 64px 9vw 26px;
+    background: #ffffff;
+}
+
+.ap-section-head {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.ap-section-head h2 {
+    margin-top: 10px;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.12;
+}
+
+.ap-section-head p {
+    max-width: 720px;
+    margin: 10px auto 0;
+    font-size: 1.06rem;
+}
+
+.ap-purpose-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+}
+
+.ap-purpose-card,
+.ap-team-card {
+    border: 1px solid #e2ebf5;
+    border-radius: 18px;
+    background: #ffffff;
+    box-shadow: 0 16px 32px rgba(15, 35, 64, 0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+
+.ap-purpose-card {
+    padding: 30px 28px;
+    min-height: 250px;
+}
+
+.ap-purpose-card:hover,
+.ap-team-card:hover {
+    border-color: rgba(23, 135, 60, 0.18);
+    box-shadow: 0 22px 38px rgba(15, 35, 64, 0.1);
+    transform: translateY(-4px);
+}
+
+.ap-purpose-icon {
+    width: 66px;
+    height: 66px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    margin-bottom: 22px;
+}
+
+.ap-purpose-icon.tone-green {
+    color: #17873c;
+    background: #e8f7ee;
+}
+
+.ap-purpose-icon.tone-blue {
+    color: #2563eb;
+    background: #eaf1ff;
+}
+
+.ap-purpose-icon.tone-violet {
+    color: #6d3deb;
+    background: #f3edff;
+}
+
+.ap-purpose-card h3 {
+    margin-bottom: 14px;
+    font-size: 1.35rem;
+}
+
+.ap-value-list {
+    display: grid;
+    gap: 13px;
+}
+
+.ap-value-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #1d3553;
+    font-weight: 700;
+}
+
+.ap-value-item svg {
+    color: #17873c;
+}
+
+.ap-impact-card {
+    margin: 40px 7vw 20px;
+    padding: 30px;
+    border: 1px solid #dce7f3;
+    border-radius: 22px;
+    background: linear-gradient(180deg, #ffffff 0%, #f3fbf7 100%);
+    box-shadow: 0 18px 34px rgba(15, 35, 64, 0.06);
+}
+
+.ap-impact-grid {
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0;
+}
+
+.ap-impact-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    min-height: 92px;
+    padding: 12px 18px;
+    border-right: 1px solid #dce7f3;
+}
+
+.ap-impact-item:last-child {
+    border-right: none;
+}
+
+.ap-impact-icon {
+    width: 62px;
+    height: 62px;
+    display: grid;
+    place-items: center;
+    flex: 0 0 62px;
+    border-radius: 50%;
+    color: #17873c;
+    background: #dff5e7;
+}
+
+.ap-impact-item strong {
+    display: block;
+    font-size: clamp(1.55rem, 2.6vw, 2.1rem);
+    line-height: 1;
+}
+
+.ap-impact-item span {
+    display: block;
+    margin-top: 5px;
+    color: #60728c;
+    font-weight: 700;
+}
+
+.ap-team-section {
+    padding-top: 46px;
+    padding-bottom: 58px;
+}
+
+.ap-team-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 22px;
+    max-width: 1100px;
+    margin: 0 auto;
+}
+
+.ap-team-card {
+    padding: 24px 18px;
+    text-align: center;
+}
+
+.ap-avatar {
+    width: 92px;
+    height: 92px;
+    display: grid;
+    place-items: center;
+    margin: 0 auto 16px;
+    border-radius: 50%;
+    color: #ffffff;
+    font-size: 1.45rem;
+    font-weight: 900;
+    background: linear-gradient(135deg, #1950b5, #17873c);
+}
+
+.ap-team-card h3 {
+    font-size: 1.14rem;
+}
+
+.ap-team-card p {
+    margin-top: 6px;
+    color: #60728c;
+}
+
+.ap-team-actions {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.ap-team-actions a {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: #0f2340;
+    background: #eef4fb;
+    text-decoration: none;
+    font-weight: 900;
+}
+
+.ap-footer {
+    background: #0d1f35;
+    color: #ffffff;
+}
+
+.ap-footer-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr 1fr;
+    gap: 28px;
+    padding: 46px 9vw 28px;
+}
+
+.ap-footer-brand-logo strong {
+    color: #ffffff;
+}
+
+.ap-footer h4 {
+    margin-bottom: 14px;
+}
+
+.ap-footer p,
+.ap-footer li,
+.ap-footer a {
+    color: rgba(255, 255, 255, 0.74);
+    line-height: 1.8;
+    text-decoration: none;
+    list-style: none;
+}
+
+.ap-footer li {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+}
+
+.ap-footer ul {
+    padding: 0;
+    margin: 0;
+}
+
+.ap-footer-bottom {
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    text-align: center;
+    padding: 18px;
+    color: rgba(255, 255, 255, 0.74);
+}
+
+@media (max-width: 1180px) {
+    .ap-nav {
+        display: none;
+    }
+
+    .ap-menu-btn {
+        display: grid;
+    }
+
+    .ap-hero,
+    .ap-purpose-grid,
+    .ap-footer-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ap-hero {
+        padding: 46px 6vw 0;
+        background: #f6fbff;
+    }
+
+    .ap-hero-visual {
+        min-height: 360px;
+        border-radius: 22px;
+        overflow: hidden;
+        box-shadow: 0 24px 44px rgba(15, 35, 64, 0.14);
+    }
+
+    .ap-impact-grid,
+    .ap-team-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .ap-impact-item:nth-child(2),
+    .ap-impact-item:nth-child(4) {
+        border-right: none;
+    }
+
+    .ap-impact-item {
+        border-bottom: 1px solid #dce7f3;
+    }
+
+    .ap-impact-item:last-child {
+        border-bottom: none;
+    }
+}
+
+@media (max-width: 720px) {
+    .ap-header {
+        padding: 14px 18px;
+    }
+
+    .ap-actions .ap-btn {
+        display: none;
+    }
+
+    .ap-brand strong {
+        font-size: 1.35rem;
+    }
+
+    .ap-brand span {
+        font-size: 0.82rem;
+    }
+
+    .ap-flip-logo {
+        width: 46px;
+        height: 46px;
+        flex-basis: 46px;
+    }
+
+    .ap-flip-logo-face img {
+        width: 34px;
+        height: 34px;
+    }
+
+    .ap-hero,
+    .ap-section {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+
+    .ap-hero h1 {
+        font-size: 2.35rem;
+    }
+
+    .ap-outline-btn {
+        width: 100%;
+    }
+
+    .ap-hero-visual {
+        min-height: 260px;
+    }
+
+    .ap-map-pin {
+        width: 58px;
+        height: 72px;
+    }
+
+    .ap-purpose-card {
+        padding: 24px 18px;
+    }
+
+    .ap-impact-card {
+        margin: 28px 20px 10px;
+        padding: 22px 16px;
+    }
+
+    .ap-impact-grid,
+    .ap-team-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .ap-impact-item {
+        justify-content: flex-start;
+        border-right: none;
+    }
+
+    .ap-impact-item:nth-child(2),
+    .ap-impact-item:nth-child(4) {
+        border-right: none;
+    }
+
+    .ap-footer-grid {
+        padding-left: 20px;
+        padding-right: 20px;
+    }
+}
