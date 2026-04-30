@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { BarChart3, FileText, Layers3, MapPin } from 'lucide-react';
 import './LoginPage.css';
+import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
+   const navigate =  useNavigate()
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const headlineLineOne = '\u0938\u0939\u0940 \u092d\u0942\u092e\u093f, \u0938\u0939\u0940 \u0928\u093f\u0935\u0947\u0936,';
@@ -136,7 +138,7 @@ const LoginPage = () => {
                                 <a href="#" className="forgot-pass">Forgot Password?</a>
                             </div>
 
-                            <button type="submit" className="login-btn">Login</button>
+                            <button type="submit" className="login-btn" onClick={navigate("/msme-gis-map")}>Login</button>
                         </form>
 
                         <div className="signup-link">
