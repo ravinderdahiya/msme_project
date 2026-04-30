@@ -3,13 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { BarChart3, FileText, Layers3, MapPin } from 'lucide-react';
 import { toast } from 'react-toastify';
 import './LoginPage.css';
-import { useNavigate } from 'react-router-dom';
 
 const LoginPage = () => {
    const navigate =  useNavigate()
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const navigate = useNavigate();
     const [mobileNumber, setMobileNumber] = useState('');
     const [showOtp, setShowOtp] = useState(false);
     const [otp, setOtp] = useState(['', '', '', '']);
