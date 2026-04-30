@@ -1,5 +1,34 @@
 import esriRequest from '@arcgis/core/request.js'
 
+let arcgisRequestsInFlight = 0
+
+function emitGisLoading(url) {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return
+  try {
+    window.dispatchEvent(
+      new CustomEvent('msme-gis-loading', {
+        detail: {
+          busy: arcgisRequestsInFlight > 0,
+          inFlight: arcgisRequestsInFlight,
+          url: String(url || ''),
+        },
+      }),
+    )
+  } catch {
+    // no-op
+  }
+}
+
+function beginGisLoading(url) {
+  arcgisRequestsInFlight += 1
+  emitGisLoading(url)
+}
+
+function endGisLoading(url) {
+  arcgisRequestsInFlight = Math.max(0, arcgisRequestsInFlight - 1)
+  emitGisLoading(url)
+}
+
 function delay(ms) {
   return new Promise((resolve) => {
     globalThis.setTimeout(resolve, ms)
@@ -40,7 +69,10 @@ export function requestArcGisJson(url, options) {
     })
   }
 
-  return run(0)
+  beginGisLoading(url)
+  return run(0).finally(() => {
+    endGisLoading(url)
+  })
 }
 
 /**

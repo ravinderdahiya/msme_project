@@ -259,6 +259,15 @@ function getItemCoordinates(item) {
   return { lat, lng }
 }
 
+function csvEscape(value) {
+  if (value == null) return ''
+  var text = String(value)
+  if (/[",\n]/.test(text)) {
+    return `"${text.replace(/"/g, '""')}"`
+  }
+  return text
+}
+
 export default function CommunitySummaryPanel() {
   const [analysisSnap, setAnalysisSnap] = useState(() =>
     typeof window !== 'undefined' &&
@@ -360,12 +369,123 @@ export default function CommunitySummaryPanel() {
 
   const locationLabel = getLocationLabel(displaySummary, latestReport)
 
+  function handleDownloadCsv() {
+    if (!displaySummary) return
+    var generatedAt = displaySummary.generatedAt || latestReport?.generatedAt || new Date().toISOString()
+    var source = displaySummary.source || latestReport?.reportKind || 'community'
+    var radius = radiusM != null ? Number(radiusM) : ''
+    var csvRows = [
+      [
+        'category_key',
+        'category_label',
+        'count',
+        'raw_count',
+        'available',
+        'item_index',
+        'item_name',
+        'lat',
+        'lng',
+        'location',
+        'radius_m',
+        'generated_at',
+        'source',
+      ],
+    ]
+
+    rows.forEach((row) => {
+      var key = String(row?.key || '')
+      var label = String(row?.label || '')
+      var count = Number.isFinite(Number(row?.count)) ? Number(row.count) : ''
+      var rawCount = Number.isFinite(Number(row?.rawCount)) ? Number(row.rawCount) : count
+      var available = row?.available === false ? 'false' : 'true'
+      var items = getCategoryItems(row)
+
+      if (items.length > 0) {
+        items.forEach((item, idx) => {
+          var name = getItemName(item, idx)
+          var coords = getItemCoordinates(item)
+          csvRows.push([
+            key,
+            label,
+            count,
+            rawCount,
+            available,
+            idx + 1,
+            name,
+            coords ? coords.lat : '',
+            coords ? coords.lng : '',
+            locationLabel,
+            radius,
+            generatedAt,
+            source,
+          ])
+        })
+        return
+      }
+
+      csvRows.push([
+        key,
+        label,
+        count,
+        rawCount,
+        available,
+        '',
+        '',
+        '',
+        '',
+        locationLabel,
+        radius,
+        generatedAt,
+        source,
+      ])
+    })
+
+    var csvText = csvRows.map((row) => row.map(csvEscape).join(',')).join('\n')
+    var blob = new Blob([csvText], { type: 'text/csv;charset=utf-8;' })
+    var url = URL.createObjectURL(blob)
+    var stamp = new Date().toISOString().replace(/[:.]/g, '-')
+    var a = document.createElement('a')
+    a.href = url
+    a.download = `community-summary-${stamp}.csv`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }
+
   function handleCategoryClick(row) {
     var key = String(row && row.key ? row.key : '').toLowerCase()
     var supportsList =
       key === 'iti' || key === 'schools' || key === 'hospitals'
 
     if (!supportsList) return
+
+    if (key === 'schools' || key === 'hospitals') {
+      var items = getCategoryItems(row)
+      var focusItems = items
+        .map((item, itemIdx) => {
+          var coords = getItemCoordinates(item)
+          if (!coords) return null
+          return {
+            name: getItemName(item, itemIdx),
+            lat: coords.lat,
+            lng: coords.lng,
+            item,
+          }
+        })
+        .filter(Boolean)
+
+      window.dispatchEvent(
+        new CustomEvent('msme-gis-focus-community-category', {
+          detail: {
+            category: key,
+            label: row && row.label ? row.label : key,
+            items: focusItems,
+            total: items.length,
+          },
+        }),
+      )
+    }
 
     setOpenCategoryKey((current) => (current === key ? null : key))
   }
@@ -420,8 +540,13 @@ export default function CommunitySummaryPanel() {
 
       <div className="community-ba-toolbar">
         <p className="community-ba-toolbar-title">What's in My Community?</p>
-        <button type="button" className="community-ba-fit-btn">
-          Fit width <span>v</span>
+        <button
+          type="button"
+          className="community-ba-download-btn"
+          onClick={handleDownloadCsv}
+          disabled={!displaySummary || waitingForCounts}
+        >
+          Download CSV
         </button>
       </div>
 

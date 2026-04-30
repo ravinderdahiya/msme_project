@@ -46,22 +46,24 @@ function buildThemeSections(snap, t, keyPrefix = 'k') {
       const names = Object.keys(agg.byName).sort()
       if (!names.length) return
       rows.push(
-        <table key={`t-${title}`} className="lr-table">
-          <thead>
-            <tr>
-              <th>{t('reportFeatureClass')}</th>
-              <th>{t('reportQty')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {names.map((n) => (
-              <tr key={n}>
-                <td>{n}</td>
-                <td>{agg.byName[n]}</td>
+        <div key={`w-${title}`} className="lr-table-wrap">
+          <table className="lr-table">
+            <thead>
+              <tr>
+                <th>{t('reportFeatureClass')}</th>
+                <th>{t('reportQty')}</th>
               </tr>
-            ))}
-          </tbody>
-        </table>,
+            </thead>
+            <tbody>
+              {names.map((n) => (
+                <tr key={n}>
+                  <td>{n}</td>
+                  <td>{agg.byName[n]}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>,
       )
     }
 

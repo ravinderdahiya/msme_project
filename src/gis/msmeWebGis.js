@@ -27,6 +27,7 @@ import { solve } from "@arcgis/core/rest/route.js";
 import RouteParameters from "@arcgis/core/rest/support/RouteParameters.js";
 import FeatureSet from "@arcgis/core/rest/support/FeatureSet.js";
 import Point from "@arcgis/core/geometry/Point.js";
+import Polygon from "@arcgis/core/geometry/Polygon.js";
 import Polyline from "@arcgis/core/geometry/Polyline.js";
 import Extent from "@arcgis/core/geometry/Extent.js";
 import { jsPDF } from "jspdf";
@@ -167,6 +168,41 @@ if (typeof window !== "undefined") {
   window.__msmeGisBootId = (window.__msmeGisBootId || 0) + 1;
 }
 var myBootId = typeof window !== "undefined" ? window.__msmeGisBootId : 1;
+var gisLoadingOverlay = document.getElementById("gisLoadingOverlay");
+var gisLoadingText = document.getElementById("gisLoadingText");
+var gisLoadingHideTimer = null;
+var onMsmeGisLoading = null;
+
+function setGisLoadingVisible(show, text) {
+  if (!gisLoadingOverlay) return;
+  if (gisLoadingHideTimer) {
+    window.clearTimeout(gisLoadingHideTimer);
+    gisLoadingHideTimer = null;
+  }
+  if (show) {
+    if (text && gisLoadingText) gisLoadingText.textContent = String(text);
+    gisLoadingOverlay.classList.remove("is-hidden");
+    gisLoadingOverlay.setAttribute("aria-hidden", "false");
+    return;
+  }
+  gisLoadingHideTimer = window.setTimeout(function () {
+    gisLoadingOverlay.classList.add("is-hidden");
+    gisLoadingOverlay.setAttribute("aria-hidden", "true");
+  }, 120);
+}
+
+if (typeof window !== "undefined") {
+  onMsmeGisLoading = function (event) {
+    var d = event && event.detail ? event.detail : {};
+    var busy = !!d.busy;
+    if (busy) {
+      setGisLoadingVisible(true, "Loading data...");
+    } else {
+      setGisLoadingVisible(false);
+    }
+  };
+  window.addEventListener("msme-gis-loading", onMsmeGisLoading);
+}
 
 if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env.VITE_ARCGIS_API_KEY) {
   esriConfig.apiKey = import.meta.env.VITE_ARCGIS_API_KEY;
@@ -1560,6 +1596,7 @@ function fetchCommunityCategoryItems(spec, queryGeom32643) {
         if (!feature) return;
         var attrs = feature.attributes || {};
         var point = extractWgs84PointFromFeature(feature, record.spatialReference);
+        if (!point) return; // Keep list/connectors aligned with map-plottable points only.
         var name = extractCommunityPlaceNameFromAttributes(attrs, key, fallbackIdx);
         fallbackIdx += 1;
         var oid = attrs.OBJECTID != null ? String(attrs.OBJECTID) : (attrs.objectid != null ? String(attrs.objectid) : "");
@@ -1583,9 +1620,13 @@ function fetchCommunityCategoryItems(spec, queryGeom32643) {
     items.sort(function (a, b) {
       return String(a && a.name ? a.name : "").localeCompare(String(b && b.name ? b.name : ""));
     });
-    return { count: total, items: items };
+    return {
+      count: total,
+      plotCount: items.length,
+      items: items
+    };
   }).catch(function () {
-    return { count: 0, items: [] };
+    return { count: 0, plotCount: 0, items: [] };
   });
 }
 
@@ -1608,10 +1649,14 @@ function computeCommunitySummaryForGeometry(queryGeom, sourceKind) {
       var specKey = String(spec.key || "").toLowerCase();
       if (specKey === "iti" || specKey === "schools" || specKey === "hospitals") {
         return fetchCommunityCategoryItems(spec, g32643).then(function (data) {
+          var plotted = Number(data && data.plotCount);
+          var raw = Number(data && data.count);
+          var shownCount = isFinite(plotted) ? plotted : (isFinite(raw) ? raw : 0);
           return {
             key: spec.key,
             label: spec.label,
-            count: Number(data && data.count) || 0,
+            count: shownCount,
+            rawCount: isFinite(raw) ? raw : shownCount,
             items: data && Array.isArray(data.items) ? data.items : [],
             available: true
           };
@@ -3743,9 +3788,12 @@ function constituencyRowsFromFeatures(features, codeField, nameField) {
     var key = String(code).trim();
     if (!key || seen[key]) return;
     seen[key] = true;
+    var oidRaw = attrs.objectid != null ? attrs.objectid : attrs.OBJECTID;
+    var oidNum = Number(oidRaw);
     rows.push({
       code: key,
-      name: String(attrs[nameField] || key).trim() || key
+      name: String(attrs[nameField] || key).trim() || key,
+      oid: isFinite(oidNum) ? Math.trunc(oidNum) : null
     });
   });
   rows.sort(function (a, b) {
@@ -3761,6 +3809,9 @@ function fillParliamentaryConstituencySelect(selectEl, rows, placeholderKey) {
     var o = document.createElement("option");
     o.value = row.code;
     o.textContent = row.name;
+    if (row.oid != null && isFinite(Number(row.oid))) {
+      o.setAttribute("data-oid", String(Math.trunc(Number(row.oid))));
+    }
     selectEl.appendChild(o);
   });
   selectEl.disabled = !(rows && rows.length);
@@ -3775,7 +3826,7 @@ function loadParliamentaryConstituenciesForDistrictGeom(districtGeom32643) {
   var qp = geometryToQueryParams(districtGeom32643);
   var qAssembly = queryLayer(CON_MS, LAYER_CON_ASSEMBLY, Object.assign({
     where: "1=1",
-    outFields: "ac_code,ac_name",
+    outFields: "objectid,ac_code,ac_name",
     returnGeometry: false,
     orderByFields: "ac_name",
     resultRecordCount: 2000
@@ -3784,7 +3835,7 @@ function loadParliamentaryConstituenciesForDistrictGeom(districtGeom32643) {
   });
   var qLok = queryLayer(CON_MS, LAYER_CON_PARLIAMENT, Object.assign({
     where: "1=1",
-    outFields: "pc_code,pc_name",
+    outFields: "objectid,pc_code,pc_name",
     returnGeometry: false,
     orderByFields: "pc_name",
     resultRecordCount: 2000
@@ -3805,7 +3856,7 @@ function loadParliamentaryConstituenciesForDistrictGeom(districtGeom32643) {
 function loadAllParliamentaryConstituencies() {
   var qAssembly = queryLayer(CON_MS, LAYER_CON_ASSEMBLY, {
     where: "1=1",
-    outFields: "ac_code,ac_name",
+    outFields: "objectid,ac_code,ac_name",
     returnGeometry: false,
     orderByFields: "ac_name",
     resultRecordCount: 2000
@@ -3814,7 +3865,7 @@ function loadAllParliamentaryConstituencies() {
   });
   var qLok = queryLayer(CON_MS, LAYER_CON_PARLIAMENT, {
     where: "1=1",
-    outFields: "pc_code,pc_name",
+    outFields: "objectid,pc_code,pc_name",
     returnGeometry: false,
     orderByFields: "pc_name",
     resultRecordCount: 2000
@@ -3843,8 +3894,7 @@ function loadParliamentaryConstituenciesForDistrictCode(dCode) {
     var feature = data && data.features && data.features[0] ? data.features[0] : null;
     var gRaw = feature && feature.geometry ? feature.geometry : null;
     var g32643 = to32643WithSmartFallback(geomFromJSON(gRaw), data && data.spatialReference)
-      || to32643WithSmartFallback(gRaw, (gRaw && gRaw.spatialReference) || SR_METER)
-      || ensureSR32643(gRaw);
+      || to32643WithSmartFallback(gRaw, (gRaw && gRaw.spatialReference) || SR_METER);
     if (g32643 && geometryIsUsable(g32643)) {
       return loadParliamentaryConstituenciesForDistrictGeom(g32643);
     }
@@ -3917,6 +3967,81 @@ function geocodeConstituencyAnchor32643(name) {
   });
 }
 
+function parseCoordTextPair(text) {
+  if (text == null) return null;
+  var raw = String(text).trim();
+  if (!raw) return null;
+  var parts = raw.split(/[,\s]+/).filter(Boolean);
+  if (parts.length < 2) return null;
+  var x = Number(parts[0]);
+  var y = Number(parts[1]);
+  if (!isFinite(x) || !isFinite(y)) return null;
+  return [x, y];
+}
+
+function normalizeEsriCoordNode(node) {
+  if (Array.isArray(node)) {
+    if (node.length === 2 && isFinite(Number(node[0])) && isFinite(Number(node[1]))) {
+      return [Number(node[0]), Number(node[1])];
+    }
+    if (node.length === 1 && typeof node[0] === "string") {
+      var pair = parseCoordTextPair(node[0]);
+      if (pair) return pair;
+    }
+    var out = [];
+    for (var i = 0; i < node.length; i++) {
+      var child = normalizeEsriCoordNode(node[i]);
+      if (child != null) out.push(child);
+    }
+    return out;
+  }
+  if (typeof node === "string") {
+    var parsed = parseCoordTextPair(node);
+    if (parsed) return parsed;
+  }
+  return node;
+}
+
+function normalizeEsriGeometryJson(geomJson) {
+  if (!geomJson || typeof geomJson !== "object") return geomJson;
+  var out = Object.assign({}, geomJson);
+  if (Array.isArray(geomJson.rings)) out.rings = normalizeEsriCoordNode(geomJson.rings);
+  if (Array.isArray(geomJson.paths)) out.paths = normalizeEsriCoordNode(geomJson.paths);
+  if (Array.isArray(geomJson.points)) out.points = normalizeEsriCoordNode(geomJson.points);
+  return out;
+}
+
+function coerceConstituencyGeometry32643(gRaw, responseSr) {
+  if (!gRaw) return null;
+  var srGuess = (gRaw && gRaw.spatialReference) || responseSr || SR_METER;
+  var gJsonNormalized = normalizeEsriGeometryJson(gRaw);
+  var candidates = [];
+  var g0 = geomFromJSON(gJsonNormalized || gRaw);
+  if (g0) candidates.push(g0);
+  var g1 = geomFromJSON(gRaw);
+  if (g1 && g1 !== g0) candidates.push(g1);
+  if (gJsonNormalized) candidates.push(gJsonNormalized);
+  candidates.push(gRaw);
+
+  if (gJsonNormalized && Array.isArray(gJsonNormalized.rings)) {
+    try {
+      candidates.push(new Polygon({
+        rings: gJsonNormalized.rings,
+        spatialReference: gJsonNormalized.spatialReference || srGuess || SR_METER
+      }));
+    } catch (e0) {}
+  }
+
+  for (var i = 0; i < candidates.length; i++) {
+    var c = candidates[i];
+    if (!c) continue;
+    var g326 = to32643WithSmartFallback(c, srGuess)
+      || to32643WithSmartFallback(c, (c && c.spatialReference) || srGuess);
+    if (g326 && geometryIsUsable(g326)) return ensureSR32643(g326);
+  }
+  return null;
+}
+
 function runParliamentaryConstituencySelection(kind, rawCode) {
   var type = String(kind || "").toLowerCase() === "lok" ? "lok" : "vidhan";
   var cfg = type === "lok"
@@ -3927,6 +4052,22 @@ function runParliamentaryConstituencySelection(kind, rawCode) {
 
   var selectEl = type === "lok" ? parliamentaryLokSabhaSelect : parliamentaryAssemblySelect;
   var nameHint = optionTextByValue(selectEl, code);
+  var selectedOpt = null;
+  var selectedOid = null;
+  if (selectEl && selectEl.options) {
+    for (var oi = 0; oi < selectEl.options.length; oi++) {
+      var oo = selectEl.options[oi];
+      if (String(oo.value || "").trim() === code) {
+        selectedOpt = oo;
+        break;
+      }
+    }
+  }
+  if (selectedOpt) {
+    var oidAttr = selectedOpt.getAttribute("data-oid");
+    var oidNum = Number(oidAttr);
+    if (isFinite(oidNum)) selectedOid = Math.trunc(oidNum);
+  }
   var whereList = [];
   var seenWhere = {};
   function pushWhere(w) {
@@ -3934,6 +4075,9 @@ function runParliamentaryConstituencySelection(kind, rawCode) {
     if (!k || seenWhere[k]) return;
     seenWhere[k] = true;
     whereList.push(k);
+  }
+  if (selectedOid != null) {
+    pushWhere("objectid = " + String(selectedOid));
   }
   pushWhere(cfg.codeField + " = " + sqlQuote(code));
   var numericCode = Number(code);
@@ -3943,11 +4087,32 @@ function runParliamentaryConstituencySelection(kind, rawCode) {
   if (nameHint) {
     pushWhere("UPPER(" + cfg.nameField + ") = " + sqlQuote(String(nameHint).toUpperCase()));
   }
+  var cleanedNameHint = nameHint ? String(nameHint).replace(/\([^)]*\)/g, " ").replace(/\s+/g, " ").trim() : "";
+  if (cleanedNameHint) {
+    pushWhere("UPPER(" + cfg.nameField + ") = " + sqlQuote(String(cleanedNameHint).toUpperCase()));
+  }
 
-  function queryFeatureByWhereCandidates(idx) {
-    if (idx >= whereList.length) return Promise.resolve(null);
-    return queryLayer(CON_MS, cfg.layerId, {
-      where: whereList[idx],
+  function constituencyServiceCandidates() {
+    var out = [];
+    var seen = {};
+    function add(u) {
+      var k = String(u || "").trim();
+      if (!k || seen[k]) return;
+      seen[k] = true;
+      out.push(k);
+    }
+    add(CON_MS);
+    add(CON_MS.replace("/MSME_HARSAC/", "/MSME/"));
+    add(CON_MS.replace("/MSME/", "/MSME_HARSAC/"));
+    return out;
+  }
+
+  function queryFeatureByWhereCandidates(serviceUrls, sIdx, wIdx) {
+    if (!serviceUrls || !serviceUrls.length) return Promise.resolve(null);
+    if (sIdx >= serviceUrls.length) return Promise.resolve(null);
+    if (wIdx >= whereList.length) return queryFeatureByWhereCandidates(serviceUrls, sIdx + 1, 0);
+    return queryLayer(serviceUrls[sIdx], cfg.layerId, {
+      where: whereList[wIdx],
       outFields: "objectid," + cfg.codeField + "," + cfg.nameField,
       returnGeometry: true,
       resultRecordCount: 1
@@ -3956,9 +4121,83 @@ function runParliamentaryConstituencySelection(kind, rawCode) {
       if (feature && feature.geometry) {
         return { feature: feature, response: data };
       }
-      return queryFeatureByWhereCandidates(idx + 1);
+      return queryFeatureByWhereCandidates(serviceUrls, sIdx, wIdx + 1);
     }).catch(function () {
-      return queryFeatureByWhereCandidates(idx + 1);
+      return queryFeatureByWhereCandidates(serviceUrls, sIdx, wIdx + 1);
+    });
+  }
+
+  function normalizeConstituencyName(v) {
+    return String(v == null ? "" : v)
+      .replace(/\([^)]*\)/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .toUpperCase();
+  }
+
+  function findMatchingFeatureInList(features) {
+    var rows = features || [];
+    var targetCode = String(code || "").trim();
+    var targetCodeNum = Number(targetCode);
+    var nm1 = normalizeConstituencyName(nameHint);
+    var nm2 = normalizeConstituencyName(cleanedNameHint);
+    for (var i = 0; i < rows.length; i++) {
+      var f = rows[i];
+      if (!f || !f.attributes) continue;
+      var a = f.attributes;
+      var cRaw = a[cfg.codeField];
+      var cTxt = String(cRaw == null ? "" : cRaw).trim();
+      if (cTxt && cTxt === targetCode) return f;
+      var cNum = Number(cTxt);
+      if (isFinite(targetCodeNum) && isFinite(cNum) && Math.trunc(cNum) === Math.trunc(targetCodeNum)) return f;
+      var fName = normalizeConstituencyName(a[cfg.nameField]);
+      if (fName && ((nm1 && fName === nm1) || (nm2 && fName === nm2))) return f;
+    }
+    return null;
+  }
+
+  function queryFeatureByServiceScan(serviceUrls, sIdx) {
+    if (!serviceUrls || !serviceUrls.length) return Promise.resolve(null);
+    if (sIdx >= serviceUrls.length) return Promise.resolve(null);
+    return queryLayer(serviceUrls[sIdx], cfg.layerId, {
+      where: "1=1",
+      outFields: "objectid," + cfg.codeField + "," + cfg.nameField,
+      returnGeometry: true,
+      resultRecordCount: 2000
+    }).then(function (data) {
+      var list = data && data.features ? data.features : [];
+      var f = findMatchingFeatureInList(list);
+      if (f && f.geometry) return { feature: f, response: data };
+      return queryFeatureByServiceScan(serviceUrls, sIdx + 1);
+    }).catch(function () {
+      return queryFeatureByServiceScan(serviceUrls, sIdx + 1);
+    });
+  }
+
+  function applyConstituencySelectionFilter(name) {
+    return conLayer.when(function () {
+      var assemblySl = conLayer.findSublayerById(LAYER_CON_ASSEMBLY);
+      var parliamentSl = conLayer.findSublayerById(LAYER_CON_PARLIAMENT);
+      var targetSl = type === "lok" ? parliamentSl : assemblySl;
+      var otherSl = type === "lok" ? assemblySl : parliamentSl;
+      var codeVal = Number(code);
+      var whereCode = isFinite(codeVal)
+        ? (cfg.codeField + " = " + String(Math.trunc(codeVal)))
+        : (cfg.codeField + " = " + sqlQuote(code));
+      var whereName = cleanedNameHint
+        ? ("UPPER(" + cfg.nameField + ") = " + sqlQuote(cleanedNameHint.toUpperCase()))
+        : null;
+      var whereOid = selectedOid != null ? ("objectid = " + String(selectedOid)) : null;
+      var defParts = [];
+      if (whereOid) defParts.push(whereOid);
+      defParts.push(whereCode);
+      if (whereName) defParts.push(whereName);
+      var def = defParts.length > 1 ? "(" + defParts.join(" OR ") + ")" : defParts[0];
+      if (targetSl) targetSl.definitionExpression = def;
+      if (otherSl) otherSl.definitionExpression = "1=0";
+      conLayer.visible = true;
+    }).catch(function () {
+      setStatus(cfg.label + " " + name + " selected.");
     });
   }
 
@@ -3966,6 +4205,10 @@ function runParliamentaryConstituencySelection(kind, rawCode) {
     var opt = opts && typeof opts === "object" ? opts : {};
     var isApproxCenter = !!opt.approxCenter;
     if (!g32643 || !geometryIsUsable(g32643)) return Promise.resolve(false);
+    if (g32643.type === "point" || g32643.type === "multipoint") {
+      setStatus("Constituency boundary geometry unavailable. Circle buffer blocked for Vidhan/Lok selection.");
+      return Promise.resolve(false);
+    }
     var lokCb = document.getElementById("chkLokSabhaBoundary");
     var parlCb = document.getElementById("chkParliamentaryBoundary");
     var rajCb = document.getElementById("chkRajyaSabhaBoundary");
@@ -3979,11 +4222,20 @@ function runParliamentaryConstituencySelection(kind, rawCode) {
       !!(lokCb && lokCb.checked) || !!(parlCb && parlCb.checked),
       !!(rajCb && rajCb.checked)
     );
+    applyConstituencySelectionFilter(name);
 
-    var distM = setBufferDistanceMeters(1500);
-    var constituencyBuffer = createSafeBuffer32643(g32643, distM);
-    if (!constituencyBuffer) constituencyBuffer = g32643;
-    userMapAnalysisGeometry32643 = constituencyBuffer;
+    // Constituency selection should run on full boundary, not stale point-mark circle.
+    bufferMarkPoint32643 = null;
+    bufferMarkLayer.removeAll();
+    bufferMarkModeActive = false;
+    var bbm = document.getElementById("btnBufferMarkPoint");
+    if (bbm) bbm.classList.remove("active");
+    if (view && view.container) view.container.style.cursor = "";
+    if (typeof syncBufferMapFabUi === "function") syncBufferMapFabUi();
+
+    var distM = 0;
+    var constituencyBuffer = g32643;
+    userMapAnalysisGeometry32643 = g32643;
 
     clearResults();
     var drawGeom = projectToRenderableWebGeometry(constituencyBuffer) || projectToRenderableWebGeometry(g32643);
@@ -3996,11 +4248,8 @@ function runParliamentaryConstituencySelection(kind, rawCode) {
     }
 
     var sourceLabel = type === "lok" ? "Lok Sabha boundary" : "Vidhan Sabha boundary";
-    if (isApproxCenter) sourceLabel = sourceLabel + " (approx center)";
     var qJson = constituencyBuffer && typeof constituencyBuffer.toJSON === "function" ? constituencyBuffer.toJSON() : null;
-    var msg = cfg.label + " " + name + " selected. 1500 m buffer applied" +
-      (isApproxCenter ? " (approximate center; service has no polygon geometry)." : ".") +
-      " Data summary updated.";
+    var msg = cfg.label + " " + name + " selected. Full constituency boundary applied. Data summary updated.";
     var ctx = {
       generatedAt: new Date().toISOString(),
       summary: msg,
@@ -4017,7 +4266,7 @@ function runParliamentaryConstituencySelection(kind, rawCode) {
       constituencyType: type,
       constituencyCode: code,
       constituencyName: name,
-      approximateCenter: isApproxCenter,
+      approximateCenter: false,
       clippedFromAdminSelection: false,
       communitySummary: null
     };
@@ -4037,16 +4286,25 @@ function runParliamentaryConstituencySelection(kind, rawCode) {
         constituencyType: type,
         constituencyCode: code,
         constituencyName: name,
-        approximateCenter: isApproxCenter,
+        approximateCenter: false,
         communitySummary: null
       });
       if (constituencyBuffer) publishBufferCommunitySummaryInBackground(baseReport, constituencyBuffer, ctx);
     }
 
     return zoomToGeometry(constituencyBuffer).catch(function () {
-      var center = getGeometryCentroid(constituencyBuffer);
+      var center = getGeometryCentroid(constituencyBuffer) || getGeometryCentroid(g32643);
       if (!center) return Promise.resolve();
-      return goCenterFromGeom(center, 10);
+      var centerWeb = center;
+      try {
+        if (!isWebMercatorWkid(wkidValue(centerWeb.spatialReference))) {
+          centerWeb = projection.project(ensureSR32643(centerWeb), SR_WEB) || centerWeb;
+        }
+      } catch (e0) {}
+      if (!centerWeb) return Promise.resolve();
+      return view.goTo({ center: centerWeb, zoom: 10, padding: getUiZoomPadding() }).catch(function () {
+        return Promise.resolve();
+      });
     }).then(function () {
       setStatus(msg);
       window.setTimeout(hydrateAndPublishAfterZoom, 0);
@@ -4054,39 +4312,59 @@ function runParliamentaryConstituencySelection(kind, rawCode) {
     });
   }
 
+  function queryExtentByWhereCandidates(serviceUrls, sIdx, wIdx) {
+    if (!serviceUrls || !serviceUrls.length) return Promise.resolve(null);
+    if (sIdx >= serviceUrls.length) return Promise.resolve(null);
+    if (wIdx >= whereList.length) return queryExtentByWhereCandidates(serviceUrls, sIdx + 1, 0);
+    return queryLayer(serviceUrls[sIdx], cfg.layerId, {
+      where: whereList[wIdx],
+      returnGeometry: false,
+      returnExtentOnly: true,
+      outSR: 32643
+    }).then(function (data) {
+      var eRaw = data && data.extent ? data.extent : null;
+      if (!eRaw) return queryExtentByWhereCandidates(serviceUrls, sIdx, wIdx + 1);
+      try {
+        var ex = new Extent(Object.assign({}, eRaw, {
+          spatialReference: eRaw.spatialReference || data.spatialReference || SR_METER
+        }));
+        if (geometryIsUsable(ex)) return ex;
+      } catch (e0) {}
+      return queryExtentByWhereCandidates(serviceUrls, sIdx, wIdx + 1);
+    }).catch(function () {
+      return queryExtentByWhereCandidates(serviceUrls, sIdx, wIdx + 1);
+    });
+  }
+
+  var serviceUrls = constituencyServiceCandidates();
   return projection.load().catch(function () { return null; }).then(function () {
-    return queryFeatureByWhereCandidates(0);
+    return queryFeatureByWhereCandidates(serviceUrls, 0, 0).then(function (hit) {
+      if (hit && hit.feature && hit.feature.geometry) return hit;
+      return queryFeatureByServiceScan(serviceUrls, 0);
+    });
   }).then(function (hit) {
     var feature = hit && hit.feature ? hit.feature : null;
     var data = hit && hit.response ? hit.response : null;
     var attrs = feature && feature.attributes ? feature.attributes : {};
     var name = String(attrs[cfg.nameField] || nameHint || code).trim() || code;
     var gRaw = feature && feature.geometry ? feature.geometry : null;
-    var g32643 = gRaw
-      ? (to32643WithSmartFallback(geomFromJSON(gRaw), data && data.spatialReference)
-        || to32643WithSmartFallback(gRaw, (gRaw && gRaw.spatialReference) || SR_METER)
-        || ensureSR32643(gRaw))
-      : null;
+    var g32643 = coerceConstituencyGeometry32643(gRaw, data && data.spatialReference);
 
     if (g32643 && geometryIsUsable(g32643)) {
       return finalizeWithGeom(g32643, attrs, name);
     }
 
-    return geocodeConstituencyAnchor32643(name).then(function (anchor32643) {
-      if (!anchor32643 && selectedDistrictGeom && geometryIsUsable(selectedDistrictGeom)) {
-        var dCenter = getGeometryCentroid(selectedDistrictGeom);
-        if (dCenter && dCenter.type === "point") anchor32643 = toEngineSR(ensureSR32643(dCenter));
+    applyConstituencySelectionFilter(name);
+    return queryExtentByWhereCandidates(serviceUrls, 0, 0).then(function (extent32643) {
+      if (extent32643 && geometryIsUsable(extent32643)) {
+        return zoomToGeometry(extent32643).then(function () {
+          setStatus("Constituency selected. Boundary highlight unavailable, but map zoomed to constituency extent.");
+        }).catch(function () {
+          setStatus("Constituency selected, but full boundary geometry not available. Circle fallback disabled.");
+        });
       }
-      if (!anchor32643 && view && view.center) {
-        var vCenter32643 = to32643WithSmartFallback(view.center, view.center.spatialReference || SR_WEB)
-          || ensureSR32643(view.center);
-        if (vCenter32643 && vCenter32643.type === "point") anchor32643 = toEngineSR(vCenter32643);
-      }
-      if (!anchor32643) {
-        setStatus("Could not resolve constituency center for buffer.");
-        return;
-      }
-      return finalizeWithGeom(anchor32643, attrs, name, { approxCenter: true });
+      setStatus("Constituency selected, but full boundary geometry not available. Circle fallback disabled.");
+      return;
     });
   }).catch(function (err) {
     console.error("[parliamentary constituency select]", err);
@@ -4136,7 +4414,7 @@ function runParliamentaryDistrictBufferSelection(dCode) {
     return queryAdministrativeGeometryForZoom(LAYER_DISTRICT, where, "n_d_code,n_d_name");
   }).then(function (res) {
     var gRaw = res && res.geometry;
-    var g32643 = to32643WithSmartFallback(gRaw, (gRaw && gRaw.spatialReference) || SR_METER) || ensureSR32643(gRaw);
+    var g32643 = to32643WithSmartFallback(gRaw, (gRaw && gRaw.spatialReference) || SR_METER);
     var attrs = (res && res.attributes) || {};
     if (attrs.n_d_name) districtName = String(attrs.n_d_name);
 
@@ -6245,6 +6523,173 @@ function resolveBufferCenterPoint32643() {
   return null;
 }
 
+function resolveCommunityConnectorAnchor32643() {
+  var anchor = resolveBufferCenterPoint32643();
+  if (anchor && anchor.type === "point") return anchor;
+
+  var areaCandidates = [
+    userMapAnalysisGeometry32643,
+    lastCadParcel32643,
+    lastCadHierarchyGeom32643,
+    selectedVillageGeom,
+    selectedTehsilGeom,
+    selectedDistrictGeom
+  ];
+  for (var i = 0; i < areaCandidates.length; i++) {
+    var g0 = areaCandidates[i];
+    if (!g0 || !geometryIsUsable(g0)) continue;
+    var g326 = toEngineSR(ensureSR32643(g0));
+    if (!g326) continue;
+    if (g326.type === "point") return g326;
+    var ctr = getGeometryCentroid(g326);
+    if (ctr && ctr.type === "point") return ctr;
+  }
+
+  if (view && view.center) {
+    try {
+      var c326 = to32643WithSmartFallback(view.center, view.center.spatialReference || SR_WEB);
+      if (c326 && c326.type === "point") return c326;
+    } catch (e0) {}
+  }
+  return null;
+}
+
+function drawCommunityCategoryConnectors(detail) {
+  if (!detail) return Promise.resolve(false);
+  var category = String(detail.category || "locations").toLowerCase();
+  var label = String(detail.label || category);
+  var allItems = Array.isArray(detail.items) ? detail.items : [];
+  var anchor = resolveCommunityConnectorAnchor32643();
+
+  if (!anchor || anchor.type !== "point") {
+    setStatus("Center point available nahi hai. Pehle buffer ya area select karein.");
+    return Promise.resolve(false);
+  }
+
+  if (!allItems.length) {
+    clearConnectorGraphics();
+    setStatus("No " + label + " locations available for center connection.");
+    return Promise.resolve(false);
+  }
+
+  function toPointFromItem(item) {
+    if (!item) return null;
+    var lat = Number(item.lat);
+    var lng = Number(item.lng);
+    if (!isFinite(lat) || !isFinite(lng)) return null;
+    if (Math.abs(lat) > 90 || Math.abs(lng) > 180) return null;
+    var p4326 = new Point({ x: lng, y: lat, spatialReference: SR4326 });
+    var p326 = projection.project(p4326, SR_METER) || null;
+    var pWeb = projection.project(p4326, SR_WEB) || null;
+    if (!p326 || !pWeb) return null;
+    return { p326: p326, pWeb: pWeb };
+  }
+
+  var markerColor = category === "hospitals" ? [239, 68, 68, 0.95] : [103, 80, 164, 0.95];
+  var lineColor = category === "hospitals" ? [220, 38, 38, 0.9] : [124, 58, 237, 0.9];
+  var markerSym = new SimpleMarkerSymbol({
+    style: "circle",
+    color: markerColor,
+    size: 8,
+    outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 1.5 })
+  });
+
+  clearConnectorGraphics();
+  clearCommunityZoomGraphic();
+
+  var minX = anchor.x;
+  var minY = anchor.y;
+  var maxX = anchor.x;
+  var maxY = anchor.y;
+  var validCount = 0;
+  var skipped = 0;
+  var maxRender = 200;
+  var limit = Math.min(allItems.length, maxRender);
+
+  for (var i = 0; i < limit; i++) {
+    var pt = toPointFromItem(allItems[i]);
+    if (!pt) {
+      skipped++;
+      continue;
+    }
+    var dest = pt.p326;
+    var dM = geometryEngine.distance(anchor, dest, "meters");
+    if (!isFinite(dM)) {
+      skipped++;
+      continue;
+    }
+
+    var line = new Polyline({
+      paths: [[[anchor.x, anchor.y], [dest.x, dest.y]]],
+      spatialReference: SR_METER
+    });
+    var lineW = projection.project(line, SR_WEB);
+    if (lineW) {
+      connectorLayer.add(new Graphic({
+        geometry: lineW,
+        symbol: new SimpleLineSymbol({ color: lineColor, width: 1.5, style: "short-dash" })
+      }));
+    }
+
+    var midPt = new Point({
+      x: (anchor.x + dest.x) / 2,
+      y: (anchor.y + dest.y) / 2,
+      spatialReference: SR_METER
+    });
+    var midW = projection.project(midPt, SR_WEB);
+    if (midW) {
+      connectorLayer.add(new Graphic({
+        geometry: midW,
+        symbol: new TextSymbol({
+          text: String(Math.round(dM)) + " m",
+          color: [22, 28, 45, 1],
+          font: { size: 9, weight: "700" },
+          haloColor: [255, 255, 255, 0.98],
+          haloSize: 1
+        })
+      }));
+    }
+
+    connectorLayer.add(new Graphic({
+      geometry: pt.pWeb,
+      symbol: markerSym
+    }));
+
+    minX = Math.min(minX, dest.x);
+    minY = Math.min(minY, dest.y);
+    maxX = Math.max(maxX, dest.x);
+    maxY = Math.max(maxY, dest.y);
+    validCount++;
+  }
+
+  if (!validCount) {
+    setStatus("No valid " + label + " coordinates found for center connection.");
+    return Promise.resolve(false);
+  }
+
+  var ext = new Extent({
+    xmin: minX,
+    ymin: minY,
+    xmax: maxX,
+    ymax: maxY,
+    spatialReference: SR_METER
+  });
+  var doneZoom = zoomToGeometry(ext, { expandFactor: 1.2 }).catch(function () {
+    var cWeb = projection.project(anchor, SR_WEB) || null;
+    if (!cWeb) return Promise.resolve();
+    return view.goTo({ center: cWeb, zoom: 12, padding: getUiZoomPadding() }).catch(function () {
+      return Promise.resolve();
+    });
+  });
+
+  return doneZoom.then(function () {
+    var extra = allItems.length > maxRender ? (" (showing first " + maxRender + ")") : "";
+    var skipMsg = skipped > 0 ? (", " + skipped + " skipped") : "";
+    setStatus("Connected " + validCount + " " + label + " from center point with distance labels in meters" + skipMsg + extra + ".");
+    return true;
+  });
+}
+
 function formatDistanceLabel(meters) {
   var m = Number(meters);
   if (!isFinite(m) || m < 0) return "-";
@@ -6300,9 +6745,6 @@ function to32643WithSmartFallback(geom, responseSr) {
   if (!geom) return null;
 
   var raw = geom;
-  coerceMissingSpatialReference(raw, responseSr || SR_METER);
-  var g = toEngineSR(raw);
-  if (g) return g;
 
   function firstXY(x) {
     if (!x) return null;
@@ -6320,20 +6762,37 @@ function to32643WithSmartFallback(geom, responseSr) {
   var xy = firstXY(raw);
   var x0 = xy ? xy[0] : NaN;
   var y0 = xy ? xy[1] : NaN;
+  var srRaw = (raw && raw.spatialReference) || responseSr || null;
+  var wk = wkidValue(srRaw);
+  var looksLonLat = isFinite(x0) && isFinite(y0) && Math.abs(x0) <= 180 && Math.abs(y0) <= 90;
 
   try {
-    if (isFinite(x0) && isFinite(y0) && Math.abs(x0) <= 180 && Math.abs(y0) <= 90) {
+    // Service sometimes tags lon/lat coordinates with 32643/3857 (or omits SR).
+    // Re-interpret these as WGS84 before any direct 32643 return path.
+    if (looksLonLat) {
+      raw.spatialReference = SR4326;
+      var gFixWgs = projection.project(raw, SR_METER);
+      if (gFixWgs) return gFixWgs;
+    }
+  } catch (e0) {}
+
+  coerceMissingSpatialReference(raw, responseSr || SR_METER);
+  var g = toEngineSR(raw);
+  if (g) return g;
+
+  try {
+    if (looksLonLat && (wk == null || wk === 32643 || isWebMercatorWkid(wk))) {
       raw.spatialReference = SR4326;
       g = projection.project(raw, SR_METER);
       if (g) return g;
     }
-  } catch (e0) {}
+  } catch (e1) {}
 
   try {
     raw.spatialReference = SR_WEB;
     g = projection.project(raw, SR_METER);
     if (g) return g;
-  } catch (e1) {}
+  } catch (e2) {}
 
   return null;
 }
@@ -7015,6 +7474,28 @@ window.msmeGisStartQuickBuffer = function () {
   setStatus("Buffer mode active. Click the map to place anchor and run 1500 m buffer.");
 };
 
+window.msmeGisStartQuickBufferWithDistance = function (distanceM) {
+  var n = Number(distanceM);
+  var dist = isFinite(n) && n > 0 ? Math.round(n) : 1500;
+  setBufferDistanceMeters(dist);
+  if (bufferMarkModeActive) {
+    quickBufferAutoRunAfterAnchorPick = false;
+    setBufferMarkMode(false, false);
+    setStatus("Buffer mode OFF.");
+    return;
+  }
+  if (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") {
+    clearBufferAnchorMarker();
+    quickBufferAutoRunAfterAnchorPick = true;
+    setBufferMarkMode(true, false);
+    setStatus("Old buffer point removed. Click new location to run " + dist + " m buffer.");
+    return;
+  }
+  quickBufferAutoRunAfterAnchorPick = true;
+  setBufferMarkMode(true, false);
+  setStatus("Buffer mode active. Click the map to place anchor and run " + dist + " m buffer.");
+};
+
 window.msmeGisStopQuickBuffer = function () {
   quickBufferAutoRunAfterAnchorPick = false;
   setBufferMarkMode(false, false);
@@ -7623,7 +8104,19 @@ function onCommunityZoomToLocation(event) {
   });
 }
 
+function onCommunityFocusCategory(event) {
+  if (!event || !event.detail) return;
+  if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
+  var detail = event.detail || {};
+  projection.load().then(function () {
+    return drawCommunityCategoryConnectors(detail);
+  }).catch(function (err) {
+    console.warn("[community category focus] failed", err);
+  });
+}
+
 window.addEventListener("msme-gis-zoom-to-location", onCommunityZoomToLocation);
+window.addEventListener("msme-gis-focus-community-category", onCommunityFocusCategory);
 
 view.on("click", function (event) {
   if (view && view.popup && view.popup.visible) {
@@ -7699,6 +8192,15 @@ if (typeof window !== "undefined") {
     try {
       window.removeEventListener("msme-gis-zoom-to-location", onCommunityZoomToLocation);
     } catch (eZ) {}
+    try {
+      window.removeEventListener("msme-gis-focus-community-category", onCommunityFocusCategory);
+    } catch (eZ2) {}
+    try {
+      if (onMsmeGisLoading) window.removeEventListener("msme-gis-loading", onMsmeGisLoading);
+    } catch (eL) {}
+    try {
+      setGisLoadingVisible(false);
+    } catch (eLH) {}
     try {
       clearCommunityZoomGraphic();
     } catch (eZG) {}
