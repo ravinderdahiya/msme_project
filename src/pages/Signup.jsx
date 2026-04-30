@@ -1,84 +1,54 @@
-import axios from "axios";
 import axiosInstance from "../api/axios";
-// import "./Login.css";
+import "./Signup.css";
 import React, { useState } from 'react';
-
 import { useNavigate } from "react-router-dom";
 import { toast } from "react-toastify";
 
 export default function Signup() {
     const navigate = useNavigate();
-    const [isLogin, setIsLogin] = useState(true);
-    
+
     const model = {
-        fullname:"fdsg",
-        email:"abc@gmail.com",
-        password:"1234123",
-        mobile:"9090909090"
-    }
+        fullname: "fdsg",
+        email: "abc@gmail.com",
+        password: "1234123",
+        mobile: "9090909090"
+    };
 
-    const [signupForm,setSignupForm] = useState(model)
+    const [signupForm, setSignupForm] = useState(model);
 
-    const handleInput = (e) =>{
-        const input = e.target
-        const name = input.name
-        const value = input.value
+    const handleInput = (e) => {
+        const input = e.target;
+        const name = input.name;
+        const value = input.value;
         setSignupForm({
             ...signupForm,
-            [name] : value
-        })
-    }
+            [name]: value
+        });
+    };
 
-    const signup = async(e)=>{
-        try{
-            e.preventDefault()
-            console.log(signupForm)
-            const {data} = await axiosInstance.post("/user/signup",signupForm)
-            toast.success(data.message,{position:"top-center"})
-            navigate("/login")
+    const signup = async (e) => {
+        try {
+            e.preventDefault();
+            console.log(signupForm);
+            const { data } = await axiosInstance.post("/user/signup", signupForm);
+            toast.success(data.message, { position: "top-center" });
+            navigate("/login");
+        } catch (err) {
+            const message = err.response?.data?.message || "Something went wrong";
+            console.log(message);
+            toast.error(err.response ? err.response.data.message : err.message, {
+                position: "top-center"
+            });
+        } finally {
+            setSignupForm(model);
         }
-        catch(err){
-            // 🔥 yaha fix hai
-            const message = err.response?.data?.message || "Something went wrong"
-            console.log(message)
-            toast.error(err.response? err.response.data.message : err.message,
-               { position:"top-center" }
-            )
-        
-        }
-        finally{
-            setSignupForm(model)
-        }
+    };
 
-    }
     return (
         <>
             <div className="page-wrapper">
-                {/* <header className="transparent-header">
-                    <div className="header-container">
-                      
-                        <div className="left-logo">
-                            <img src="/har_govt.png" alt="logo" />
-                        </div>
-
-
-                       
-                        <div className="header-title">
-                            <h1>MSME GIS-Based Land & Investment</h1>
-                        </div>
-
-                      
-                        <div className="right-logo">
-                            <img src="/hepc-logo.png" alt="logo" />
-                        </div>
-                    </div>
-                </header> */}
-
-                {/* Aapka baaki content yahan aayega */}
                 <div className="hero-container">
                     <div className="hero-content">
-
-                        {/* Left Side: Text and Features */}
                         <div className="left-section">
                             <h1 className="hero-title">
                                 Unlock Business Growth <br /> with GIS Insights!
@@ -105,62 +75,70 @@ export default function Signup() {
                             </div>
                         </div>
 
-                        {/* Right Side: Login Card */}
                         <div className="right-section">
                             <div className="login-card">
-                                {/* <div className="card-header"> */}
-                                    <div className="left-logo">
-                                        {/* <img src="/har_govt.png" alt="logo" /> */}
-                                           <img src="/hepc-logo.png" alt="logo" />
+                                <div className="left-logo">
+                                    <div className="signup-flip-logo">
+                                        <div className="signup-flip-logo-inner">
+                                            <div className="signup-flip-logo-face">
+                                                <img src="/HARSAC-Logo.png" alt="HARSAC logo" />
+                                            </div>
+                                            <div className="signup-flip-logo-face signup-flip-logo-back">
+                                                <img src="/hepc-logo.png" alt="HEPC logo" />
+                                            </div>
+                                        </div>
                                     </div>
+                                </div>
 
-                                    <h2>Sign Up to Your Account</h2>
+                                <h2>Sign Up to Your Account</h2>
 
-
-                                {/* </div> */}
                                 <form className="login-form" onSubmit={signup}>
                                     <div className="input-field">
                                         <i className="fa-solid fa-user"></i>
                                         <input
-                                         type="text"
-                                         name="fullname"
-                                         value={signupForm.fullname}
-                                         onChange={handleInput}
-                                          placeholder="Enter your fullname"
-                                           required 
-                                           />
+                                            type="text"
+                                            name="fullname"
+                                            value={signupForm.fullname}
+                                            onChange={handleInput}
+                                            placeholder="Enter your fullname"
+                                            required
+                                        />
                                     </div>
+
                                     <div className="input-field">
                                         <i className="fa-solid fa-user"></i>
                                         <input
-                                         type="email"
-                                         name="email"
-                                         value={signupForm.email}
-                                         onChange={handleInput}
-                                          placeholder="Enter your email"
-                                           required 
-                                           />
+                                            type="email"
+                                            name="email"
+                                            value={signupForm.email}
+                                            onChange={handleInput}
+                                            placeholder="Enter your email"
+                                            required
+                                        />
                                     </div>
 
                                     <div className="input-field">
                                         <i className="fa-solid fa-lock"></i>
                                         <input
-                                         type="password"
-                                         name="password"
-                                         value={signupForm.password}
-                                         onChange={handleInput}
-                                         placeholder="Enter your password"
-                                          required />
+                                            type="password"
+                                            name="password"
+                                            value={signupForm.password}
+                                            onChange={handleInput}
+                                            placeholder="Enter your password"
+                                            required
+                                        />
                                     </div>
-                                     <div className="input-field">
+
+                                    <div className="input-field">
                                         <i className="fa-solid fa-lock"></i>
-                                        <input 
-                                        type="number"
-                                        name="mobile"
-                                        value={signupForm.mobile}
-                                        onChange={handleInput}
-                                         placeholder="Enter your mob no." 
-                                         required />
+                                        <input
+                                            type="number"
+                                            name="mobile"
+                                            value={signupForm.mobile}
+                                            onChange={handleInput}
+                                            placeholder="Enter your mob no."
+                                            required
+                                        />
                                     </div>
 
                                     <div className="form-options">
@@ -173,30 +151,21 @@ export default function Signup() {
 
                                     <button type="submit" className="login-button">Create Acount</button>
 
-                                    {/* <a href="/" className="forgot-link">Forgot password?</a> */}
-                                  <p className="signup-text">
-                                       Already have an account?
+                                    <p className="signup-text">
+                                        Already have an account?
                                         <span
                                             style={{ cursor: 'pointer', color: '#4ade80', fontWeight: 'bold' }}
                                             onClick={() => navigate('/Login')}
                                         >
-                                         Login
+                                            Login
                                         </span>
                                     </p>
                                 </form>
-
-
                             </div>
                         </div>
-
                     </div>
                 </div>
             </div>
-
         </>
-
-
-
     );
-};
-
+}

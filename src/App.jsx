@@ -11,6 +11,9 @@ import Signup from "./pages/Signup";
 import Admin from "./admin/Admin";
 // import MSMEMapPage from "./pages/MSMEMapPage.jsx";
 import LoginPage from "./pages/LoginPage";
+import NewSignup from "./pages/NewSignup";
+import ContactPage from "./pages/ContactPage";
+import AboutPage from "./pages/AboutPage";
 import NewAdmin from "./newadmin/NewAdmin.jsx";
 
 import "./App.css";
@@ -52,7 +55,10 @@ function App() {
                     <Route path="/demo-map" element={<HaryanaDemoMap />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/signup" element={<Signup />} />
+                    <Route path="/newsignup" element={<NewSignup />} />
                     <Route path="/LoginPage" element={<LoginPage />} />
+                    <Route path="/contact" element={<ContactPage />} />
+                    <Route path="/about" element={<AboutPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                 </Routes>
             </Suspense>
