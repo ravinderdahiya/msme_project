@@ -6,6 +6,7 @@ import { ToastContainer } from "react-toastify";
 
 import Homepage from "./pages/Homepage";
 import NewHomepage from "./pages/NewHomepage";
+import NewMainMap from "./pages/NewMainMap";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Admin from "./admin/Admin";
@@ -53,6 +54,11 @@ function App() {
                 <Routes>
                     <Route path="/" element={<Homepage />} />
                     <Route path="/newhomepage" element={<NewHomepage />} />
+                    <Route path="/newmainmap/select-land" element={<NewMainMap />} />
+                    <Route path="/newmainmap/layers" element={<NewMainMap />} />
+                    <Route path="/newmainmap/analysis" element={<NewMainMap />} />
+                    <Route path="/newmainmap/buffer" element={<NewMainMap />} />
+                    <Route path="/newmainmap" element={<NewMainMap />} />
                     <Route path="/Admin" element={<Admin />} />
                     <Route path="/newadmin/*" element={<NewAdmin />} />
                     <Route path="/msme-gis-map" element={<MSMEMapPage />} />

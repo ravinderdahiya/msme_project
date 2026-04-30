@@ -79,7 +79,7 @@ export default function HaryanaMap({ t }) {
           <span id="gisLoadingText">{(t && t('loading')) || 'Loading data...'}</span>
         </div>
       </div>
-      <div id="viewDiv"></div>
+      {/* <div id="viewDiv"></div> */}
       <div id="basemapSlot" style={{ display: 'none' }}></div>
     </>
   )
