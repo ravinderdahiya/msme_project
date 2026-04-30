@@ -22,7 +22,9 @@ export const SOC_MS = `${SERVICE_ROOT}/MSME_HARSAC/Social_Infrastructure/MapServ
 export const TRANS_MS = `${SERVICE_ROOT}/MSME_HARSAC/Transportation_Infrastructure/MapServer`
 export const UTIL_MS = `${SERVICE_ROOT}/MSME_HARSAC/Utilities/MapServer`
 export const CAD_MS = `${SERVICE_ROOT}/MSME_HARSAC/Haryana_Cadastral/MapServer`
-export const CON_MS = `${SERVICE_ROOT}/MSME/Constituency_Boundaries/MapServer`
+// Use MSME_HARSAC constituency service because it returns polygon geometry
+// for Vidhan/Lok boundaries (required for full-boundary buffer, not center-circle fallback).
+export const CON_MS = `${SERVICE_ROOT}/MSME_HARSAC/Constituency_Boundaries/MapServer`
 
 export const IDENTIFY_URLS = [BASE_MS, ADMIN_MS, ENV_MS, INV_MS, SOC_MS, TRANS_MS, UTIL_MS, CAD_MS, CON_MS]
 

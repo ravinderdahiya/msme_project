@@ -1,9 +1,16 @@
-import React from "react";
+import React, { useState } from "react";
 import { ArrowRight, BarChart3, BookOpen, CheckCircle2, FileText, Layers3, LocateFixed, Map, MapPinned, Menu, Moon, Search, UserRound, MapPin } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import "./NewHomepage.css";
 
-const topNav = ["Home", "Map", "Analysis", "Reports", "About Us", "Contact"];
+const topNav = [
+    { label: "Home", to: "/newhomepage" },
+    { label: "Map", to: "/msme-gis-map" },
+    { label: "Analysis", to: "#" },
+    { label: "Reports", to: "#" },
+    { label: "About Us", to: "/about" },
+    { label: "Contact", to: "/contact" },
+];
 
 const stats = [
     { icon: <BookOpen size={22} />, value: "2,500+", label: "Land Parcels" },
@@ -42,14 +49,28 @@ const testimonials = [
     { quote: "Detailed reports and easy to use interface saves our time and improves our decision-making process.", name: "Amit Kumar", role: "Business Analyst" },
 ];
 
+const BrandLogo = () => (
+    <div className="nh-flip-logo" aria-hidden="true">
+        <div className="nh-flip-logo-inner">
+            <div className="nh-flip-logo-face">
+                <img src="/hepc-logo.png" alt="" />
+            </div>
+            <div className="nh-flip-logo-face nh-flip-logo-back">
+                <img src="/HARSAC-Logo.png" alt="" />
+            </div>
+        </div>
+    </div>
+);
+
 export default function NewHomepage() {
     const navigate = useNavigate();
+    const [showLoginModal, setShowLoginModal] = useState(false);
 
     return (
         <div className="new-homepage">
             <header className="nh-header">
                 <div className="nh-brand">
-                    <img src="/hepc-logo.png" alt="MSME Investor GIS" />
+                    <BrandLogo />
                     <div>
                         <strong>MSME</strong>
                         <span>INVESTOR GIS</span>
@@ -57,10 +78,14 @@ export default function NewHomepage() {
                 </div>
 
                 <nav className="nh-nav">
-                    {topNav.map((item, index) => (
-                        <a href="#" key={item} className={index === 0 ? "active" : ""}>
-                            {item}
+                    {topNav.map((item, index) => item.to === "#" ? (
+                        <a href="#" key={item.label} className={index === 0 ? "active" : ""}>
+                            {item.label}
                         </a>
+                    ) : (
+                        <Link to={item.to} key={item.label} className={index === 0 ? "active" : ""}>
+                            {item.label}
+                        </Link>
                     ))}
                 </nav>
 
@@ -69,7 +94,7 @@ export default function NewHomepage() {
                         <Moon size={18} />
                     </button>
                     <button type="button" className="nh-btn nh-btn-ghost" onClick={() => navigate("/LoginPage")}>Login</button>
-                    <button type="button" className="nh-btn nh-btn-primary" onClick={() => navigate("/signup")}>Sign Up</button>
+                    <button type="button" className="nh-btn nh-btn-primary" onClick={() => navigate("/newsignup")}>Sign Up</button>
                     <button type="button" className="nh-menu-btn" aria-label="Menu">
                         <Menu size={20} />
                     </button>
@@ -95,7 +120,7 @@ export default function NewHomepage() {
                                 <LocateFixed size={18} />
                                 <input type="text" placeholder="Search location, district, village..." />
                             </div>
-                            <button type="button" className="nh-btn nh-btn-primary nh-search-btn">
+                            <button type="button" className="nh-btn nh-btn-primary nh-search-btn" onClick={() => setShowLoginModal(true)}>
                                 <Map size={18} />
                                 <span>Explore Map</span>
                             </button>
@@ -116,9 +141,17 @@ export default function NewHomepage() {
 
                     <div className="nh-hero-visual">
                         <div className="nh-map-card">
+                            <div className="nh-visual-badge nh-visual-badge-top">
+                                <Layers3 size={17} />
+                                <span>24+ Live GIS Layers</span>
+                            </div>
                             <div className="nh-map-highlight" />
                             <div className="nh-map-pin">
                                 <MapPinned size={42} />
+                            </div>
+                            <div className="nh-visual-badge nh-visual-badge-bottom">
+                                <CheckCircle2 size={17} />
+                                <span>Suitable Parcel Found</span>
                             </div>
                             <span className="node node-a" />
                             <span className="node node-b" />
@@ -142,10 +175,17 @@ export default function NewHomepage() {
                             <div className="nh-tool-icon">{tool.icon}</div>
                             <h3>{tool.title}</h3>
                             <p>{tool.desc}</p>
-                            <a href="#">
-                                {tool.cta}
-                                <ArrowRight size={16} />
-                            </a>
+                            {tool.cta === "Explore Now" ? (
+                                <a onClick={() => setShowLoginModal(true)}>
+                                    {tool.cta}
+                                    <ArrowRight size={16} />
+                                </a>
+                            ) : (
+                                <a href="#">
+                                    {tool.cta}
+                                    <ArrowRight size={16} />
+                                </a>
+                            )}
                         </article>
                     ))}
                 </div>
@@ -217,7 +257,7 @@ export default function NewHomepage() {
                     <p>Join thousands of investors who trust MSME Investor GIS for their land investment decisions.</p>
                 </div>
                 <div className="nh-cta-actions">
-                    <button type="button" className="nh-btn nh-btn-light" onClick={() => navigate("/msme-gis-map")}>Explore Map</button>
+                    <button type="button" className="nh-btn nh-btn-light" onClick={() => setShowLoginModal(true)}>Explore Map</button>
                     <button type="button" className="nh-btn nh-btn-primary-alt" onClick={() => navigate("/LoginPage")}>Get Started Now</button>
                 </div>
             </section>
@@ -226,7 +266,7 @@ export default function NewHomepage() {
                 <div className="nh-footer-grid">
                     <div className="nh-footer-brand">
                         <div className="nh-brand">
-                            <img src="/hepc-logo.png" alt="MSME Investor GIS" />
+                            <BrandLogo />
                             <div>
                                 <strong>MSME</strong>
                                 <span>INVESTOR GIS</span>
@@ -242,9 +282,10 @@ export default function NewHomepage() {
                         <h4>Quick Links</h4>
                         <ul>
                             <li><Link to="/">Home</Link></li>
-                            <li><a href="#">Map</a></li>
+                            <li><Link to="/msme-gis-map">Map</Link></li>
                             <li><a href="#">Analysis</a></li>
                             <li><a href="#">Reports</a></li>
+                            <li><Link to="/contact">Contact</Link></li>
                         </ul>
                     </div>
 
@@ -263,12 +304,21 @@ export default function NewHomepage() {
                         <ul>
                             <li>+91 12345 67890</li>
                             <li>support@msmeinvestorgis.in</li>
-                            <li>B-123, Business Park, New Delhi, India - 110001</li>
+                            <li>HARSAC, Hisar, Haryana</li>
                         </ul>
                     </div>
                 </div>
                 <div className="nh-footer-bottom">© 2024 MSME Investor GIS. All rights reserved.</div>
             </footer>
+
+            {showLoginModal && (
+                <div className="modal-overlay" onClick={() => setShowLoginModal(false)}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <p>अगर आपने एक्सप्लोर करना है, पहले लॉगिन करें।</p>
+                        <button onClick={() => { setShowLoginModal(false); navigate("/LoginPage"); }}>Login</button>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

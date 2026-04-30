@@ -240,6 +240,11 @@ body {
     height: 90px;
 }
 
+.topbar-flip-logo {
+    width: 48px;
+    height: 48px;
+}
+
 .flip-logo-inner {
     position: relative;
     width: 100%;
@@ -265,6 +270,11 @@ body {
     height: 60px;
     object-fit: contain;
     border-radius: 50%;
+}
+
+.topbar-flip-logo .flip-logo-face img {
+    width: 34px;
+    height: 34px;
 }
 
 .flip-logo-back {
@@ -353,6 +363,45 @@ body {
     background: #ffffff;
 }
 
+.otp-field {
+    margin-bottom: 20px;
+}
+
+.otp-field label {
+    display: block;
+    margin-bottom: 8px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text-dark);
+}
+
+.otp-inputs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+}
+
+.otp-inputs input {
+    width: 100%;
+    aspect-ratio: 1;
+    min-height: 56px;
+    border: 1px solid rgba(16, 35, 63, 0.12);
+    border-radius: 14px;
+    outline: none;
+    background: rgba(255, 255, 255, 0.72);
+    color: var(--text-dark);
+    font-size: 1.35rem;
+    font-weight: 700;
+    text-align: center;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
+.otp-inputs input:focus {
+    border-color: rgba(11, 110, 253, 0.65);
+    box-shadow: 0 0 0 4px rgba(11, 110, 253, 0.12);
+    background: #ffffff;
+}
+
 .form-options {
     display: flex;
     align-items: center;
@@ -374,10 +423,19 @@ body {
 }
 
 .forgot-pass,
-.signup-link a {
+.signup-link a,
+.signup-link button {
     color: var(--primary-blue-dark);
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font: inherit;
     text-decoration: none;
     font-weight: 600;
+}
+
+.signup-link button:hover {
+    text-decoration: underline;
 }
 
 .login-btn {

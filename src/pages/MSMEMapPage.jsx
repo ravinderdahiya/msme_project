@@ -8,6 +8,8 @@ import "../msme-webgis.css";
 
 const MSMEGISPage = () => {
   const { t, lang, setLang, languages } = useI18n();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchBusy, setSearchBusy] = useState(false);
   const [theme, setTheme] = useState(() => {
     try {
       return localStorage.getItem("msme-ui-theme") || "white";
@@ -49,6 +51,8 @@ const MSMEGISPage = () => {
       district: t("placeholderDistrict"),
       tehsil: t("placeholderTehsil"),
       village: t("placeholderVillage"),
+      vidhanSabha: t("placeholderVidhanSabha"),
+      lokSabha: t("placeholderLokSabha"),
       muraba: t("placeholderMuraba"),
       parcel: t("placeholderParcel"),
       cadKhasraPlaceholder: t("cadKhasraPlaceholder"),
@@ -60,6 +64,92 @@ const MSMEGISPage = () => {
     });
   }, [lang]);
 
+  const parseLatLonInput = (text) => {
+    const cleaned = String(text || "").trim();
+    const match = cleaned.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+    if (!match) return null;
+    const lat = Number(match[1]);
+    const lon = Number(match[2]);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat, lon, label: cleaned };
+  };
+
+  const geocodeWithArcGis = async (query) => {
+    const url =
+      "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/findAddressCandidates" +
+      `?f=pjson&maxLocations=1&outFields=Match_addr&singleLine=${encodeURIComponent(query)}`;
+    const response = await fetch(url);
+    if (!response.ok) return null;
+    const data = await response.json();
+    const top = Array.isArray(data?.candidates) ? data.candidates[0] : null;
+    if (!top || !top.location) return null;
+    const lon = Number(top.location.x);
+    const lat = Number(top.location.y);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat, lon, label: top.address || query };
+  };
+
+  const geocodeWithNominatim = async (query) => {
+    const url =
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&q=${encodeURIComponent(
+        query
+      )}`;
+    const response = await fetch(url, {
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) return null;
+    const data = await response.json();
+    const top = Array.isArray(data) ? data[0] : null;
+    if (!top) return null;
+    const lat = Number(top.lat);
+    const lon = Number(top.lon);
+    if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+    if (Math.abs(lat) > 90 || Math.abs(lon) > 180) return null;
+    return { lat, lon, label: top.display_name || query };
+  };
+
+  const handleTopSearchSubmit = async (event) => {
+    event.preventDefault();
+    if (searchBusy) return;
+    const query = String(searchQuery || "").trim();
+    if (!query) return;
+
+    setSearchBusy(true);
+    try {
+      let target = parseLatLonInput(query);
+      if (!target) target = await geocodeWithArcGis(query);
+      if (!target) target = await geocodeWithNominatim(query);
+
+      if (!target) {
+        window.alert("Place not found. Try another name or use 'lat,lon'.");
+        return;
+      }
+
+      if (typeof window === "undefined" || typeof window.msmeGisSetBufferAnchorFromWgs !== "function") {
+        window.alert("Map is still loading. Please try again.");
+        return;
+      }
+
+      const ok = await window.msmeGisSetBufferAnchorFromWgs(target.lat, target.lon, {
+        autoRun: true,
+        distanceM: 1500,
+        zoom: 14,
+        label: target.label || query,
+      });
+
+      if (!ok) {
+        window.alert("Could not create buffer at this location.");
+      }
+    } catch (err) {
+      console.error("[top search geocode]", err);
+      window.alert("Search failed. Check network and try again.");
+    } finally {
+      setSearchBusy(false);
+    }
+  };
+
   return (
     <>
       <HeaderGis
@@ -70,6 +160,27 @@ const MSMEGISPage = () => {
         theme={theme}
         setTheme={setTheme}
       />
+      <form className="gis-top-search" aria-label="Place search" onSubmit={handleTopSearchSubmit}>
+        <label htmlFor="gisGlobalSearch" className="visually-hidden">
+          Search
+        </label>
+        <input
+          id="gisGlobalSearch"
+          className="gis-top-search__input"
+          type="search"
+          placeholder="Search place or enter lat,lon"
+          autoComplete="off"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          disabled={searchBusy}
+        />
+        <button type="submit" className="gis-top-search__btn" disabled={searchBusy} aria-label="Search">
+          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+            <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="2"></circle>
+            <line x1="16" y1="16" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></line>
+          </svg>
+        </button>
+      </form>
       <Sidebar t={t} />
       <HaryanaMap t={t} />
     </>

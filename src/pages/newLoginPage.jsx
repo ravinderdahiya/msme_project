@@ -108,7 +108,6 @@ export default function NewLoginPage() {
         <h2 className="text-[clamp(30px,2.4vw,32px)] max-sm:text-xl font-bold leading-tight text-gray-900">
           MSME Investment GIS Portal
         </h2>
-        <h1>hello</h1>
 
         <p className="mt-1 mb-5 text-[clamp(13px,1vw,16px)] text-gray-500">
           Login securely with mobile number and OTP

@@ -73,7 +73,12 @@ export default function HaryanaMap({ t }) {
 
       <LocationButton t={t} />
       <BufferButton t={t} />
-      <LocationButton t={t} />
+      <div id="gisLoadingOverlay" className="is-hidden" aria-hidden="true">
+        <div className="gis-loading-chip" role="status" aria-live="polite">
+          <span className="gis-loading-spinner" aria-hidden="true"></span>
+          <span id="gisLoadingText">{(t && t('loading')) || 'Loading data...'}</span>
+        </div>
+      </div>
       <div id="viewDiv"></div>
       <div id="basemapSlot" style={{ display: 'none' }}></div>
     </>

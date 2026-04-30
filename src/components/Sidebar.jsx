@@ -309,9 +309,9 @@ export default function Sidebar({ t }) {
               <section className="aoi-card">
                 <h3 className="aoi-card-title">{t('tabParliamentaryBoundary')}</h3>
                 <p className="aoi-card-desc">{t('parliamentaryBoundaryHelp')}</p>
-               <label>{t('district')}</label>
-                <select id="parliamentaryDistrictSelect">
-                  <option value="">{t('placeholderDistrict')}</option>
+                <label>{t('lokSabha')}</label>
+                <select id="parliamentaryLokSabhaSelect" disabled>
+                  <option value="">{t('placeholderLokSabha')}</option>
                 </select>
                 <label>{t('constituencyBoundaries')}</label>
                 <div className="const-boundary-grid" role="group" aria-label={t('constituencyBoundaries')}>
@@ -333,6 +333,23 @@ export default function Sidebar({ t }) {
                     {t('clear')}
                   </button>
                 </div>
+              </section>
+            </div>
+            <button type="button" id="tabAssemblyBoundary" data-mpanel="mpAssemblyBoundary">
+              Assembly Boundary
+            </button>
+            <div id="mpAssemblyBoundary" className="modal-panel inline-tab-panel">
+              <section className="aoi-card">
+                <h3 className="aoi-card-title">Assembly Boundary</h3>
+                <p className="aoi-card-desc">Select district and Vidhan Sabha constituency.</p>
+                <label>{t('district')}</label>
+                <select id="parliamentaryDistrictSelect">
+                  <option value="">{t('placeholderDistrict')}</option>
+                </select>
+                <label>{t('vidhanSabha')}</label>
+                <select id="parliamentaryAssemblySelect" disabled>
+                  <option value="">{t('placeholderVidhanSabha')}</option>
+                </select>
               </section>
             </div>
             <button type="button" id="tabCad" data-mpanel="mpCad">
