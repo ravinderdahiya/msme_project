@@ -17,6 +17,9 @@ import ContactPage from "./pages/ContactPage";
 import AboutPage from "./pages/AboutPage";
 import NewAdmin from "./newadmin/NewAdmin.jsx";
 
+import NewLoginPage from "./pages/newLoginPage.jsx";
+import NewAdminPage from "./pages/NewAdminPage.jsx";
+
 import "./App.css";
 
 // import { ToastContainer } from "react-toastify";
@@ -27,6 +30,7 @@ import Sidebar from "../src/components/Sidebar"
 // import { useState } from "react";
 import MSMEMapPage from "./pages/MSMEMapPage.jsx";
 import NotFound from "./components/InfoCards";
+
 // import LoginPage from "./pages/LoginPage";
 
 
@@ -66,6 +70,9 @@ function App() {
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route path="/newLogin"element={<NewLoginPage/>} />
+                    <Route path="/newAdmin" element={<NewAdminPage />} />
+            
                 </Routes>
             </Suspense>
             <ToastContainer />
