@@ -309,18 +309,26 @@
 
   .buffer-map-fab {
     right: 12px;
-    bottom: calc(190px + env(safe-area-inset-bottom));
-    top: auto;
+    top: calc(var(--header-h) + 86px);
+    bottom: auto;
   }
 
   .buffer-fab-wrap {
-    right: 12px;
-    bottom: calc(190px + env(safe-area-inset-bottom));
+    left: 10%;
+    right: auto;
+    top: calc(var(--header-h) + 86px);
+    bottom: auto;
+  }
+
+  .buffer-fab-wrap .closest-map-fab {
+    top: auto;
   }
 
   .buffer-mini-panel {
-    right: 0;
-    bottom: 58px;
+    left: 0;
+    right: auto;
+    top: calc(100% + 10px);
+    bottom: auto;
     width: min(320px, calc(100vw - 24px));
   }
 
@@ -385,6 +393,11 @@
   }
 
   #spatialToolbar select.sm {
+    width: 100%;
+    max-width: 100%;
+  }
+
+  #spatialToolbar input.closest-dist-num {
     width: 100%;
     max-width: 100%;
   }

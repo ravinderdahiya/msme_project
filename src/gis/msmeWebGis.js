@@ -1646,31 +1646,16 @@ function computeCommunitySummaryForGeometry(queryGeom, sourceKind) {
           available: false
         });
       }
-      var specKey = String(spec.key || "").toLowerCase();
-      if (specKey === "iti" || specKey === "schools" || specKey === "hospitals") {
-        return fetchCommunityCategoryItems(spec, g32643).then(function (data) {
-          var plotted = Number(data && data.plotCount);
-          var raw = Number(data && data.count);
-          var shownCount = isFinite(plotted) ? plotted : (isFinite(raw) ? raw : 0);
-          return {
-            key: spec.key,
-            label: spec.label,
-            count: shownCount,
-            rawCount: isFinite(raw) ? raw : shownCount,
-            items: data && Array.isArray(data.items) ? data.items : [],
-            available: true
-          };
-        });
-      }
-      return Promise.all(layers.map(function (layerDef) {
-        return queryLayerCountWithinGeometry(layerDef.url, layerDef.layerId, g32643);
-      })).then(function (counts) {
-        var total = 0;
-        counts.forEach(function (n) { total += Number(n) || 0; });
+      return fetchCommunityCategoryItems(spec, g32643).then(function (data) {
+        var plotted = Number(data && data.plotCount);
+        var raw = Number(data && data.count);
+        var shownCount = isFinite(plotted) ? plotted : (isFinite(raw) ? raw : 0);
         return {
           key: spec.key,
           label: spec.label,
-          count: total,
+          count: shownCount,
+          rawCount: isFinite(raw) ? raw : shownCount,
+          items: data && Array.isArray(data.items) ? data.items : [],
           available: true
         };
       });
@@ -1688,6 +1673,80 @@ function computeCommunitySummaryForGeometry(queryGeom, sourceKind) {
     });
   }).catch(function (e0) {
     console.warn("[community summary] failed", e0);
+    return null;
+  });
+}
+
+function computeClosestCommunitySummaryForGeometry(anchorPoint32643, queryGeom, sourceKind) {
+  if (!anchorPoint32643 || anchorPoint32643.type !== "point" || !queryGeom) return Promise.resolve(null);
+  return projection.load().then(function () {
+    var g32643 = toEngineSR(ensureSR32643(queryGeom));
+    if (!g32643) return null;
+
+    var tasks = COMMUNITY_SUMMARY_LAYER_SPECS.map(function (spec) {
+      var layers = spec && spec.layers ? spec.layers : [];
+      if (!layers.length) {
+        return Promise.resolve({
+          key: spec.key,
+          label: spec.label,
+          count: 0,
+          items: [],
+          nearestItem: null,
+          nearestDistanceM: null,
+          available: false
+        });
+      }
+      return fetchCommunityCategoryItems(spec, g32643).then(function (data) {
+        var nearestItem = null;
+        var nearestDistM = null;
+        var items = data && Array.isArray(data.items) ? data.items : [];
+        items.forEach(function (item) {
+          var lat = Number(item && item.lat);
+          var lng = Number(item && item.lng);
+          if (!isFinite(lat) || !isFinite(lng)) return;
+          var p4326 = new Point({ x: lng, y: lat, spatialReference: SR4326 });
+          var p32643 = projection.project(p4326, SR_METER) || null;
+          if (!p32643 || p32643.type !== "point") return;
+          var dM = geometryEngine.distance(anchorPoint32643, p32643, "meters");
+          if (!isFinite(dM)) return;
+          if (nearestItem == null || nearestDistM == null || dM < nearestDistM) {
+            nearestItem = {
+              id: item.id,
+              name: item.name,
+              lat: item.lat,
+              lng: item.lng,
+              properties: item.properties || {}
+            };
+            nearestDistM = dM;
+          }
+        });
+        var nearestList = nearestItem ? [nearestItem] : [];
+        var rawCount = Number(data && data.count);
+        return {
+          key: spec.key,
+          label: spec.label,
+          count: nearestItem ? 1 : 0,
+          rawCount: isFinite(rawCount) ? rawCount : 0,
+          items: nearestList,
+          nearestItem: nearestItem,
+          nearestDistanceM: nearestDistM != null ? Math.round(nearestDistM) : null,
+          available: true
+        };
+      });
+    });
+
+    return Promise.all(tasks).then(function (categories) {
+      var total = 0;
+      categories.forEach(function (r) { total += Number(r && r.count) || 0; });
+      return {
+        generatedAt: new Date().toISOString(),
+        source: sourceKind || "closest-point",
+        categories: categories,
+        totalCount: total
+      };
+    });
+  }).catch(function (e0) {
+    console.warn("[closest community summary] failed", e0);
     return null;
   });
 }
@@ -2012,8 +2071,7 @@ function publishInvestorSnapshot(p32643, source) {
     var wgs = projection.project(p32643, SR4326);
     var radiusM = 3000;
     try {
-      var elR = document.getElementById("cadNearM");
-      if (elR) radiusM = parseInt(elR.value, 10) || 3000;
+      radiusM = readCadNearRadiusMeters();
     } catch (e1) {}
     publishAoiLandReportSnapshot({
       generatedAt: new Date().toISOString(),
@@ -2083,9 +2141,9 @@ var routeLineLayer = new GraphicsLayer({ title: "Esri route", listMode: "hide" }
 var sketchLayer = new GraphicsLayer({ title: "Sketch selection", listMode: "hide" });
 var selectionHighlightLayer = new GraphicsLayer({ title: "Highlighted selection", listMode: "hide" });
 var connectorLayer = new GraphicsLayer({ title: "Distance connector", listMode: "hide" });
-var adminLayer = new MapImageLayer({ url: ADMIN_MS, title: "Administrative boundaries" });
+var adminLayer = new MapImageLayer({ url: ADMIN_MS, title: "Administrative boundaries", visible: true });
 var baseRefLayer = new MapImageLayer({ url: BASE_MS, title: "Base & reference", opacity: 0.65, visible: false });
-var transLayer = new MapImageLayer({ url: TRANS_MS, title: "Transportation", visible: false });
+var transLayer = new MapImageLayer({ url: TRANS_MS, title: "Transportation", visible: true });
 var envLayer = new MapImageLayer({ url: ENV_MS, title: "Environmental", visible: false });
 var invLayer = new MapImageLayer({ url: INV_MS, title: "Investment zones", visible: false });
 var socialLayer = new MapImageLayer({ url: SOC_MS, title: "Social infrastructure", visible: false });
@@ -2204,15 +2262,17 @@ function applyInitialRequestedLayerPreset() {
   if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) {
     return Promise.resolve();
   }
-  addOperationalLayerToMap(baseRefLayer);
-  addOperationalLayerToMap(socialLayer);
   addOperationalLayerToMap(transLayer);
-  addOperationalLayerToMap(utilLayer);
-  // Keep requested key layers ON by default without blocking on service load.
-  baseRefLayer.visible = true;
-  socialLayer.visible = true;
+  // Keep only transportation ON by default; all other operational layers stay OFF.
+  baseRefLayer.visible = false;
+  socialLayer.visible = false;
   transLayer.visible = true;
-  utilLayer.visible = true;
+  utilLayer.visible = false;
+  envLayer.visible = false;
+  invLayer.visible = false;
+  cadLayer.visible = false;
+  conLayer.visible = false;
+  adminLayer.visible = true;
 
   function setWhenReady(layer, subLayerId, on) {
     layer.when(function () {
@@ -2220,11 +2280,7 @@ function applyInitialRequestedLayerPreset() {
       setSubLayerVisibilityIfPresent(layer, subLayerId, on);
     }).catch(function () {});
   }
-  setWhenReady(socialLayer, 1, true); // Government School
-  setWhenReady(socialLayer, 2, true); // PM Shri/Sanskriti schools
-  setWhenReady(utilLayer, 14, true); // Electric poles
-  setWhenReady(transLayer, 4, true); // Roads (line)
-  setWhenReady(baseRefLayer, 2, true); // Canals
+  setWhenReady(transLayer, 4, true); // Transportation line default
 
   // Warm the remaining layers in background; do not block first usable paint.
   ensureOptionalOperationalLayers().catch(function (err) {
@@ -2394,6 +2450,47 @@ function showCadSelectionLayer(lid, where) {
   });
 }
 
+function queryCadSelectionGeometry32643(lid, where) {
+  if (lid == null || !where) return Promise.resolve(null);
+  return queryLayer(CAD_MS, lid, {
+    where: where,
+    outFields: "OBJECTID",
+    returnGeometry: true,
+    outSR: 32643,
+    resultRecordCount: 200
+  }).then(function (data) {
+    var geoms = (data.features || []).map(function (f) {
+      var g = geomFromJSON(f.geometry);
+      if (!g || !geometryIsUsable(g)) return null;
+      coerceMissingSpatialReference(g, data.spatialReference || SR_METER);
+      try {
+        return toEngineSR(ensureSR32643(g)) || ensureSR32643(g);
+      } catch (e0) {
+        return g;
+      }
+    }).filter(Boolean);
+
+    if (!geoms.length) return null;
+    if (geoms.length === 1) return geoms[0];
+
+    try {
+      var merged = geometryEngine.union(geoms);
+      if (merged && geometryIsUsable(merged)) return merged;
+    } catch (e1) {}
+
+    var unionExt = null;
+    geoms.forEach(function (g0) {
+      var ext = g0.type === "extent" ? g0 : g0.extent;
+      if (!ext) return;
+      if (!unionExt) unionExt = ext.clone ? ext.clone() : ext;
+      else if (typeof unionExt.union === "function") unionExt = unionExt.union(ext);
+    });
+    return unionExt;
+  }).catch(function () {
+    return null;
+  });
+}
+
 function mapImageLayerForCadNearUrl(url) {
   if (url === TRANS_MS) return transLayer;
   if (url === INV_MS) return invLayer;
@@ -2438,6 +2535,16 @@ function resolveCadNearbySearchGeometry32643() {
   var vSel = cadVillageSelect && cadVillageSelect.value ? String(cadVillageSelect.value).trim() : "";
   var murSel = cadMurabaSelect && cadMurabaSelect.value ? String(cadMurabaSelect.value).trim() : "";
   var khaSel = cadKhasraSelect && cadKhasraSelect.value ? String(cadKhasraSelect.value).trim() : "";
+  var cadSel = getCurrentCadSelectionInfo();
+
+  var selectionExtentFallback = function (whereExpr) {
+    if (!cadSel || cadSel.lid == null || !whereExpr) return Promise.resolve(null);
+    return showCadSelectionLayer(cadSel.lid, whereExpr).then(function (selExt) {
+      return toUsable32643(selExt);
+    }).catch(function () {
+      return null;
+    });
+  };
 
   var districtFallback = function () {
     if (!dSel) {
@@ -2455,13 +2562,19 @@ function resolveCadNearbySearchGeometry32643() {
       var g = res && res.feature && res.feature.geometry ? geomFromJSON(res.feature.geometry) : null;
       var parcel = toUsable32643(g);
       if (parcel) return parcel;
-      return queryCadMurabaExtentGeometry(dSel, tSel, vSel, murSel).then(function (gMur) {
-        return toUsable32643(gMur);
-      }).catch(function () {
-        return null;
-      }).then(function (murGeom) {
-        if (murGeom) return murGeom;
-        return districtFallback();
+      return queryCadSelectionGeometry32643(cadSel.lid, cadSel.khasraWhere).then(function (khasraGeom) {
+        if (khasraGeom) return khasraGeom;
+        return selectionExtentFallback(cadSel.khasraWhere).then(function (khasraExtentGeom) {
+          if (khasraExtentGeom) return khasraExtentGeom;
+          return queryCadMurabaExtentGeometry(dSel, tSel, vSel, murSel).then(function (gMur) {
+            return toUsable32643(gMur);
+          }).catch(function () {
+            return null;
+          }).then(function (murGeom) {
+            if (murGeom) return murGeom;
+            return districtFallback();
+          });
+        });
       });
     }).catch(function () {
       return districtFallback();
@@ -2472,7 +2585,13 @@ function resolveCadNearbySearchGeometry32643() {
     return queryCadMurabaExtentGeometry(dSel, tSel, vSel, murSel).then(function (gMur) {
       var murGeom = toUsable32643(gMur);
       if (murGeom) return murGeom;
-      return districtFallback();
+      return queryCadSelectionGeometry32643(cadSel.lid, cadSel.murWhere).then(function (murSelGeom) {
+        if (murSelGeom) return murSelGeom;
+        return selectionExtentFallback(cadSel.murWhere).then(function (murExtentGeom) {
+          if (murExtentGeom) return murExtentGeom;
+          return districtFallback();
+        });
+      });
     }).catch(function () {
       return districtFallback();
     });
@@ -2486,27 +2605,74 @@ var cadNearAutoTimer = null;
 function runCadNearbyDistances(opts) {
   opts = opts || {};
   cadNearbyLayer.removeAll();
+  if (map && map.layers && map.layers.includes(cadNearbyLayer) && typeof map.reorder === "function") {
+    map.reorder(cadNearbyLayer, map.layers.length - 1);
+  }
   var checks = Array.prototype.slice.call(document.querySelectorAll(".cad-near-cb")).filter(function (c) { return c.checked; });
-  if (!checks.length) {
-    if (!opts.silentNoParcel) {
-      setStatus("Select at least one feature class.");
+  var hasCheckedLayers = checks.length > 0;
+  var bufferOnlyMode = !!opts.allowBufferOnly || !hasCheckedLayers;
+
+  var rad = readCadNearRadiusMeters();
+  rad = Math.max(1, Math.min(100000, rad));
+  var strictKhasraMode = !!(cadKhasraSelect && cadKhasraSelect.value && String(cadKhasraSelect.value).trim());
+
+  function resolveStrictKhasraGeometry32643() {
+    function toUsable32643(g) {
+      if (!g || !geometryIsUsable(g)) return null;
+      try {
+        return toEngineSR(ensureSR32643(g)) || ensureSR32643(g);
+      } catch (e0) {
+        return g;
+      }
     }
-    return;
+    var cadSel = getCurrentCadSelectionInfo();
+    if (!cadSel || cadSel.lid == null || !cadSel.khasraWhere) return Promise.resolve(null);
+    return queryCadParcelGeometry().then(function (res) {
+      var g = res && res.feature && res.feature.geometry ? geomFromJSON(res.feature.geometry) : null;
+      var parcel = toUsable32643(g);
+      if (parcel) return parcel;
+      return queryCadSelectionGeometry32643(cadSel.lid, cadSel.khasraWhere).then(function (khasraGeom) {
+        if (khasraGeom) return khasraGeom;
+        return showCadSelectionLayer(cadSel.lid, cadSel.khasraWhere).then(function (selExt) {
+          return toUsable32643(selExt);
+        }).catch(function () {
+          return null;
+        });
+      });
+    }).catch(function () {
+      return null;
+    });
   }
 
-  var rad = parseInt(document.getElementById("cadNearM").value, 10) || 2000;
-  rad = Math.max(200, Math.min(10000, rad));
-
   projection.load().catch(function () { return null; }).then(function () {
-    return resolveCadNearbySearchGeometry32643();
+    return strictKhasraMode
+      ? resolveStrictKhasraGeometry32643()
+      : resolveCadNearbySearchGeometry32643();
   }).then(function (parcel) {
     if (!parcel) {
-      if (!opts.silentNoParcel) {
-        setStatus("Select District, Tehsil, Village, Muraba (and optional Khasra), then click Features near me.");
-        var cr0 = document.getElementById("cadResults");
-        if (cr0) cr0.textContent = "AOI / parcel not ready. Select cadastral values first.";
+      if (strictKhasraMode) {
+        if (!opts.silentNoParcel) {
+          setStatus("Selected Khasra geometry not available. Re-select Khasra and click Features near me.");
+          var crStrict = document.getElementById("cadResults");
+          if (crStrict) crStrict.textContent = "Khasra geometry not available for buffer. Try selecting the Khasra again.";
+        }
+        return;
       }
-      return;
+      var fallbackParcel =
+        (lastCadParcel32643 && geometryIsUsable(lastCadParcel32643) ? lastCadParcel32643 : null) ||
+        (lastCadHierarchyGeom32643 && geometryIsUsable(lastCadHierarchyGeom32643) ? lastCadHierarchyGeom32643 : null) ||
+        (selectedVillageGeom && geometryIsUsable(selectedVillageGeom) ? selectedVillageGeom : null) ||
+        (selectedTehsilGeom && geometryIsUsable(selectedTehsilGeom) ? selectedTehsilGeom : null) ||
+        (selectedDistrictGeom && geometryIsUsable(selectedDistrictGeom) ? selectedDistrictGeom : null);
+      if (!fallbackParcel) {
+        if (!opts.silentNoParcel) {
+          setStatus("Select District, Tehsil, Village, Muraba (and optional Khasra), then click Features near me.");
+          var cr0 = document.getElementById("cadResults");
+          if (cr0) cr0.textContent = "AOI / parcel not ready. Select cadastral values first.";
+        }
+        return;
+      }
+      parcel = fallbackParcel;
     }
 
     var parcelLinear = null;
@@ -2525,6 +2691,18 @@ function runCadNearbyDistances(opts) {
     var distanceGeom = parcelLinear;
     var usedCenterFallback = false;
     var usedEnvelopeFallback = false;
+    function isAreaGeometry(g) {
+      if (!g || !geometryIsUsable(g)) return false;
+      if (g.type === "polygon") {
+        var exPoly = g.extent || null;
+        if (!exPoly) return true;
+        return isFinite(exPoly.width) && isFinite(exPoly.height) && exPoly.width > 0 && exPoly.height > 0;
+      }
+      if (g.type === "extent") {
+        return isFinite(g.width) && isFinite(g.height) && g.width > 0 && g.height > 0;
+      }
+      return false;
+    }
 
     function tryBuffer(gIn) {
       if (!gIn || !geometryIsUsable(gIn)) return null;
@@ -2547,12 +2725,14 @@ function runCadNearbyDistances(opts) {
     }
 
     var buf = tryBuffer(distanceGeom);
+    if (!isAreaGeometry(buf)) buf = null;
     if (!buf && (distanceGeom.type === "polygon" || distanceGeom.type === "polyline")) {
       try {
         var simp = geometryEngine.simplify(distanceGeom);
         if (simp && geometryIsUsable(simp)) {
           distanceGeom = simp;
           buf = tryBuffer(distanceGeom);
+          if (!isAreaGeometry(buf)) buf = null;
         }
       } catch (eS0) {}
     }
@@ -2572,6 +2752,13 @@ function runCadNearbyDistances(opts) {
           usedCenterFallback = true;
           distanceGeom = ctr0;
           buf = tryBuffer(distanceGeom);
+          if (!isAreaGeometry(buf)) buf = null;
+          if (!buf) {
+            try {
+              buf = createSafeBuffer32643(distanceGeom, rad);
+              if (!isAreaGeometry(buf)) buf = null;
+            } catch (eSafe0) {}
+          }
           if (!buf) {
             try {
               buf = new Extent({
@@ -2581,12 +2768,14 @@ function runCadNearbyDistances(opts) {
                 ymax: ctr0.y + rad,
                 spatialReference: ctr0.spatialReference || SR_METER
               });
-              usedEnvelopeFallback = true;
+              if (isAreaGeometry(buf)) usedEnvelopeFallback = true;
+              else buf = null;
             } catch (eE0) {}
           }
         }
       }
     }
+    if (!isAreaGeometry(buf)) buf = null;
     if (!buf) {
       console.warn("[cad nearby] buffer failed after fallback", parcelLinear);
     }
@@ -2602,13 +2791,24 @@ function runCadNearbyDistances(opts) {
     try {
       buf = toEngineSR(ensureSR32643(buf)) || buf;
     } catch (eBProj) {}
+
+    var parcelWeb = projection.project(parcelLinear, SR_WEB) || parcelLinear;
+    if (parcelWeb && geometryIsUsable(parcelWeb) && (parcelWeb.type === "polygon" || parcelWeb.type === "extent")) {
+      cadNearbyLayer.add(new Graphic({
+        geometry: parcelWeb,
+        symbol: symCadParcel,
+        attributes: { type: "cad-near-parcel" }
+      }));
+    }
+
     var bufWeb = projection.project(buf, SR_WEB) || buf;
-    if (bufWeb && geometryIsUsable(bufWeb)) {
+    if (bufWeb && isAreaGeometry(bufWeb)) {
       cadNearbyLayer.add(new Graphic({
         geometry: bufWeb,
         symbol: symCadNearBuffer,
         attributes: { type: "cad-near-buffer", radiusM: rad }
       }));
+      view.goTo(bufWeb, { padding: getUiZoomPadding() }).catch(function () { return null; });
     }
 
     var qp = geometryToQueryParams(buf);
@@ -2617,14 +2817,16 @@ function runCadNearbyDistances(opts) {
       return;
     }
 
-    var tasks = checks.map(function (c) {
-      return queryLayer(c.getAttribute("data-url"), parseInt(c.getAttribute("data-layer"), 10), Object.assign({
-        where: "1=1",
-        returnGeometry: true,
-        outFields: "OBJECTID",
-        resultRecordCount: 400
-      }, qp)).catch(function () { return { features: [] }; });
-    });
+      var tasks = !bufferOnlyMode && hasCheckedLayers
+      ? checks.map(function (c) {
+          return queryLayer(c.getAttribute("data-url"), parseInt(c.getAttribute("data-layer"), 10), Object.assign({
+            where: "1=1",
+            returnGeometry: true,
+            outFields: "OBJECTID",
+            resultRecordCount: 400
+          }, qp)).catch(function () { return { features: [] }; });
+        })
+      : [];
 
     var lines = [];
     var parcelCtr = null;
@@ -2708,17 +2910,82 @@ function runCadNearbyDistances(opts) {
         ? ("Distances (min straight-line, m):\n" +
             lines.slice(0, 80).join("\n") +
             (lines.length > 80 ? "\n..." : ""))
-        : "No selected feature found inside " + rad + " m buffer.";
-      document.getElementById("cadResults").textContent =
-        summary +
-        "\n\nBuffer: " + rad + " m - showing intersecting features on map." +
-        (usedCenterFallback ? "\nDistance source: AOI center fallback (parcel geometry was not buffer-safe)." : "") +
-        (usedEnvelopeFallback ? "\nQuery shape: meter-envelope fallback." : "");
+          : ((!bufferOnlyMode && hasCheckedLayers)
+              ? "No selected feature found inside " + rad + " m buffer."
+              : "Buffer created around selected Khasra/parcel.");
+      var cadResEl = document.getElementById("cadResults");
+      if (cadResEl) {
+        cadResEl.textContent =
+          summary +
+          "\n\nBuffer: " + rad + " m - showing intersecting features on map." +
+          (usedCenterFallback ? "\nDistance source: AOI center fallback (parcel geometry was not buffer-safe)." : "") +
+          (usedEnvelopeFallback ? "\nQuery shape: meter-envelope fallback." : "");
+      }
 
       setStatus(
-        (lines.length ? "Nearby features loaded." : "Nearby search complete: no feature in buffer.") +
+        (lines.length
+            ? "Nearby features loaded."
+            : ((!bufferOnlyMode && hasCheckedLayers) ? "Nearby search complete: no feature in buffer." : "Khasra buffer created.")) +
           (linearDistanceFailures ? " Some distances used fallback." : "")
       );
+
+      var anchor32643 = parcelCtr && parcelCtr.type === "point"
+        ? (toEngineSR(ensureSR32643(parcelCtr)) || parcelCtr)
+        : null;
+      if (!anchor32643) {
+        try {
+          var cFallback = getGeometryCentroid(distanceGeom);
+          if (cFallback && cFallback.type === "point") {
+            anchor32643 = toEngineSR(ensureSR32643(cFallback)) || cFallback;
+          }
+        } catch (eAnchor0) {}
+      }
+      var anchorWgs = null;
+      if (anchor32643 && anchor32643.type === "point") {
+        try {
+          anchorWgs = projection.project(ensureSR32643(anchor32643), SR4326) || null;
+        } catch (eAnchor1) {
+          anchorWgs = null;
+        }
+      }
+
+      var reportSummary = lines.length
+        ? ("Cadastral nearby loaded: " + lines.length + " feature(s) within " + rad + " m.")
+        : ("Cadastral buffer created: " + rad + " m.");
+      var reportExtras = {
+        count: lines.length,
+        distanceM: rad,
+        radiusM: rad,
+        searchRadiusM: rad,
+        roadSource: "cadastral-selection",
+        selectionSource: "cad-nearby",
+        lat: anchorWgs && isFinite(anchorWgs.y) ? anchorWgs.y : null,
+        lon: anchorWgs && isFinite(anchorWgs.x) ? anchorWgs.x : null,
+        atClickRows: [],
+        nearbyRows: []
+      };
+      if (bufferOnlyMode) reportExtras.mode = "buffer-only";
+
+      var baseCadReport = publishAnalysisToolResult("buffer", reportSummary, reportExtras);
+      if (buf && isAreaGeometry(buf)) {
+        publishBufferCommunitySummaryInBackground(baseCadReport, buf, null);
+      }
+
+      if (anchor32643 && anchor32643.type === "point") {
+        queryNearbyRowsFromPoint(anchor32643, rad).then(function (nearRows) {
+          var enriched = {};
+          Object.keys(baseCadReport || {}).forEach(function (k) { enriched[k] = baseCadReport[k]; });
+          enriched.generatedAt = new Date().toISOString();
+          enriched.radiusM = rad;
+          enriched.searchRadiusM = rad;
+          enriched.selectionSource = "cad-nearby";
+          enriched.nearbyRows = Array.isArray(nearRows) ? nearRows : [];
+          publishAnalysisReportSnapshot(enriched);
+          if (buf && isAreaGeometry(buf)) {
+            publishBufferCommunitySummaryInBackground(enriched, buf, null);
+          }
+        }).catch(function () { return null; });
+      }
     });
   }).catch(function (e) {
     console.error(e);
@@ -2917,11 +3184,28 @@ var parliamentaryAssemblySelect = document.getElementById("parliamentaryAssembly
 var parliamentaryLokSabhaSelect = document.getElementById("parliamentaryLokSabhaSelect");
 var tehsilSelect = document.getElementById("tehsilSelect");
 var villageSelect = document.getElementById("villageSelect");
+var aoiVillageBufferValueSelect = document.getElementById("aoiVillageBufferValue");
+var aoiVillageBufferUnitSelect = document.getElementById("aoiVillageBufferUnit");
 var cadTehsilSelect = document.getElementById("cadTehsilSelect");
 var cadVillageSelect = document.getElementById("cadVillageSelect");
 var cadMurabaSelect = document.getElementById("cadMurabaSelect");
 var cadKhasraSelect = document.getElementById("cadKhasraSelect");
 var lastCadParcel32643 = null;
+
+function readAoiVillageBufferMeters() {
+  var value = aoiVillageBufferValueSelect ? parseFloat(aoiVillageBufferValueSelect.value) : 2;
+  if (!isFinite(value) || value <= 0) value = 2;
+  var unit = aoiVillageBufferUnitSelect ? String(aoiVillageBufferUnitSelect.value || "km").toLowerCase() : "km";
+  if (unit === "m") return Math.round(value);
+  return Math.round(value * 1000);
+}
+
+function syncAoiVillageBufferState() {
+  if (!aoiVillageBufferValueSelect && !aoiVillageBufferUnitSelect) return;
+  var hasVillage = !!(villageSelect && villageSelect.value && String(villageSelect.value).trim());
+  if (aoiVillageBufferValueSelect) aoiVillageBufferValueSelect.disabled = !hasVillage;
+  if (aoiVillageBufferUnitSelect) aoiVillageBufferUnitSelect.disabled = !hasVillage;
+}
 
 /** Avoid throwing on missing nodes ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â a single throw aborts all later wiring (rail, analysis, identify). */
 function msmeBind(id, evt, handler) {
@@ -3048,6 +3332,7 @@ function resetTehsilVillage() {
   villageSelect.innerHTML = "<option value=\"\">" + gisPh("village") + "</option>";
   tehsilSelect.disabled = true;
   villageSelect.disabled = true;
+  syncAoiVillageBufferState();
 }
 
 var cadDistrictSelect = document.getElementById("cadDistrictSelect");
@@ -3161,6 +3446,7 @@ function loadVillages(d, t) {
   if (!villageSelect) return Promise.resolve();
   villageSelect.innerHTML = "<option value=\"\">" + gisPh("village") + "</option>";
   villageSelect.disabled = true;
+  syncAoiVillageBufferState();
   if (!d || !t) return Promise.resolve();
   var key = String(d).trim() + "|" + String(t).trim();
   var cached = adminVillageOptionsCache[key];
@@ -3173,6 +3459,7 @@ function loadVillages(d, t) {
       villageSelect.appendChild(o);
     });
     villageSelect.disabled = false;
+    syncAoiVillageBufferState();
     return Promise.resolve();
   }
   return queryLayer(ADMIN_MS, LAYER_VILLAGE, {
@@ -3192,6 +3479,7 @@ function loadVillages(d, t) {
     });
     adminVillageOptionsCache[key] = rows;
     villageSelect.disabled = false;
+    syncAoiVillageBufferState();
   });
 }
 
@@ -3211,9 +3499,11 @@ if (districtSelect && tehsilSelect && villageSelect) {
     selectedVillageGeom = null;
     loadTehsils(d);
     if (!d) {
+      syncAoiVillageBufferState();
       zoomFromAdministrativeSelectionOnChange();
       return;
     }
+    syncAoiVillageBufferState();
     zoomFromAdministrativeSelectionOnChange();
   });
   tehsilSelect.addEventListener("change", function () {
@@ -3221,10 +3511,12 @@ if (districtSelect && tehsilSelect && villageSelect) {
     var d = districtSelect.value ? String(districtSelect.value).trim() : "";
     var t = tehsilSelect.value || "";
     loadVillages(d, t).then(function () {
+      syncAoiVillageBufferState();
       if (d) return zoomFromAdministrativeSelectionOnChange();
       return Promise.resolve();
     }).catch(function (err) {
       console.error("[tehsil change]", err);
+      syncAoiVillageBufferState();
       if (d) return zoomFromAdministrativeSelectionOnChange();
       return Promise.resolve();
     });
@@ -3232,8 +3524,24 @@ if (districtSelect && tehsilSelect && villageSelect) {
   villageSelect.addEventListener("change", function () {
     selectedVillageGeom = null;
     var d = districtSelect.value ? String(districtSelect.value).trim() : "";
+    syncAoiVillageBufferState();
     if (d) zoomFromAdministrativeSelectionOnChange();
   });
+  if (aoiVillageBufferValueSelect) {
+    aoiVillageBufferValueSelect.addEventListener("change", function () {
+      var d = districtSelect.value ? String(districtSelect.value).trim() : "";
+      var v = villageSelect.value ? String(villageSelect.value).trim() : "";
+      if (d && v) zoomFromAdministrativeSelectionOnChange();
+    });
+  }
+  if (aoiVillageBufferUnitSelect) {
+    aoiVillageBufferUnitSelect.addEventListener("change", function () {
+      var d = districtSelect.value ? String(districtSelect.value).trim() : "";
+      var v = villageSelect.value ? String(villageSelect.value).trim() : "";
+      if (d && v) zoomFromAdministrativeSelectionOnChange();
+    });
+  }
+  syncAoiVillageBufferState();
 } else {
   console.error("[GIS] Administrative AOI selects (#districtSelect / #tehsilSelect / #villageSelect) missing ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â AOI tab disabled.");
 }
@@ -3647,16 +3955,35 @@ if (cadDistrictSelect && cadTehsilSelect && cadVillageSelect && cadMurabaSelect 
   cadKhasraSelect.addEventListener("change", function () {
     if (!cadKhasraSelect.value) return;
     performCadParcelShowZoom();
+    window.setTimeout(function () {
+      runCadNearbyDistances({ allowBufferOnly: true, silentNoParcel: true });
+    }, 120);
   });
 } else {
   console.error("[GIS] Cadastral AOI selects missing ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â cadastral dropdown workflow disabled.");
 }
 
 var cadNearM = document.getElementById("cadNearM");
+var cadNearUnit = document.getElementById("cadNearUnit");
+
+function readCadNearRadiusMeters() {
+  var vEl = document.getElementById("cadNearM");
+  var uEl = document.getElementById("cadNearUnit");
+  var n = vEl ? parseFloat(vEl.value) : NaN;
+  if (!isFinite(n) || n <= 0) n = 2;
+  var unit = uEl ? String(uEl.value || "km").toLowerCase() : "km";
+  var meters = unit === "m" ? n : (n * 1000);
+  if (!isFinite(meters) || meters <= 0) meters = 2000;
+  return Math.round(meters);
+}
+
 if (cadNearM) {
   cadNearM.addEventListener("input", function () {
-    var v = document.getElementById("cadNearMVal");
-    if (v) v.textContent = this.value;
+    scheduleCadNearbyAutoRun();
+  });
+}
+if (cadNearUnit) {
+  cadNearUnit.addEventListener("change", function () {
     scheduleCadNearbyAutoRun();
   });
 }
@@ -4444,6 +4771,7 @@ function runParliamentaryDistrictBufferSelection(dCode) {
       villageSelect.innerHTML = "<option value=\"\">" + gisPh("village") + "</option>";
       villageSelect.disabled = true;
     }
+    syncAoiVillageBufferState();
     loadTehsils(code).catch(function () {});
     loadParliamentaryConstituenciesForDistrictGeom(g32643).catch(function () {});
 
@@ -4607,6 +4935,10 @@ bindParliamentaryConstituencySelects();
 var btnParliamentaryClear = document.getElementById("btnParliamentaryClear");
 if (btnParliamentaryClear) {
   btnParliamentaryClear.addEventListener("click", runClearParliamentaryBoundary);
+}
+var btnAssemblyBoundaryClear = document.getElementById("btnAssemblyBoundaryClear");
+if (btnAssemblyBoundaryClear) {
+  btnAssemblyBoundaryClear.addEventListener("click", runClearParliamentaryBoundary);
 }
 
 function queryCadParcelGeometry() {
@@ -4976,11 +5308,13 @@ function performCadParcelShowZoom() {
       var g = item && item.geometry ? item.geometry : item;
       var attrs = item && item.attributes ? item.attributes : attrForGraphic;
       if (!g || !geometryIsUsable(g)) return;
+      if (g.type !== "polygon" && g.type !== "extent") return;
       cadParcelLayer.add(new Graphic({ geometry: g, symbol: symCadParcel, attributes: attrs || {} }));
       added = true;
     });
     if (added) return true;
     if (!fallbackGeom32643) return false;
+    if (fallbackGeom32643.type !== "polygon" && fallbackGeom32643.type !== "extent") return false;
     var gWeb = projection.project(fallbackGeom32643, SR_WEB);
     if (!gWeb || !geometryIsUsable(gWeb)) return false;
     cadParcelLayer.add(new Graphic({ geometry: gWeb, symbol: symCadParcel, attributes: attrForGraphic || {} }));
@@ -5179,7 +5513,25 @@ return publishInvestorSnapshot(anch || geom32643, "admin-aoi");
       }).then(function () {
         var ctr = getGeometryCentroid(geom32643);
         var anch = ctr || (geom32643.type === "point" ? geom32643 : null);
-        if (anch) lastIdentifyAnchor32643 = anch;
+        if (anch) {
+          lastIdentifyAnchor32643 = anch;
+          try {
+            var anch32643 = toEngineSR(ensureSR32643(anch)) || anch;
+            if (anch32643 && anch32643.type === "point" && isFinite(anch32643.x) && isFinite(anch32643.y)) {
+              bufferMarkPoint32643 = anch32643;
+              closestPointPickModeActive = false;
+              quickBufferAutoRunAfterAnchorPick = false;
+              setBufferMarkMode(false, false);
+              bufferMarkLayer.removeAll();
+              var anchWeb = projection.project(ensureSR32643(anch32643), SR_WEB) || anch32643;
+              if (anchWeb) {
+                bufferMarkLayer.add(new Graphic({ geometry: anchWeb, symbol: symBufferMark }));
+              }
+            }
+          } catch (eBufAnch0) {
+            console.warn("[cad] could not set buffer anchor from khasra center", eBufAnch0);
+          }
+        }
         return publishInvestorSnapshot(anch || geom32643, "cad-parcel");
       }).then(function () {
         setStatus(statusMsg || "Cadastral parcel shown. Use ÃƒÂ¢Ã¢â€šÂ¬Ã…â€œNearby + distancesÃƒÂ¢Ã¢â€šÂ¬Ã‚Â for infrastructure.");
@@ -5338,15 +5690,26 @@ if (btnCadRoute) btnCadRoute.addEventListener("click", function () {
 var btnCadClear = document.getElementById("btnCadClear");
 if (btnCadClear) {
   btnCadClear.addEventListener("click", function () {
+    if (cadDistrictSelect) {
+      cadDistrictSelect.value = "";
+      try {
+        cadDistrictSelect.dispatchEvent(new Event("change"));
+      } catch (e0) {
+        loadCadTehsils("");
+      }
+    }
     cadParcelLayer.removeAll();
     cadNearbyLayer.removeAll();
     routeLineLayer.removeAll();
+    bufferMarkLayer.removeAll();
+    bufferMarkPoint32643 = null;
     lastCadParcel32643 = null;
+    lastCadHierarchyGeom32643 = null;
     lastCadCenterWgs = null;
     lastNearestPoiWgs = null;
     var cr = document.getElementById("cadResults");
     if (cr) cr.textContent = "";
-    setStatus("Cadastral graphics cleared.");
+    setStatus("Cadastral selection cleared.");
   });
 }
 
@@ -5401,7 +5764,73 @@ function runNavigate() {
     else selectedVillageGeom = g32643;
     var doAfterZoom = function () {
       var viewLabel = (a && (a.n_v_name || a.n_t_name || a.n_d_name)) || "area";
-      setStatus("View: " + viewLabel);
+      var analyzeGeom32643 = g32643;
+      var appliedBufferM = 0;
+      if (layerId === LAYER_VILLAGE) {
+        var distM = setBufferDistanceMeters(readAoiVillageBufferMeters());
+        var villageBuffer = createSafeBuffer32643(g32643, distM);
+        if (villageBuffer && geometryIsUsable(villageBuffer)) {
+          analyzeGeom32643 = villageBuffer;
+          appliedBufferM = distM;
+        }
+      }
+      userMapAnalysisGeometry32643 = analyzeGeom32643;
+      clearResults();
+      var drawGeom = projectToRenderableWebGeometry(analyzeGeom32643) || projectToRenderableWebGeometry(g32643);
+      if (drawGeom) {
+        resultsLayer.add(new Graphic({
+          geometry: drawGeom,
+          symbol: symBuffer,
+          attributes: a || {}
+        }));
+      }
+      var statusMsg = appliedBufferM
+        ? ("Village " + viewLabel + " selected. " + appliedBufferM + " m buffer applied.")
+        : ("View: " + viewLabel);
+      setStatus(statusMsg);
+      if (appliedBufferM && analyzeGeom32643 && geometryIsUsable(analyzeGeom32643)) {
+        var qJson = typeof analyzeGeom32643.toJSON === "function" ? analyzeGeom32643.toJSON() : null;
+        var ctx = {
+          generatedAt: new Date().toISOString(),
+          summary: statusMsg,
+          bufferDistanceM: appliedBufferM,
+          roadSource: "Village boundary",
+          roadLayerId: null,
+          count: 1,
+          total: 1,
+          withGeometry: 1,
+          skipped: 0,
+          queryGeometryJson: qJson,
+          objectIds: [],
+          featureSource: "admin-village-analyze",
+          districtCode: dCode || null,
+          tehsilCode: tCode || null,
+          villageCode: vCode || null,
+          villageName: viewLabel || null,
+          clippedFromAdminSelection: false,
+          communitySummary: null
+        };
+        setLastBufferExportContext(ctx);
+        hydrateNearSchoolStatsInBackground(ctx);
+        var baseReport = publishAnalysisToolResult("buffer", statusMsg, {
+          count: 1,
+          total: 1,
+          withGeometry: 1,
+          skipped: 0,
+          bufferDistanceM: appliedBufferM,
+          roadLayerId: null,
+          roadSource: "Village boundary",
+          queryGeometryJson: qJson,
+          clippedFromAdminSelection: false,
+          districtCode: dCode || null,
+          tehsilCode: tCode || null,
+          villageCode: vCode || null,
+          villageName: viewLabel || null,
+          featureSource: "admin-village-analyze",
+          communitySummary: null
+        });
+        publishBufferCommunitySummaryInBackground(baseReport, analyzeGeom32643, ctx);
+      }
       var ctr = getGeometryCentroid(g32643);
       var anch = ctr || (g32643.type === "point" ? g32643 : null);
       if (anch) {
@@ -5438,11 +5867,14 @@ function runNavigate() {
 function runClearNav() {
   if (!districtSelect) return Promise.resolve();
   districtSelect.value = "";
+  if (aoiVillageBufferValueSelect) aoiVillageBufferValueSelect.value = "2";
+  if (aoiVillageBufferUnitSelect) aoiVillageBufferUnitSelect.value = "km";
   selectedDistrictGeom = selectedTehsilGeom = selectedVillageGeom = null;
   lastAoiLocationWgs = null;
   routeLineLayer.removeAll();
   closeAoiRoutePanel();
   resetTehsilVillage();
+  syncAoiVillageBufferState();
   return setAdminFilters(null, null, null).then(function () {
     return projection.load().then(function () {
       return zoomToGeometry(projection.project(defaultStudyExtent32643, SR_WEB));
@@ -6316,6 +6748,7 @@ function bindRange(id, outId) {
 bindRange("bufDist", "bufDistVal");
 bindRange("bufMarkQueryRadius", "bufMarkQueryRadiusVal");
 bindRange("proxDist", "proxDistVal");
+bindRange("closestDist", "closestDistVal");
 bindRange("multiDist", "multiDistVal");
 bindRange("suitDist", "suitDistVal");
 
@@ -6386,8 +6819,8 @@ var symSuitable = new SimpleFillSymbol({
 });
 var symLineHit = new SimpleLineSymbol({ color: [251, 140, 0, 1], width: 2 });
 var symCadNearBuffer = new SimpleFillSymbol({
-  color: [0, 188, 212, 0.1],
-  outline: new SimpleLineSymbol({ color: [0, 150, 136, 1], width: 2 })
+  color: [33, 150, 243, 0.18],
+  outline: new SimpleLineSymbol({ color: [13, 71, 161, 1], width: 3 })
 });
 var symBufferMark = new SimpleMarkerSymbol({
   style: "diamond",
@@ -6608,14 +7041,38 @@ function drawCommunityCategoryConnectors(detail) {
     return { p326: p326, pWeb: pWeb };
   }
 
-  var markerColor = category === "hospitals" ? [239, 68, 68, 0.95] : [103, 80, 164, 0.95];
-  var lineColor = category === "hospitals" ? [220, 38, 38, 0.9] : [124, 58, 237, 0.9];
-  var markerSym = new SimpleMarkerSymbol({
-    style: "circle",
-    color: markerColor,
-    size: 8,
-    outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 1.5 })
-  });
+  function resolveConnectorStyle(catKey) {
+    var cat = String(catKey || "").toLowerCase();
+    if (cat === "hospitals") {
+      return {
+        markerColor: [239, 68, 68, 0.95],
+        lineColor: [220, 38, 38, 0.9]
+      };
+    }
+    if (cat === "schools") {
+      return {
+        markerColor: [59, 130, 246, 0.95],
+        lineColor: [37, 99, 235, 0.9]
+      };
+    }
+    return {
+      markerColor: [103, 80, 164, 0.95],
+      lineColor: [124, 58, 237, 0.9]
+    };
+  }
+  var markerSymbolCache = {};
+  function getMarkerSymbolForCategory(catKey) {
+    var k = String(catKey || "default").toLowerCase();
+    if (markerSymbolCache[k]) return markerSymbolCache[k];
+    var style = resolveConnectorStyle(k);
+    markerSymbolCache[k] = new SimpleMarkerSymbol({
+      style: "circle",
+      color: style.markerColor,
+      size: 8,
+      outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 1.5 })
+    });
+    return markerSymbolCache[k];
+  }
 
   clearConnectorGraphics();
   clearCommunityZoomGraphic();
@@ -6630,7 +7087,10 @@ function drawCommunityCategoryConnectors(detail) {
   var limit = Math.min(allItems.length, maxRender);
 
   for (var i = 0; i < limit; i++) {
-    var pt = toPointFromItem(allItems[i]);
+    var item = allItems[i];
+    var itemCategory = String((item && item.category) || category || "locations").toLowerCase();
+    var itemStyle = resolveConnectorStyle(itemCategory);
+    var pt = toPointFromItem(item);
     if (!pt) {
       skipped++;
       continue;
@@ -6650,7 +7110,7 @@ function drawCommunityCategoryConnectors(detail) {
     if (lineW) {
       connectorLayer.add(new Graphic({
         geometry: lineW,
-        symbol: new SimpleLineSymbol({ color: lineColor, width: 1.5, style: "short-dash" })
+        symbol: new SimpleLineSymbol({ color: itemStyle.lineColor, width: 1.5, style: "short-dash" })
       }));
     }
 
@@ -6675,7 +7135,7 @@ function drawCommunityCategoryConnectors(detail) {
 
     connectorLayer.add(new Graphic({
       geometry: pt.pWeb,
-      symbol: markerSym
+      symbol: getMarkerSymbolForCategory(itemCategory)
     }));
 
     minX = Math.min(minX, dest.x);
@@ -7211,7 +7671,20 @@ msmeBind("runIntersect", "click", function () {
     if (!pts.length) { alertNoData("industrial sites"); return; }
     var polyGroupsOk = polyGroups.every(function (g) { return g.length > 0; });
     if (!polyGroupsOk) { alertNoData("constraint polygons"); return; }
-    var n = 0;
+    var anchor32643 = resolveBufferCenterPoint32643();
+    if (!anchor32643 || anchor32643.type !== "point") {
+      var qg32643 = qg ? toEngineSR(ensureSR32643(qg)) : null;
+      if (qg32643 && qg32643.type === "point") anchor32643 = qg32643;
+      else if (qg32643) anchor32643 = getGeometryCentroid(qg32643);
+    }
+    if ((!anchor32643 || anchor32643.type !== "point") && view && view.center) {
+      try {
+        var c32643 = to32643WithSmartFallback(view.center, view.center.spatialReference || SR_WEB);
+        if (c32643 && c32643.type === "point") anchor32643 = c32643;
+      } catch (eCenter) {}
+    }
+    var nearest = null;
+    var nearestDistM = null;
     pts.forEach(function (pf) {
       var pg = toEngineSR(geomFromJSON(pf.geometry));
       if (!pg) return;
@@ -7224,23 +7697,33 @@ msmeBind("runIntersect", "click", function () {
         if (!hit) pass = false;
       }
       if (pass) {
-        resultsLayer.add(new Graphic({
-          geometry: projection.project(pg, SR_WEB),
-          symbol: symPoint,
-          attributes: pf.attributes
-        }));
-        n++;
+        var dM = anchor32643 && anchor32643.type === "point" ? distanceFromPointToGeometry(anchor32643, pg) : null;
+        if (nearest == null) {
+          nearest = { feature: pf, geometry: pg, distanceM: dM };
+          nearestDistM = dM;
+          return;
+        }
+        if (dM != null && (nearestDistM == null || dM < nearestDistM)) {
+          nearest = { feature: pf, geometry: pg, distanceM: dM };
+          nearestDistM = dM;
+        }
       }
     });
-    if (!n) alertNoData("intersection");
+    if (!nearest) alertNoData("closest result");
     else {
-      var msgI = "Intersect: " + n + " industrial site(s) inside all selected layers.";
+      resultsLayer.add(new Graphic({
+        geometry: projection.project(nearest.geometry, SR_WEB),
+        symbol: symPoint,
+        attributes: nearest.feature.attributes
+      }));
+      var distTxt = nearest.distanceM != null ? (" Nearest distance: " + nearest.distanceM + " m.") : "";
+      var msgI = "Closest: 1 industrial site inside selected layers." + distTxt;
       setStatus(msgI);
-      publishAnalysisToolResult("intersect", msgI, { count: n });
+      publishAnalysisToolResult("closest", msgI, { count: 1, nearestDistanceM: nearest.distanceM });
     }
   }).catch(function (e) {
     console.error(e);
-    setStatus("Intersect analysis failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
+    setStatus("Closest analysis failed ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â see console.");
   });
 });
 
@@ -7381,6 +7864,8 @@ view.on("pointer-move", function (evt) {
 
 var selectParcelToolActive = false;
 var quickBufferAutoRunAfterAnchorPick = false;
+var closestPointPickModeActive = false;
+var closestPointBufferMeters = 1500;
 
 function setBufferDistanceMeters(nextMeters) {
   var d = parseInt(nextMeters, 10);
@@ -7402,6 +7887,75 @@ function setBufferDistanceMeters(nextMeters) {
     out.textContent = String(d);
   }
   return d;
+}
+
+function readClosestDistanceMetersFromUi() {
+  var dMeters = NaN;
+  var numEl = document.getElementById("closestDistNum");
+  var unitEl = document.getElementById("closestDistUnit");
+  var rawNum = numEl ? Number(numEl.value) : NaN;
+  var unit = unitEl ? String(unitEl.value || "m").toLowerCase() : "m";
+  if (isFinite(rawNum) && rawNum > 0) {
+    dMeters = unit === "km" ? Math.round(rawNum * 1000) : Math.round(rawNum);
+  }
+  if (!isFinite(dMeters) || dMeters <= 0) {
+    var el = document.getElementById("closestDist");
+    if (el) dMeters = parseInt(el.value, 10);
+  }
+  if (!isFinite(dMeters) || dMeters <= 0) {
+    var slider = document.getElementById("bufDist");
+    dMeters = slider ? parseInt(slider.value, 10) : NaN;
+  }
+  if (!isFinite(dMeters) || dMeters <= 0) dMeters = 1500;
+  return Math.round(dMeters);
+}
+
+function runClosestFromPickedPoint(anchor32643Point, radiusM) {
+  var radius = Number(radiusM);
+  if (!anchor32643Point || anchor32643Point.type !== "point") {
+    setStatus("Closest mode failed: selected point not available.");
+    return Promise.resolve(false);
+  }
+  if (!isFinite(radius) || radius <= 0) radius = 1500;
+  radius = setBufferDistanceMeters(radius);
+
+  clearResults();
+  var summaryGeom32643 = createSafeBuffer32643(anchor32643Point, radius);
+  if (!summaryGeom32643) {
+    setStatus("Closest mode failed: buffer could not be created.");
+    return Promise.resolve(false);
+  }
+
+  var geomWeb = projection.project(summaryGeom32643, SR_WEB);
+  if (geomWeb) {
+    resultsLayer.add(new Graphic({
+      geometry: geomWeb,
+      symbol: symBuffer,
+      attributes: { type: "closest-buffer", radiusM: radius }
+    }));
+  }
+
+  setStatus("Closest buffer created (" + radius + " m). Finding nearest community places...");
+  return computeClosestCommunitySummaryForGeometry(anchor32643Point, summaryGeom32643, "closest-point").then(function (communitySummary) {
+    var msg = "Closest point analysis complete for " + radius + " m buffer.";
+    publishAnalysisToolResult("closest", msg, {
+      count: communitySummary ? communitySummary.totalCount : 0,
+      radiusM: radius,
+      communitySummary: communitySummary,
+      summaryGeometryJson: summaryGeom32643 && summaryGeom32643.toJSON ? summaryGeom32643.toJSON() : null,
+      queryGeometryJson: summaryGeom32643 && summaryGeom32643.toJSON ? summaryGeom32643.toJSON() : null
+    });
+    if (communitySummary) {
+      setStatus("Closest point analysis complete. Community panel updated.");
+    } else {
+      setStatus("Closest point analysis complete. Community summary unavailable.");
+    }
+    return true;
+  }).catch(function (err) {
+    console.warn("[closest point]", err);
+    setStatus("Closest point analysis failed - see console.");
+    return false;
+  });
 }
 
 function syncBufferMapFabUi() {
@@ -7441,6 +7995,7 @@ function setSelectParcelTool(on) {
     view.container.style.cursor = on ? "crosshair" : "";
   }
   if (on) {
+    closestPointPickModeActive = false;
     quickBufferAutoRunAfterAnchorPick = false;
     setBufferMarkMode(false, false);
     setStatus("Select tool ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â click the map. Results appear in the left panel with distances.");
@@ -7452,10 +8007,12 @@ function setSelectParcelTool(on) {
 (function bufferMarkUi() {
   var bMark = document.getElementById("btnBufferMarkPoint");
   var bClr = document.getElementById("btnBufferClearMark");
+  var bClosestPick = document.getElementById("btnClosestPickPoint");
   if (bMark) {
     bMark.addEventListener("click", function () {
       var turningOn = !bufferMarkModeActive;
       var hadAnchor = !!(bufferMarkPoint32643 && bufferMarkPoint32643.type === "point");
+      closestPointPickModeActive = false;
       quickBufferAutoRunAfterAnchorPick = false;
       if (turningOn && hadAnchor) {
         clearBufferAnchorMarker();
@@ -7469,9 +8026,16 @@ function setSelectParcelTool(on) {
   if (bClr) {
     bClr.addEventListener("click", function () {
       clearBufferAnchorMarker();
+      closestPointPickModeActive = false;
       quickBufferAutoRunAfterAnchorPick = false;
       setBufferMarkMode(false, false);
       setStatus("Buffer anchor cleared.");
+    });
+  }
+  if (bClosestPick) {
+    bClosestPick.addEventListener("click", function () {
+      var dist = readClosestDistanceMetersFromUi();
+      window.msmeGisStartClosestPointSelection(dist);
     });
   }
   syncBufferMapFabUi();
@@ -7479,6 +8043,7 @@ function setSelectParcelTool(on) {
 
 window.msmeGisStartQuickBuffer = function () {
   setBufferDistanceMeters(1500);
+  closestPointPickModeActive = false;
   if (bufferMarkModeActive) {
     quickBufferAutoRunAfterAnchorPick = false;
     setBufferMarkMode(false, false);
@@ -7501,6 +8066,7 @@ window.msmeGisStartQuickBufferWithDistance = function (distanceM) {
   var n = Number(distanceM);
   var dist = isFinite(n) && n > 0 ? Math.round(n) : 1500;
   setBufferDistanceMeters(dist);
+  closestPointPickModeActive = false;
   if (bufferMarkModeActive) {
     quickBufferAutoRunAfterAnchorPick = false;
     setBufferMarkMode(false, false);
@@ -7520,9 +8086,20 @@ window.msmeGisStartQuickBufferWithDistance = function (distanceM) {
 };
 
 window.msmeGisStopQuickBuffer = function () {
+  closestPointPickModeActive = false;
   quickBufferAutoRunAfterAnchorPick = false;
   setBufferMarkMode(false, false);
   setStatus("Buffer mode OFF.");
+};
+
+window.msmeGisStartClosestPointSelection = function (distanceM) {
+  var n = Number(distanceM);
+  var dist = isFinite(n) && n > 0 ? Math.round(n) : readClosestDistanceMetersFromUi();
+  closestPointBufferMeters = setBufferDistanceMeters(dist);
+  quickBufferAutoRunAfterAnchorPick = false;
+  closestPointPickModeActive = true;
+  setBufferMarkMode(true, false);
+  setStatus("Closest point mode active. Click map to set point and build " + closestPointBufferMeters + " m buffer.");
 };
 
 window.msmeGisSetBufferAnchorFromWgs = function (lat, lon, opts) {
@@ -7557,6 +8134,7 @@ window.msmeGisSetBufferAnchorFromWgs = function (lat, lon, opts) {
     }
 
     bufferMarkPoint32643 = p32643;
+    closestPointPickModeActive = false;
     quickBufferAutoRunAfterAnchorPick = false;
     setBufferMarkMode(false, false);
     bufferMarkLayer.removeAll();
@@ -7823,8 +8401,7 @@ function finalizeIdentifyResults(anchor32643, mapPoint, flat, selectionSource) {
 
   var radiusM = 3000;
   try {
-    var elR = document.getElementById("cadNearM");
-    if (elR) radiusM = parseInt(elR.value, 10) || 3000;
+    radiusM = readCadNearRadiusMeters();
   } catch (e2) {}
 
   return queryNearbyRowsFromPoint(anchor32643, radiusM).then(function (nearbyRows) {
@@ -8039,7 +8616,7 @@ window.msmeGisApplyMapSelectionToAnalysis = function () {
     generatedAt: new Date().toISOString(),
     reportKind: "analysis",
     tool: "map-selection-pin",
-    summary: "Buffer / proximity / intersect tools now use the union of " + nFeat + " map hit(s).",
+    summary: "Buffer / proximity / closest tools now use the union of " + nFeat + " map hit(s).",
     featureCount: nFeat
   });
   setStatus("Spatial analysis tools will use your combined map selection ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â run buffer, proximity, or other tools.");
@@ -8138,8 +8715,23 @@ function onCommunityFocusCategory(event) {
   });
 }
 
+function onCommunityClearGraphics(event) {
+  if (typeof window !== "undefined" && window.__msmeGisBootId !== myBootId) return;
+  try { clearConnectorGraphics(); } catch (e0) {}
+  try { clearCommunityZoomGraphic(); } catch (e1) {}
+  try { clearResults(); } catch (e2) {}
+  try { clearBufferAnchorMarker(); } catch (e3) {}
+  try {
+    closestPointPickModeActive = false;
+    quickBufferAutoRunAfterAnchorPick = false;
+    setBufferMarkMode(false, false);
+  } catch (e4) {}
+  setStatus("Community lines and buffer cleared.");
+}
+
 window.addEventListener("msme-gis-zoom-to-location", onCommunityZoomToLocation);
 window.addEventListener("msme-gis-focus-community-category", onCommunityFocusCategory);
+window.addEventListener("msme-gis-clear-community-graphics", onCommunityClearGraphics);
 
 view.on("click", function (event) {
   if (view && view.popup && view.popup.visible) {
@@ -8149,10 +8741,16 @@ view.on("click", function (event) {
   if (bufferMarkModeActive) {
     projection.load().then(function () {
       bufferMarkPoint32643 = projection.project(event.mapPoint, SR_METER);
+      var shouldRunClosestPointMode = !!closestPointPickModeActive;
+      closestPointPickModeActive = false;
       setBufferMarkMode(false, false);
       bufferMarkLayer.removeAll();
       var gw = projection.project(bufferMarkPoint32643, SR_WEB);
       bufferMarkLayer.add(new Graphic({ geometry: gw, symbol: symBufferMark }));
+      if (shouldRunClosestPointMode) {
+        runClosestFromPickedPoint(bufferMarkPoint32643, closestPointBufferMeters);
+        return;
+      }
       var shouldQuickRun = !!quickBufferAutoRunAfterAnchorPick;
       quickBufferAutoRunAfterAnchorPick = false;
       if (shouldQuickRun) {
@@ -8218,6 +8816,9 @@ if (typeof window !== "undefined") {
     try {
       window.removeEventListener("msme-gis-focus-community-category", onCommunityFocusCategory);
     } catch (eZ2) {}
+    try {
+      window.removeEventListener("msme-gis-clear-community-graphics", onCommunityClearGraphics);
+    } catch (eZ3) {}
     try {
       if (onMsmeGisLoading) window.removeEventListener("msme-gis-loading", onMsmeGisLoading);
     } catch (eL) {}
