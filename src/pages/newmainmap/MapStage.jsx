@@ -1,19 +1,6 @@
-import {
-  CheckSquare,
-  ChevronDown,
-  Compass,
-  Layers3,
-  LocateFixed,
-  Minus,
-  Plus,
-  Search,
-  ShieldCheck,
-  ZoomIn,
-} from "lucide-react";
+import { CheckSquare, Compass, LocateFixed, Minus, Plus } from "lucide-react";
 
 export default function MapStage({
-  search,
-  setSearch,
   sidePanelOpen,
   onCloseSidePanel,
   bufferOpen,
@@ -24,34 +11,9 @@ export default function MapStage({
   analysisAmenities,
   bufferDistance,
   activeLayerCount,
-  onOpenLayers,
-  onOpenBuffer,
 }) {
   return (
     <main className="nm-main-panel">
-      <div className="nm-topbar">
-        <div className="nm-search-group">
-          <Search size={18} />
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search location..."
-          />
-        </div>
-        <div className="nm-action-group">
-          <button type="button" className="nm-btn nm-btn-secondary">
-            Select District <ChevronDown size={16} />
-          </button>
-          <button type="button" className="nm-btn nm-btn-secondary">
-            Filters
-          </button>
-          <button type="button" className="nm-btn nm-btn-secondary nm-btn-icon-only" aria-label="Zoom to selection">
-            <ZoomIn size={18} />
-          </button>
-        </div>
-      </div>
-
       <section className="nm-map-section">
         <div className="nm-map-frame">
           {sidePanelOpen && (

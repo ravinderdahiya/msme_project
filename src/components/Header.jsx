@@ -14,7 +14,7 @@ function Header() {
         className="app-header__dropdown"
         style={{
           maxHeight: showMeasure ? "300px" : "0px",
-          padding: showMeasure ? "15px" : "0px"
+          padding: showMeasure ? "15px" : "0px",
         }}
       >
         {showMeasure && <></>}

@@ -142,6 +142,8 @@ export default function Sidebar({ t }) {
       </aside>
 
       <aside id="rail">
+        <div className="rail-tip">MENU</div>
+
         <button type="button" className="rail-btn" id="btnOpenSpatial" title={t('railTitleSpatial')}>
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
@@ -153,7 +155,7 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railAnalysis')}</span>
+
         <button type="button" className="rail-btn" id="btnOpenNav" title={t('railTitleAoi')}>
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
@@ -162,7 +164,7 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railAoi')}</span>
+
         <button type="button" className="rail-btn active" id="btnTogglePanel" title={t('railTitleLayers')}>
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
@@ -172,14 +174,8 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railLayers')}</span>
-        <button
-          type="button"
-          className="rail-btn"
-          id="btnSelectTool"
-          title={t('railTitleSelect')}
-          aria-pressed="false"
-        >
+
+        <button type="button" className="rail-btn" id="btnSelectTool" title={t('railTitleSelect')} aria-pressed="false">
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
               <path fill="currentColor" d="M4 2l2 18 3.5-7 7-3.5L4 2z" />
@@ -187,14 +183,8 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railSelect')}</span>
-        <button
-          type="button"
-          className="rail-btn"
-          id="btnMapMultiSelect"
-          title={t('railTitleMultiSelect')}
-          aria-pressed="false"
-        >
+
+        <button type="button" className="rail-btn" id="btnMapMultiSelect" title={t('railTitleMultiSelect')} aria-pressed="false">
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
               <rect x="4" y="4" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
@@ -204,7 +194,7 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railMultiSelect')}</span>
+
         <button type="button" className="rail-btn" id="btnMapSelToAnalysis" title={t('railTitleMapSelAnalysis')}>
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
@@ -213,17 +203,21 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railMapSelAnalysis')}</span>
       </aside>
 
-      <aside id="toolsPanel">
+      <aside id="toolsPanel" role="complementary" aria-labelledby="gisToolsPanelTitle">
         <div className="tp-head">
-          <h2>{t('layersTitle')}</h2>
+          <div className="ap-head-row">
+            <h2 id="gisToolsPanelTitle">{t('layersTitle')}</h2>
+            <button type="button" className="ap-close" id="btnToolsPanelClose" title={t('closePanel')}>
+              ×
+            </button>
+          </div>
           <p>{t('layersIntro')}</p>
         </div>
         <div className="tp-scroll">
-          <div id="layerListContainer"></div>
-          <div id="status"></div>
+          <div id="layerListContainer" />
+          <div id="status" />
         </div>
       </aside>
 
@@ -276,14 +270,13 @@ export default function Sidebar({ t }) {
 
                 <div className="actions">
                   <button type="button" className="btn-go" id="btnNavApply">
-                    {/* {t('applyZoom')} */}
                     Analyze
                   </button>
                   <button type="button" className="btn-clear" id="btnNavClear">
                     {t('clear')}
                   </button>
                   <button type="button" className="btn-clear btn-route" id="btnRouteFromCurrentToAoi">
-                   Plan  Route 
+                   Plan  Route
                   </button>
                 </div>
 
@@ -463,6 +456,7 @@ export default function Sidebar({ t }) {
         </div>
       </aside>
 
+      
       <aside
         id="selectToolsPanel"
         className="select-tools-panel collapsed"

@@ -25,8 +25,7 @@ import "./App.css";
 // import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"
 import Haryana_map from "./components/Haryana_map";
-import Header from "./components/Header.jsx"
-import Sidebar from "../src/components/Sidebar"
+// import Sidebar from "../src/components/Sidebar";
 // import { useState } from "react";
 import MSMEMapPage from "./pages/MSMEMapPage.jsx";
 import NotFound from "./components/InfoCards";
