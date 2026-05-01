@@ -6,6 +6,7 @@ import { ToastContainer } from "react-toastify";
 
 import Homepage from "./pages/Homepage";
 import NewHomepage from "./pages/NewHomepage";
+import NewMainMap from "./pages/NewMainMap";
 import Login from "./pages/Login";
 import Signup from "./pages/Signup";
 import Admin from "./admin/Admin";
@@ -15,6 +16,9 @@ import NewSignup from "./pages/NewSignup";
 import ContactPage from "./pages/ContactPage";
 import AboutPage from "./pages/AboutPage";
 import NewAdmin from "./newadmin/NewAdmin.jsx";
+
+import NewLoginPage from "./pages/newLoginPage.jsx";
+import NewAdminPage from "./pages/NewAdminPage.jsx";
 
 import "./App.css";
 
@@ -26,6 +30,7 @@ import Sidebar from "../src/components/Sidebar"
 // import { useState } from "react";
 import MSMEMapPage from "./pages/MSMEMapPage.jsx";
 import NotFound from "./components/InfoCards";
+
 // import LoginPage from "./pages/LoginPage";
 
 
@@ -49,6 +54,11 @@ function App() {
                 <Routes>
                     <Route path="/" element={<Homepage />} />
                     <Route path="/newhomepage" element={<NewHomepage />} />
+                    <Route path="/newmainmap/select-land" element={<NewMainMap />} />
+                    <Route path="/newmainmap/layers" element={<NewMainMap />} />
+                    <Route path="/newmainmap/analysis" element={<NewMainMap />} />
+                    <Route path="/newmainmap/buffer" element={<NewMainMap />} />
+                    <Route path="/newmainmap" element={<NewMainMap />} />
                     <Route path="/Admin" element={<Admin />} />
                     <Route path="/newadmin/*" element={<NewAdmin />} />
                     <Route path="/msme-gis-map" element={<MSMEMapPage />} />
@@ -60,6 +70,9 @@ function App() {
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route path="/newLogin"element={<NewLoginPage/>} />
+                    <Route path="/newAdmin" element={<NewAdminPage />} />
+            
                 </Routes>
             </Suspense>
             <ToastContainer />

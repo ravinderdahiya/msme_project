@@ -5,7 +5,9 @@ import { toast } from 'react-toastify';
 import './LoginPage.css';
 
 const LoginPage = () => {
-    const navigate = useNavigate();
+   const navigate =  useNavigate()
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [mobileNumber, setMobileNumber] = useState('');
     const [showOtp, setShowOtp] = useState(false);
     const [otp, setOtp] = useState(['', '', '', '']);
@@ -225,13 +227,22 @@ const LoginPage = () => {
                                 </div>
                             )}
 
+                            <div className="form-options">
+                                <label className="remember-me">
+                                    <input type="checkbox" /> Remember me
+                                </label>
+                                <a href="#" className="forgot-pass">Forgot Password?</a>
+                            </div>
+
+                            {/* <button type="submit" className="login-btn" onClick={navigate("/msme-gis-map")}>Login</button> */}
                             <button type="submit" className="login-btn">
                                 {showOtp ? 'Login' : 'Send OTP'}
                             </button>
+
                         </form>
 
                         <div className="signup-link">
-                            Don&apos;t have an account? <button type="button" onClick={() => navigate('/newsignup')}>Sign up</button>
+                            Don't have an account? <button type="button" onClick={() => navigate('/newsignup')}>Sign up</button>
                         </div>
                     </div>
                 </div>
