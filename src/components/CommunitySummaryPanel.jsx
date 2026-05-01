@@ -16,6 +16,12 @@ function formatUpdatedAt(iso) {
   }
 }
 
+function formatMeters(value) {
+  var n = Number(value)
+  if (!Number.isFinite(n) || n < 0) return ''
+  return `${Math.round(n)} m`
+}
+
 function pickLatestCommunitySummary(analysisSnap, mapSnap) {
   var a = analysisSnap && analysisSnap.communitySummary ? analysisSnap.communitySummary : null
   var m = mapSnap && mapSnap.communitySummary ? mapSnap.communitySummary : null
@@ -47,6 +53,12 @@ function isCommunitySummaryCandidate(reportSnap) {
     String(reportSnap.tool || '').toLowerCase() === 'buffer'
   ) {
     return true
+  }
+  if (
+    reportSnap.reportKind === 'analysis' &&
+    String(reportSnap.tool || '').toLowerCase() === 'closest'
+  ) {
+    return !!(reportSnap.communitySummary || reportSnap.radiusM)
   }
 
   return false
@@ -286,6 +298,7 @@ export default function CommunitySummaryPanel() {
   const [open, setOpen] = useState(false)
   const [lastSummary, setLastSummary] = useState(null)
   const [openCategoryKey, setOpenCategoryKey] = useState(null)
+  const [selectedCategoryKeys, setSelectedCategoryKeys] = useState([])
 
   useEffect(() => {
     function refreshSnapshots() {
@@ -332,6 +345,7 @@ export default function CommunitySummaryPanel() {
     if (summary) {
       setLastSummary(summary)
       setOpen(true)
+      setSelectedCategoryKeys([])
     }
   }, [summary])
 
@@ -383,8 +397,6 @@ export default function CommunitySummaryPanel() {
         'available',
         'item_index',
         'item_name',
-        'lat',
-        'lng',
         'location',
         'radius_m',
         'generated_at',
@@ -403,7 +415,6 @@ export default function CommunitySummaryPanel() {
       if (items.length > 0) {
         items.forEach((item, idx) => {
           var name = getItemName(item, idx)
-          var coords = getItemCoordinates(item)
           csvRows.push([
             key,
             label,
@@ -412,8 +423,6 @@ export default function CommunitySummaryPanel() {
             available,
             idx + 1,
             name,
-            coords ? coords.lat : '',
-            coords ? coords.lng : '',
             locationLabel,
             radius,
             generatedAt,
@@ -429,8 +438,6 @@ export default function CommunitySummaryPanel() {
         count,
         rawCount,
         available,
-        '',
-        '',
         '',
         '',
         locationLabel,
@@ -453,41 +460,118 @@ export default function CommunitySummaryPanel() {
     URL.revokeObjectURL(url)
   }
 
+  function handleShowAllLinesOnMap() {
+    if (!displaySummary || waitingForCounts) return
+    if (!selectedCategoryKeys.length) return
+
+    var combined = []
+    var seen = {}
+    var allowedKeys = {}
+    selectedCategoryKeys.forEach((k) => {
+      var key = String(k || '').toLowerCase()
+      if (key) allowedKeys[key] = true
+    })
+    var allowedLabels = []
+    rows.forEach((row) => {
+      var keyLower = String(row && row.key ? row.key : '').toLowerCase()
+      if (!allowedKeys[keyLower]) return
+      if (row && row.label) allowedLabels.push(String(row.label))
+      var focusItems = buildFocusItemsForRow(row, keyLower)
+      focusItems.forEach((focusItem) => {
+        var coords = getItemCoordinates(focusItem.item)
+        if (!coords) return
+        var name = focusItem.name
+        var dedupeKey = `${keyLower}|${name}|${coords.lat.toFixed(6)},${coords.lng.toFixed(6)}`
+        if (seen[dedupeKey]) return
+        seen[dedupeKey] = true
+        combined.push({
+          name,
+          lat: coords.lat,
+          lng: coords.lng,
+          category: keyLower,
+          item: focusItem.item,
+        })
+      })
+    })
+
+    window.dispatchEvent(
+      new CustomEvent('msme-gis-focus-community-category', {
+        detail: {
+          category: selectedCategoryKeys.length === 1 ? selectedCategoryKeys[0] : 'multi',
+          label: allowedLabels.length > 0 ? allowedLabels.join(' + ') : 'selected categories',
+          items: combined,
+          total: combined.length,
+        },
+      }),
+    )
+  }
+
+  function toggleCategorySelection(categoryKey) {
+    var key = String(categoryKey || '').toLowerCase()
+    if (!key) return
+    setSelectedCategoryKeys((current) => {
+      if (current.includes(key)) {
+        return current.filter((item) => item !== key)
+      }
+      return current.concat(key)
+    })
+  }
+
+  function buildFocusItemsForRow(row, categoryKey) {
+    var keyLower = String(categoryKey || row?.key || '').toLowerCase()
+    var focusItems = []
+    var items = getCategoryItems(row)
+    items.forEach((item, itemIdx) => {
+      var coords = getItemCoordinates(item)
+      if (!coords) return
+      focusItems.push({
+        name: getItemName(item, itemIdx),
+        lat: coords.lat,
+        lng: coords.lng,
+        item,
+        category: keyLower,
+      })
+    })
+
+    if (focusItems.length > 0) return focusItems
+
+    var nearestItem = row && row.nearestItem ? row.nearestItem : null
+    var nearestCoords = getItemCoordinates(nearestItem)
+    if (nearestItem && nearestCoords) {
+      focusItems.push({
+        name: getItemName(nearestItem, 0),
+        lat: nearestCoords.lat,
+        lng: nearestCoords.lng,
+        item: nearestItem,
+        category: keyLower,
+      })
+    }
+
+    return focusItems
+  }
+
   function handleCategoryClick(row) {
     var key = String(row && row.key ? row.key : '').toLowerCase()
-    var supportsList =
-      key === 'iti' || key === 'schools' || key === 'hospitals'
+    var items = getCategoryItems(row)
+    var canExpandList = items.length > 0
+    var focusItems = buildFocusItemsForRow(row, key)
 
-    if (!supportsList) return
-
-    if (key === 'schools' || key === 'hospitals') {
-      var items = getCategoryItems(row)
-      var focusItems = items
-        .map((item, itemIdx) => {
-          var coords = getItemCoordinates(item)
-          if (!coords) return null
-          return {
-            name: getItemName(item, itemIdx),
-            lat: coords.lat,
-            lng: coords.lng,
-            item,
-          }
-        })
-        .filter(Boolean)
-
+    if (focusItems.length > 0) {
       window.dispatchEvent(
         new CustomEvent('msme-gis-focus-community-category', {
           detail: {
             category: key,
             label: row && row.label ? row.label : key,
             items: focusItems,
-            total: items.length,
+            total: focusItems.length,
           },
         }),
       )
     }
 
-    setOpenCategoryKey((current) => (current === key ? null : key))
+    if (canExpandList) {
+      setOpenCategoryKey((current) => (current === key ? null : key))
+    }
   }
 
   function handleCategoryItemClick(item, categoryKey) {
@@ -509,6 +593,14 @@ export default function CommunitySummaryPanel() {
     )
   }
 
+  function handleClearMapGraphics() {
+    window.dispatchEvent(
+      new CustomEvent('msme-gis-clear-community-graphics', {
+        detail: { source: 'community-panel' },
+      }),
+    )
+  }
+
   return (
     <aside
       className="community-summary-panel community-ba-panel"
@@ -516,7 +608,7 @@ export default function CommunitySummaryPanel() {
       aria-label="Community counts"
     >
       <div className="community-ba-head">
-        <h3>Business Analyst</h3>
+        <h3>MSME REPORT </h3>
 
         <div className="community-ba-head-actions">
           <button
@@ -540,14 +632,33 @@ export default function CommunitySummaryPanel() {
 
       <div className="community-ba-toolbar">
         <p className="community-ba-toolbar-title">What's in My Community?</p>
-        <button
-          type="button"
-          className="community-ba-download-btn"
-          onClick={handleDownloadCsv}
-          disabled={!displaySummary || waitingForCounts}
-        >
-          Download CSV
-        </button>
+        <div className="community-ba-toolbar-actions">
+          <button
+            type="button"
+            className="community-ba-fit-btn"
+            onClick={handleShowAllLinesOnMap}
+            disabled={
+              !displaySummary || waitingForCounts || selectedCategoryKeys.length === 0
+            }
+          >
+            Show all POI 
+          </button>
+          <button
+            type="button"
+            className="community-ba-fit-btn community-ba-clear-btn"
+            onClick={handleClearMapGraphics}
+          >
+            Clear map
+          </button>
+          <button
+            type="button"
+            className="community-ba-download-btn"
+            onClick={handleDownloadCsv}
+            disabled={!displaySummary || waitingForCounts}
+          >
+            Download CSV
+          </button>
+        </div>
       </div>
 
       <div className="community-summary-body">
@@ -579,17 +690,33 @@ export default function CommunitySummaryPanel() {
             var keyLower = key.toLowerCase()
             var showLoadingBadge = !displaySummary
             var color = getCategoryColor(idx)
-            var supportsList =
-              keyLower === 'iti' ||
-              keyLower === 'schools' ||
-              keyLower === 'hospitals'
-            var isExpanded = openCategoryKey === keyLower
             var items = getCategoryItems(row)
+            var canExpandList = items.length > 0
+            var canFocusCategory = buildFocusItemsForRow(row, keyLower).length > 0
+            var isExpanded = openCategoryKey === keyLower
+            var nearestItem = row && row.nearestItem ? row.nearestItem : null
+            var nearestName =
+              nearestItem && nearestItem.name ? String(nearestItem.name) : ''
+            var nearestDistance = formatMeters(
+              row && row.nearestDistanceM != null ? row.nearestDistanceM : null,
+            )
 
             return (
               <section key={key} className="community-ba-card">
                 <div className="community-ba-band community-ba-theme">
-                  <h4 style={{ color }}>{label}</h4>
+                  <div className="community-ba-theme-head">
+                    <h4 style={{ color }}>{label}</h4>
+                    <label className="community-ba-select-check">
+                      <input
+                        type="checkbox"
+                        checked={selectedCategoryKeys.includes(keyLower)}
+                        onChange={(event) => {
+                          event.stopPropagation()
+                          toggleCategorySelection(keyLower)
+                        }}
+                      />
+                    </label>
+                  </div>
                 </div>
                 <div className="community-ba-band community-ba-desc">
                   {getCategoryDescription(row)}
@@ -598,21 +725,30 @@ export default function CommunitySummaryPanel() {
                 <button
                   type="button"
                   className={`community-ba-band community-ba-count-band${
-                    supportsList ? ' is-clickable' : ''
+                    canFocusCategory || canExpandList ? ' is-clickable' : ''
                   }`}
                   onClick={() => handleCategoryClick(row)}
-                  disabled={!supportsList}
+                  disabled={!canFocusCategory && !canExpandList}
                 >
                   <strong style={{ color }}>
                     {showLoadingBadge ? '...' : count}
                   </strong>
                   <span style={{ color }}>{label}</span>
-                  {supportsList ? (
+                  {canExpandList ? (
                     <small>{isExpanded ? 'Hide list ^' : 'View list v'}</small>
+                  ) : canFocusCategory ? (
+                    <small>Show line</small>
                   ) : null}
                 </button>
 
-                {supportsList && isExpanded ? (
+                {nearestName ? (
+                  <p className="community-ba-nearest">
+                    Closest: {nearestName}
+                    {nearestDistance ? ` (${nearestDistance})` : ''}
+                  </p>
+                ) : null}
+
+                {canExpandList && isExpanded ? (
                   <div className="community-iti-list-wrap">
                     {items.length > 0 ? (
                       <div className="community-iti-list">
