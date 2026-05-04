@@ -1,0 +1,134 @@
+/**
+ * MSME GIS map page — floating layout like NewMainMap (gaps, rounded map, page gradient).
+ * Requires wrapper: <div id="msmeGisRoot" class="msme-gis-page">…</div>
+ */
+
+#msmeGisRoot.msme-gis-page {
+  --msme-gis-shell-pad: 22px;
+  --msme-gis-inner-gap: 16px;
+  --msme-gis-content-top: calc(var(--header-h) + var(--msme-gis-shell-pad) + var(--msme-gis-inner-gap));
+
+  min-height: 100vh;
+  position: relative;
+  box-sizing: border-box;
+  background: linear-gradient(180deg, #f8fbff 0%, #edf4fb 100%);
+}
+
+#msmeGisRoot.msme-gis-page #appHeader.nmhdr.nmhdr-gis {
+  /* top: var(--msme-gis-shell-pad); */
+  left: var(--msme-gis-shell-pad);
+  right: var(--msme-gis-shell-pad);
+  width: auto;
+}
+
+#msmeGisRoot.msme-gis-page #rail.rail-nm {
+  top: var(--msme-gis-content-top);
+  left: var(--msme-gis-shell-pad);
+  bottom: var(--msme-gis-shell-pad);
+}
+
+#msmeGisRoot.msme-gis-page #spatialPanel,
+#msmeGisRoot.msme-gis-page #selectToolsPanel,
+#msmeGisRoot.msme-gis-page #toolsPanel,
+#msmeGisRoot.msme-gis-page #aoiPanel {
+  top: var(--msme-gis-content-top);
+  bottom: var(--msme-gis-shell-pad);
+  left: calc(var(--msme-gis-shell-pad) + var(--rail-w) + var(--msme-gis-inner-gap));
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv {
+  top: var(--msme-gis-content-top);
+  left: calc(var(--msme-gis-shell-pad) + var(--rail-w) + var(--msme-gis-inner-gap));
+  right: var(--msme-gis-shell-pad);
+  bottom: var(--msme-gis-shell-pad);
+  border-radius: 24px;
+  overflow: hidden;
+  box-shadow: 0 22px 55px rgba(15, 35, 64, 0.1);
+  border: 1px solid rgba(15, 35, 64, 0.08);
+}
+
+#msmeGisRoot.msme-gis-page #gisLoadingOverlay {
+  top: calc(var(--msme-gis-content-top) + 8px);
+  left: calc(var(--msme-gis-shell-pad) + var(--rail-w) + var(--msme-gis-inner-gap) + 8px);
+  right: calc(var(--msme-gis-shell-pad) + 8px);
+  bottom: calc(var(--msme-gis-shell-pad) + 8px);
+  border-radius: 20px;
+  overflow: hidden;
+}
+
+#msmeGisRoot.msme-gis-page #legendFab {
+  left: calc(var(--msme-gis-shell-pad) + var(--rail-w) + var(--msme-gis-inner-gap) + 14px);
+  bottom: calc(var(--msme-gis-shell-pad) + 102px);
+}
+
+#msmeGisRoot.msme-gis-page #legendPanel {
+  left: calc(var(--msme-gis-shell-pad) + var(--rail-w) + var(--msme-gis-inner-gap) + 68px);
+  bottom: calc(var(--msme-gis-shell-pad) + 100px);
+}
+
+#msmeGisRoot.msme-gis-page #coordBar {
+  bottom: calc(var(--msme-gis-shell-pad) + 24px);
+  right: calc(var(--msme-gis-shell-pad) + 56px);
+}
+
+@media (max-width: 1100px) {
+  #msmeGisRoot.msme-gis-page {
+    --msme-gis-shell-pad: 18px;
+    --msme-gis-inner-gap: 14px;
+  }
+}
+
+@media (max-width: 768px) {
+  #msmeGisRoot.msme-gis-page {
+    --msme-gis-shell-pad: 12px;
+    --msme-gis-inner-gap: 0px;
+    --msme-gis-content-top: calc(var(--header-h) + var(--msme-gis-shell-pad) + 10px);
+  }
+
+  #msmeGisRoot.msme-gis-page #appHeader.nmhdr.nmhdr-gis {
+    top: var(--msme-gis-shell-pad);
+    left: var(--msme-gis-shell-pad);
+    right: var(--msme-gis-shell-pad);
+  }
+
+  #msmeGisRoot.msme-gis-page #viewDiv {
+    top: var(--msme-gis-content-top);
+    left: var(--msme-gis-shell-pad);
+    right: var(--msme-gis-shell-pad);
+    bottom: 72px;
+    border-radius: 18px;
+  }
+
+  #msmeGisRoot.msme-gis-page #spatialPanel,
+  #msmeGisRoot.msme-gis-page #selectToolsPanel,
+  #msmeGisRoot.msme-gis-page #toolsPanel,
+  #msmeGisRoot.msme-gis-page #aoiPanel {
+    top: var(--msme-gis-content-top);
+    left: var(--msme-gis-shell-pad);
+    bottom: 72px;
+  }
+
+  #msmeGisRoot.msme-gis-page #gisLoadingOverlay {
+    top: calc(var(--msme-gis-content-top) + 6px);
+    left: calc(var(--msme-gis-shell-pad) + 6px);
+    right: calc(var(--msme-gis-shell-pad) + 6px);
+    bottom: 78px;
+  }
+
+  #msmeGisRoot.msme-gis-page #legendFab {
+    left: calc(var(--msme-gis-shell-pad) + 12px);
+    bottom: calc(72px + var(--msme-gis-shell-pad) + 66px);
+  }
+
+  #msmeGisRoot.msme-gis-page #legendPanel {
+    left: var(--msme-gis-shell-pad);
+    right: var(--msme-gis-shell-pad);
+    bottom: calc(72px + var(--msme-gis-shell-pad) + 64px);
+  }
+
+  #msmeGisRoot.msme-gis-page #coordBar {
+    left: var(--msme-gis-shell-pad);
+    right: var(--msme-gis-shell-pad);
+    bottom: calc(72px + var(--msme-gis-shell-pad) + 8px);
+  }
+}

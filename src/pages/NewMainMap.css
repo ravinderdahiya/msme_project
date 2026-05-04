@@ -16,10 +16,17 @@
 .new-main-map-page {
   min-height: 100vh;
   display: grid;
+  grid-template-rows: auto 1fr;
   grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
   gap: 24px;
   padding: 24px;
   background: linear-gradient(180deg, #f8fbff 0%, #edf4fb 100%);
+}
+
+.nm-site-header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-width: 0;
 }
 
 @media (min-width: 901px) {

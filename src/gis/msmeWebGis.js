@@ -3009,7 +3009,15 @@ function scheduleCadNearbyAutoRun() {
 
 /** Left padding when layers, AOI, spatial analysis, or map selection side panel is open. */
 function getUiZoomPadding() {
+  var railEl = typeof document !== "undefined" ? document.getElementById("rail") : null;
   var rail = 48;
+  if (railEl && typeof railEl.getBoundingClientRect === "function") {
+    if (typeof window !== "undefined" && window.matchMedia && window.matchMedia("(max-width: 768px)").matches) {
+      rail = 0;
+    } else {
+      rail = Math.max(48, Math.round(railEl.getBoundingClientRect().width));
+    }
+  }
   var pw = 320;
   var tools = document.getElementById("toolsPanel");
   var aoi = document.getElementById("aoiPanel");
@@ -6608,6 +6616,21 @@ document.addEventListener("keydown", msmeGisKeydownEsc);
     if (dx < -56) closeAoiSheet();
   }, { passive: true });
 })();
+
+function closeToolsPanel() {
+  var tp = document.getElementById("toolsPanel");
+  if (!tp || tp.classList.contains("collapsed")) return;
+  tp.classList.add("collapsed");
+  var btl = document.getElementById("btnTogglePanel");
+  if (btl) btl.classList.remove("active");
+  refreshMapViewPadding();
+  window.setTimeout(function () {
+    notifyViewLayoutChanged();
+  }, 280);
+}
+
+var btnToolsPanelCloseEl = document.getElementById("btnToolsPanelClose");
+if (btnToolsPanelCloseEl) btnToolsPanelCloseEl.addEventListener("click", closeToolsPanel);
 
 var btnTogglePanelEl = document.getElementById("btnTogglePanel");
 if (btnTogglePanelEl) btnTogglePanelEl.addEventListener("click", function () {

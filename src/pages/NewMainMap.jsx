@@ -5,6 +5,7 @@ import AnalysisPanel from "./newmainmap/AnalysisPanel";
 import LayersPanel from "./newmainmap/LayersPanel";
 import MainSidebar from "./newmainmap/MainSidebar";
 import MapStage from "./newmainmap/MapStage";
+import NewMainMapHeader from "./newmainmap/NewMainMapHeader";
 import SelectLandPanel from "./newmainmap/SelectLandPanel";
 import {
   AOI_LAND_OPTIONS,
@@ -98,6 +99,10 @@ export default function NewMainMap() {
         />
       )}
 
+      <div className="nm-site-header">
+        <NewMainMapHeader search={search} setSearch={setSearch} />
+      </div>
+
       <MainSidebar
         sidebarMenu={sidebarMenu}
         otherMenu={otherMenu}
@@ -144,8 +149,6 @@ export default function NewMainMap() {
       {analysisOpen && <AnalysisPanel amenities={ANALYSIS_AMENITIES} onClose={closeSidePanel} />}
 
       <MapStage
-        search={search}
-        setSearch={setSearch}
         sidePanelOpen={sidePanelOpen}
         onCloseSidePanel={closeSidePanel}
         bufferOpen={bufferOpen}
@@ -156,8 +159,6 @@ export default function NewMainMap() {
         analysisAmenities={ANALYSIS_AMENITIES}
         bufferDistance={bufferDistance}
         activeLayerCount={LAYER_ITEMS.filter((l) => appliedLayers[l.id]).length}
-        onOpenLayers={openLayers}
-        onOpenBuffer={openBuffer}
       />
     </div>
   );

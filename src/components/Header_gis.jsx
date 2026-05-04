@@ -1,172 +1,143 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { History, LogOut, Search, Sparkles } from "lucide-react";
+import "../pages/newmainmap/NewMainMapHeader.css";
+import "./Header_gis_nm.css";
 
-const HEADER_TONES = [
-  { id: 'mist', label: 'Mist' },
-  { id: 'ocean', label: 'Ocean' },
-  { id: 'mint', label: 'Mint' },
-  { id: 'sunset', label: 'Sunset' },
-]
+const SEARCH_PLACEHOLDER =
+  "Search places across Haryana or use the sidebar record search";
 
-export default function HeaderGis({ t, lang, setLang, languages, theme = 'white', setTheme }) {
-  const headerRef = useRef(null)
-  const [headerTone, setHeaderTone] = useState(() => {
-    try {
-      return localStorage.getItem('msme-header-tone') || 'mist'
-    } catch {
-      return 'mist'
-    }
-  })
-  const [logoMotion, setLogoMotion] = useState(() => {
-    try {
-      return localStorage.getItem('msme-logo-motion') !== 'off'
-    } catch {
-      return true
-    }
-  })
+export default function HeaderGis({
+  searchQuery,
+  setSearchQuery,
+  searchBusy,
+  onSearchSubmit,
+  lang,
+  setLang,
+  languages,
+}) {
+  const navigate = useNavigate();
+  const headerRef = useRef(null);
+  const [searchExpanded, setSearchExpanded] = useState(false);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem('msme-header-tone', headerTone)
-    } catch {
-      /* ignore */
-    }
-  }, [headerTone])
+  const enCode =
+    (languages || []).find((l) => /^en/i.test(String(l.code)))?.code ?? "en";
+  const hiCode =
+    (languages || []).find((l) => /^hi/i.test(String(l.code)))?.code ?? "hi";
+
+  const cycleLang = useCallback(() => {
+    if (!setLang) return;
+    setLang(lang === enCode ? hiCode : enCode);
+  }, [setLang, lang, enCode, hiCode]);
 
   useEffect(() => {
-    try {
-      localStorage.setItem('msme-logo-motion', logoMotion ? 'on' : 'off')
-    } catch {
-      /* ignore */
-    }
-  }, [logoMotion])
-
-  useEffect(() => {
-    const el = headerRef.current
-    if (!el || typeof document === 'undefined') return
+    const el = headerRef.current;
+    if (!el || typeof document === "undefined") return;
 
     const syncHeaderHeight = () => {
-      const next = Math.max(70, Math.ceil(el.getBoundingClientRect().height))
-      document.documentElement.style.setProperty('--header-h', `${next}px`)
-    }
+      const next = Math.max(70, Math.ceil(el.getBoundingClientRect().height));
+      document.documentElement.style.setProperty("--header-h", `${next}px`);
+    };
 
-    syncHeaderHeight()
-    window.addEventListener('resize', syncHeaderHeight)
+    syncHeaderHeight();
+    window.addEventListener("resize", syncHeaderHeight);
 
-    let ro = null
-    if (typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(() => syncHeaderHeight())
-      ro.observe(el)
+    let ro = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => syncHeaderHeight());
+      ro.observe(el);
     }
 
     return () => {
-      window.removeEventListener('resize', syncHeaderHeight)
-      if (ro) ro.disconnect()
-    }
-  }, [lang, t])
+      window.removeEventListener("resize", syncHeaderHeight);
+      if (ro) ro.disconnect();
+    };
+  }, [lang, searchQuery, searchBusy, searchExpanded]);
 
   return (
-    <header id="appHeader" ref={headerRef} data-tone={headerTone}>
-      <div className="brand">
-        <div className={`logo-shell ${logoMotion ? 'is-live' : ''}`}>
-          <img
-            className={`hepc-logo ${logoMotion ? 'is-animated' : ''}`}
-            src="/hepc-logo.png"
-            width={128}
-            height={52}
-            alt="HEPC"
-          />
+    <header id="appHeader" ref={headerRef} className="nmhdr nmhdr-gis">
+      <div className="nmhdr-brand">
+        <div className="nmhdr-flip" aria-hidden="true">
+          <div className="nmhdr-flip-inner">
+            <div className="nmhdr-flip-face">
+              <img src="/HARSAC-Logo.png" alt="" />
+            </div>
+            <div className="nmhdr-flip-face nmhdr-flip-back">
+              <img src="/hepc-logo.png" alt="" />
+            </div>
+          </div>
         </div>
-        <div className="brand-text">
-          <h1>{t('title')}</h1>
-          <div className="sub">{t('tagline')}</div>
+        <div className="nmhdr-titles">
+          <span className="nmhdr-title">MSME, Haryana</span>
+          <span className="nmhdr-subtitle">GIS Investment Portal, Haryana</span>
         </div>
       </div>
 
-      <nav className="app-nav" aria-label="Session and language">
-        <div className="header-controls">
-          <div className="header-auth">
-            <span className="user-pill" id="headerUserName">
-              {/* {t('userDisplay')} */}
-              {t("Harsac")}
-            </span>
-          </div>
+      <button
+        type="button"
+        className={`nmhdr-search-toggle${searchExpanded ? " is-open" : ""}`}
+        aria-expanded={searchExpanded}
+        aria-controls="gis-header-search-form"
+        onClick={() => setSearchExpanded((v) => !v)}
+      >
+        <Search size={20} strokeWidth={2} />
+        <span className="nmhdr-sr-only">Toggle place search</span>
+      </button>
 
-          <div className="lang-block">
-            <label className="lang-label">
-              <span className="visually-hidden">{t('language')}</span>
-              <select
-                className="lang-select"
-                value={lang}
-                onChange={(e) => setLang(e.target.value)}
-                aria-label={t('language')}
-              >
-                {(languages || []).map((item) => (
-                  <option key={item.code} value={item.code}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-          </div>
+      <form
+        id="gis-header-search-form"
+        className={`nmhdr-search${searchExpanded ? " is-expanded" : ""}`}
+        onSubmit={onSearchSubmit}
+        role="search"
+        aria-label="Place search"
+      >
+        <span className="nmhdr-search-icon" aria-hidden>
+          <Search size={18} strokeWidth={2} />
+        </span>
+        <label htmlFor="gisGlobalSearch" className="visually-hidden">
+          Search
+        </label>
+        <input
+          id="gisGlobalSearch"
+          type="search"
+          name="q"
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          placeholder={SEARCH_PLACEHOLDER}
+          aria-label="Search places"
+          disabled={searchBusy}
+          autoComplete="off"
+        />
+        <button type="submit" className="nmhdr-search-btn" disabled={searchBusy} aria-label="Search">
+          Search
+        </button>
+      </form>
 
-          <div className="header-tone-switcher" role="group" aria-label="Header tone">
-            <span className="header-tone-label">Tone</span>
-            {HEADER_TONES.map((tone) => (
-              <button
-                key={tone.id}
-                type="button"
-                className={`header-tone-swatch ${headerTone === tone.id ? 'active' : ''}`}
-                data-tone-id={tone.id}
-                title={`Header: ${tone.label}`}
-                aria-pressed={headerTone === tone.id}
-                onClick={() => setHeaderTone(tone.id)}
-              />
-            ))}
-          </div>
-
-          <div className="ui-theme-switcher" role="group" aria-label="UI theme">
-            <button
-              type="button"
-              className={`ui-theme-btn ${theme === 'white' ? 'active' : ''}`}
-              aria-pressed={theme === 'white'}
-              onClick={() => setTheme && setTheme('white')}
-            >
-              White
-            </button>
-            <button
-              type="button"
-              className={`ui-theme-btn ${theme === 'black' ? 'active' : ''}`}
-              aria-pressed={theme === 'black'}
-              onClick={() => setTheme && setTheme('black')}
-            >
-              Black
-            </button>
-          </div>
-
-          {/* <button
-            type="button"
-            className="logo-motion-btn"
-            aria-pressed={logoMotion}
-            onClick={() => setLogoMotion((s) => !s)}
-            title="Toggle logo animation"
-          >
-            {logoMotion ? 'Motion on' : 'Motion off'}
-          </button> */}
-        </div>
-        <div className="header-links">
-          <a href="#" onClick={(e) => e.preventDefault()}>
-            {t('navResources')}
-          </a>
-          <a href="#" onClick={(e) => e.preventDefault()}>
-            {t('navSupport')}
-          </a>
-          <a href="#" onClick={(e) => e.preventDefault()}>
-            {/* {t('navPolicies')} */}
-            Logout
-          </a>
-          
-        </div>
-      </nav>
+      <div className="nmhdr-actions">
+        <button type="button" className="nmhdr-icon-btn" aria-label="Assistant">
+          <Sparkles size={18} strokeWidth={2} />
+        </button>
+        <button type="button" className="nmhdr-icon-btn" aria-label="History">
+          <History size={18} strokeWidth={2} />
+        </button>
+        <button
+          type="button"
+          className="nmhdr-lang"
+          onClick={cycleLang}
+          aria-label="Switch language"
+          title="Switch language"
+        >
+          <span className={lang === enCode ? "is-active" : ""}>EN</span>
+          <span className="nmhdr-lang-sep" aria-hidden>
+            |
+          </span>
+          <span className={lang === hiCode ? "is-active" : ""}>हि</span>
+        </button>
+        <button type="button" className="nmhdr-login" onClick={() => navigate("/newLogin")}>
+          <LogOut size={18} strokeWidth={2} />
+          <span className="nmhdr-login-text">Logout</span>
+        </button>
+      </div>
     </header>
-  )
+  );
 }

@@ -1,0 +1,137 @@
+/**
+ * GIS #toolsPanel — NewMainMap LayersPanel-style chrome.
+ * Layer tree stays Esri LayerList (calcite); only container + tokens styled here.
+ */
+
+#toolsPanel.gis-tools-layer-panel {
+  background: #ffffff;
+  border: 1px solid rgba(15, 35, 64, 0.12);
+  border-radius: 22px 22px 0 0;
+  box-shadow: 0 22px 60px rgba(15, 35, 64, 0.1);
+  padding: 20px 20px 16px;
+  gap: 16px;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-head-wrap {
+  padding: 0 0 4px;
+  background: transparent;
+  border-bottom: none;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-header h2 {
+  margin: 0;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #0f233f;
+  letter-spacing: -0.01em;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-close {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 14px;
+  background: #f0f4fb;
+  color: #0f233f;
+  font-size: 1.35rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-close:hover {
+  background: #e2e9f5;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-intro {
+  margin: 10px 0 0;
+  font-size: 0.88rem;
+  line-height: 1.5;
+  color: #5f718f;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-scroll {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#toolsPanel.gis-tools-layer-panel #layerListContainer.gis-layer-list-mount {
+  max-height: none !important;
+  flex: 1 1 auto;
+  min-height: 160px;
+  overflow: auto;
+  border-radius: 16px;
+  background: #f5f8ff;
+  border: 1px solid rgba(15, 35, 64, 0.08);
+  padding: 8px 6px;
+  font-size: 13px;
+}
+
+/* Esri widget root */
+#toolsPanel.gis-tools-layer-panel #layerListContainer .esri-layer-list {
+  width: 100%;
+  min-height: 0;
+}
+
+/* Calcite list / items — light DOM + inherited tokens (shadow children pick these up) */
+#toolsPanel.gis-tools-layer-panel #layerListContainer calcite-flow,
+#toolsPanel.gis-tools-layer-panel #layerListContainer calcite-flow-item {
+  min-height: 0;
+}
+
+#toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list {
+  --calcite-color-background: transparent;
+  --calcite-list-background-color: transparent;
+  --calcite-color-border-1: rgba(15, 35, 64, 0.1);
+  --calcite-color-border-2: rgba(15, 35, 64, 0.06);
+  --calcite-corner-radius: 12px;
+  --calcite-font-size--1: 13px;
+}
+
+#toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item {
+  --calcite-color-foreground-1: #0f233f;
+  --calcite-color-foreground-2: #5f718f;
+  --calcite-list-item-spacing-indent: 10px;
+}
+
+#toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item:hover {
+  --calcite-ui-foreground-hover: #f4f8ff;
+}
+
+#toolsPanel.gis-tools-layer-panel #status {
+  flex-shrink: 0;
+  margin-top: 0;
+  font-size: 0.82rem;
+  padding: 10px 14px;
+  border-radius: 14px;
+  background: #ffffff;
+  border: 1px solid rgba(15, 35, 64, 0.1);
+  color: #5f718f;
+  box-shadow: 0 2px 8px rgba(15, 35, 64, 0.04);
+}
+
+@media (max-width: 768px) {
+  #toolsPanel.gis-tools-layer-panel {
+    border-radius: 24px 24px 0 0;
+    padding: 18px 18px max(16px, env(safe-area-inset-bottom, 0px));
+  }
+
+  #toolsPanel.gis-tools-layer-panel #layerListContainer.gis-layer-list-mount {
+    min-height: 120px;
+  }
+}
