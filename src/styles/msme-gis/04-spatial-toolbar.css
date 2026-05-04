@@ -170,6 +170,7 @@
 }
 
 #spatialToolbar select.sm,
+#spatialToolbar input.closest-dist-num,
 #aoiPanel select,
 .modal-box select,
 .lang-select {

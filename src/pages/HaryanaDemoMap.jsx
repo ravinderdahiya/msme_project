@@ -125,6 +125,38 @@ function getFeatureCenter(feature) {
   return layer.getBounds().getCenter();
 }
 
+function getAssemblyFeatureId(feature, index = 0) {
+  const props = feature?.properties || {};
+  const rawId =
+    props.ac_no ??
+    props.AC_NO ??
+    props.const_id ??
+    props.CONST_ID ??
+    props.objectid ??
+    props.OBJECTID ??
+    props.id ??
+    props.ID ??
+    index;
+  return String(rawId);
+}
+
+function getAssemblyFeatureName(feature) {
+  const props = feature?.properties || {};
+  return (
+    props.ac_name ??
+    props.AC_NAME ??
+    props.const_name ??
+    props.CONST_NAME ??
+    props.constituency ??
+    props.CONSTITUENCY ??
+    props.vidhan_sabha ??
+    props.VIDHAN_SABHA ??
+    props.name ??
+    props.NAME ??
+    "Assembly Constituency"
+  );
+}
+
 function FitToStateBounds({ stateGeoJson }) {
   const map = useMap();
 
@@ -220,8 +252,13 @@ function HaryanaDemoMap() {
   const [populationGeoJson, setPopulationGeoJson] = useState(null);
   const [transportGeoJson, setTransportGeoJson] = useState(null);
   const [boundariesGeoJson, setBoundariesGeoJson] = useState(null);
+  const [selectedAssemblyBoundaryId, setSelectedAssemblyBoundaryId] = useState(null);
 
   const [error, setError] = useState("");
+
+  const clearAssemblySelection = () => {
+    setSelectedAssemblyBoundaryId(null);
+  };
 
   // Load core layers
   useEffect(() => {
@@ -550,17 +587,28 @@ function HaryanaDemoMap() {
               /> 
               🚂 Transport
             </label>
-            <label>
-              <input 
-                checked={showAdditionalBoundaries} 
-                onChange={(e) => {
-                  setShowAdditionalBoundaries(e.target.checked);
-                  if (e.target.checked && !boundariesGeoJson) loadLayerData('boundaries', setBoundariesGeoJson);
-                }}
-                type="checkbox" 
-              /> 
-              🗺️ Boundaries
-            </label>
+            <div className="demo-map-layer-row">
+              <label>
+                <input 
+                  checked={showAdditionalBoundaries} 
+                  onChange={(e) => {
+                    setShowAdditionalBoundaries(e.target.checked);
+                    if (e.target.checked && !boundariesGeoJson) loadLayerData('boundaries', setBoundariesGeoJson);
+                    if (!e.target.checked) setSelectedAssemblyBoundaryId(null);
+                  }}
+                  type="checkbox" 
+                /> 
+                🗺️ Assembly Boundaries
+              </label>
+              <button
+                className="demo-map-clear-layer"
+                disabled={!selectedAssemblyBoundaryId}
+                onClick={clearAssemblySelection}
+                type="button"
+              >
+                Clear
+              </button>
+            </div>
           </section>
 
           <section className="demo-map-panel">
@@ -749,11 +797,40 @@ function HaryanaDemoMap() {
                 )}
               </LayersControl.Overlay>
 
-              <LayersControl.Overlay checked={showAdditionalBoundaries} name="🗺️ Boundaries">
+              <LayersControl.Overlay checked={showAdditionalBoundaries} name="🗺️ Assembly Boundaries">
                 {showAdditionalBoundaries && boundariesGeoJson && (
                   <GeoJSON
                     data={boundariesGeoJson}
-                    style={layerStyles.boundaries}
+                    onEachFeature={(feature, layer) => {
+                      const assemblyId = getAssemblyFeatureId(feature);
+                      const assemblyName = getAssemblyFeatureName(feature);
+                      layer.bindPopup(`<strong>${assemblyName}</strong>`);
+                      layer.bindTooltip(assemblyName, { sticky: true });
+                      layer.on({
+                        click: () => setSelectedAssemblyBoundaryId(assemblyId),
+                        mouseover: () => {
+                          layer.setStyle({ color: "#facc15", weight: 4, fillOpacity: 0.15 });
+                          layer.bringToFront?.();
+                        },
+                        mouseout: () => {
+                          const isSelected = assemblyId === selectedAssemblyBoundaryId;
+                          layer.setStyle({
+                            color: isSelected ? "#facc15" : layerStyles.boundaries.color,
+                            weight: isSelected ? 4 : layerStyles.boundaries.weight,
+                            fillOpacity: isSelected ? 0.15 : layerStyles.boundaries.fillOpacity,
+                          });
+                        },
+                      });
+                    }}
+                    style={(feature) => {
+                      const assemblyId = getAssemblyFeatureId(feature);
+                      const isSelected = assemblyId === selectedAssemblyBoundaryId;
+                      return {
+                        color: isSelected ? "#facc15" : layerStyles.boundaries.color,
+                        weight: isSelected ? 4 : layerStyles.boundaries.weight,
+                        fillOpacity: isSelected ? 0.15 : layerStyles.boundaries.fillOpacity,
+                      };
+                    }}
                   />
                 )}
               </LayersControl.Overlay>

@@ -3,6 +3,23 @@ import LandLocationReport from './LandLocationReport.jsx'
 import CommunitySummaryPanel from './CommunitySummaryPanel.jsx'
 
 export default function Sidebar({ t }) {
+  // function openClosestPanelAndStart() {
+  //   var spatialPanel = document.getElementById('spatialPanel')
+  //   var openSpatialBtn = document.getElementById('btnOpenSpatial')
+  //   if (spatialPanel && spatialPanel.classList.contains('collapsed') && openSpatialBtn) {
+  //     openSpatialBtn.click()
+  //   }
+  //
+  //   var closestTab = document.querySelector('#spatialToolbar .st-tabs .tab[data-panel="pC"]')
+  //   if (closestTab && typeof closestTab.click === 'function') {
+  //     closestTab.click()
+  //   }
+  //
+  //   if (window.msmeGisStartClosestPointSelection) {
+  //     window.msmeGisStartClosestPointSelection()
+  //   }
+  // }
+
   return (
     <>
       <aside
@@ -94,11 +111,30 @@ export default function Sidebar({ t }) {
 
               <div id="pC" className="panel" role="tabpanel">
                 <div className="row">
-                  <label>
+                  {/* <label>
                     <input type="checkbox" id="intCheckAll" /> {t('intersectSelectLayers')}
-                  </label>
-                  <button type="button" className="btn-run" id="runIntersect">
+                  </label> */}
+                  {/* <button type="button" className="btn-run" id="runIntersect">
                     {t('intersectRun')}
+                  </button> */}
+                </div>
+                <div className="row">
+                ?  <span className="lbl">{t('closestBufferDist')}</span>
+                  <input
+                    type="number"
+                    id="closestDistNum"
+                    className="closest-dist-num"
+                    min="0.1"
+                    step="0.5"
+                    defaultValue="5"
+                    aria-label="Closest distance value"
+                  />
+                  <select id="closestDistUnit" className="sm" defaultValue="km" aria-label="Closest distance unit">
+                    <option value="km">Kilometer</option>
+                    <option value="m">Meter</option>
+                  </select>
+                  <button type="button" className="btn-secondary" id="btnClosestPickPoint">
+                    {t('closestPickPoint')}
                   </button>
                 </div>
                 <div id="intCheckboxes" className="chk-grid"></div>
@@ -142,6 +178,8 @@ export default function Sidebar({ t }) {
       </aside>
 
       <aside id="rail">
+        <div className="rail-tip">MENU</div>
+
         <button type="button" className="rail-btn" id="btnOpenSpatial" title={t('railTitleSpatial')}>
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
@@ -153,7 +191,7 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railAnalysis')}</span>
+
         <button type="button" className="rail-btn" id="btnOpenNav" title={t('railTitleAoi')}>
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
@@ -162,7 +200,7 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railAoi')}</span>
+
         <button type="button" className="rail-btn active" id="btnTogglePanel" title={t('railTitleLayers')}>
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
@@ -173,6 +211,23 @@ export default function Sidebar({ t }) {
           </span>
         </button>
         <span className="rail-tip">{t('railLayers')}</span>
+        {/* <button
+          type="button"
+          className="rail-btn"
+          id="btnClosestPointRail"
+          title={t('railTitleClosestPoint')}
+          onClick={openClosestPanelAndStart}
+        >
+          <span className="rail-ico-wrap" aria-hidden>
+            <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
+              <circle cx="12" cy="12" r="2" fill="currentColor" />
+              <circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+              <circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.55" />
+              <path fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" d="M12 2.8v2.2M12 19v2.2M2.8 12H5M19 12h2.2" />
+            </svg>
+          </span>
+        </button>
+        <span className="rail-tip">{t('railClosestPoint')}</span> */}
         <button
           type="button"
           className="rail-btn"
@@ -187,14 +242,8 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railSelect')}</span>
-        <button
-          type="button"
-          className="rail-btn"
-          id="btnMapMultiSelect"
-          title={t('railTitleMultiSelect')}
-          aria-pressed="false"
-        >
+
+        <button type="button" className="rail-btn" id="btnMapMultiSelect" title={t('railTitleMultiSelect')} aria-pressed="false">
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
               <rect x="4" y="4" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
@@ -204,7 +253,7 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railMultiSelect')}</span>
+
         <button type="button" className="rail-btn" id="btnMapSelToAnalysis" title={t('railTitleMapSelAnalysis')}>
           <span className="rail-ico-wrap" aria-hidden>
             <svg viewBox="0 0 24 24" className="rail-ico" focusable="false">
@@ -213,17 +262,21 @@ export default function Sidebar({ t }) {
             </svg>
           </span>
         </button>
-        <span className="rail-tip">{t('railMapSelAnalysis')}</span>
       </aside>
 
-      <aside id="toolsPanel">
+      <aside id="toolsPanel" role="complementary" aria-labelledby="gisToolsPanelTitle">
         <div className="tp-head">
-          <h2>{t('layersTitle')}</h2>
+          <div className="ap-head-row">
+            <h2 id="gisToolsPanelTitle">{t('layersTitle')}</h2>
+            <button type="button" className="ap-close" id="btnToolsPanelClose" title={t('closePanel')}>
+              ×
+            </button>
+          </div>
           <p>{t('layersIntro')}</p>
         </div>
         <div className="tp-scroll">
-          <div id="layerListContainer"></div>
-          <div id="status"></div>
+          <div id="layerListContainer" />
+          <div id="status" />
         </div>
       </aside>
 
@@ -274,16 +327,31 @@ export default function Sidebar({ t }) {
                   <option value="">{t('placeholderVillage')}</option>
                 </select>
 
+                <label>{t('aoiVillageBufferDistance')}</label>
+                <div className="aoi-buffer-distance-row">
+                  <input
+                    id="aoiVillageBufferValue"
+                    type="number"
+                    min="0.1"
+                    step="0.1"
+                    defaultValue="2"
+                    disabled
+                  />
+                  <select id="aoiVillageBufferUnit" defaultValue="km" disabled>
+                    <option value="km">Kilometer</option>
+                    <option value="m">Meter</option>
+                  </select>
+                </div>
+
                 <div className="actions">
                   <button type="button" className="btn-go" id="btnNavApply">
-                    {/* {t('applyZoom')} */}
                     Analyze
                   </button>
                   <button type="button" className="btn-clear" id="btnNavClear">
                     {t('clear')}
                   </button>
                   <button type="button" className="btn-clear btn-route" id="btnRouteFromCurrentToAoi">
-                   Plan  Route 
+                   Plan  Route
                   </button>
                 </div>
 
@@ -350,6 +418,11 @@ export default function Sidebar({ t }) {
                 <select id="parliamentaryAssemblySelect" disabled>
                   <option value="">{t('placeholderVidhanSabha')}</option>
                 </select>
+                <div className="actions">
+                  <button type="button" className="btn-clear" id="btnAssemblyBoundaryClear">
+                    {t('clear')}
+                  </button>
+                </div>
               </section>
             </div>
             <button type="button" id="tabCad" data-mpanel="mpCad">
@@ -386,47 +459,28 @@ export default function Sidebar({ t }) {
                 </select>
 
                 <label>{t('cadRadius')}</label>
-                <input
-                  type="range"
-                  id="cadNearM"
-                  min="200"
-                  max="10000"
-                  step="100"
-                  defaultValue="2000"
-                  style={{ width: '100%' }}
-                />
-                <div className="cad-radius-val">
-                  <span id="cadNearMVal">2000</span> m
+                <div className="aoi-buffer-distance-row">
+                  <input id="cadNearM" type="number" min="0.1" step="0.1" defaultValue="5" />
+                  <select id="cadNearUnit" defaultValue="km">
+                    <option value="km">Kilometer</option>
+                    <option value="m">Meter</option>
+                  </select>
                 </div>
 
-                <details className="cad-near-dropdown">
-                  <summary className="cad-near-summary">{t('cadFeatures')}</summary>
+                <div className="cad-near-hidden" aria-hidden="true">
                   <div id="cadNearChecks" className="chk-grid cad-near-grid"></div>
-                </details>
-
-                <label className="cad-near-all">
-                  <input type="checkbox" id="cadNearAll" /> {t('cadSelectAll')}
-                </label>
+                  <input type="checkbox" id="cadNearAll" defaultChecked />
+                </div>
 
                 <div className="actions actions-spaced">
-                  <button type="button" className="btn-go" id="btnCadShow">
-                    {t('cadShow')}
+                  <button type="button" className="btn-clear" id="btnCadClear">
+                    {t('cadClear')}
                   </button>
                   <button type="button" className="btn-go btn-go-accent" id="btnCadNearby">
                     {t('Features near me')}
                   </button>
                 </div>
 
-                <div className="actions">
-                  <button type="button" className="btn-clear" id="btnCadRoute" title={t('cadRoute')}>
-                    {t('cadRoute')}
-                  </button>
-                  <button type="button" className="btn-clear" id="btnCadClear">
-                    {t('cadClear')}
-                  </button>
-                </div>
-
-                <div id="cadResults" className="cad-results"></div>
               </section>
             </div>
             <button type="button" id="tabHsvp" data-mpanel="mpHsvp">
@@ -463,6 +517,7 @@ export default function Sidebar({ t }) {
         </div>
       </aside>
 
+      
       <aside
         id="selectToolsPanel"
         className="select-tools-panel collapsed"

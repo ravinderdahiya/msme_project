@@ -23,7 +23,7 @@ function parseLatLon(raw) {
 
 export default function BufferButton({ t }) {
   var label = t && typeof t === "function" ? t("spatialTabBuffer") : "Buffer";
-  var [open, setOpen] = useState(false);
+  var [panelMode, setPanelMode] = useState(null); // "proximity" | "closest" | null
   var [distanceValue, setDistanceValue] = useState(5);
   var [unit, setUnit] = useState("km");
   var [locationText, setLocationText] = useState("");
@@ -31,22 +31,22 @@ export default function BufferButton({ t }) {
 
   useEffect(() => {
     function onDocClick(ev) {
-      if (!open) return;
+      if (!panelMode) return;
       var root = rootRef.current;
       if (!root) return;
-      if (!root.contains(ev.target)) setOpen(false);
+      if (!root.contains(ev.target)) setPanelMode(null);
     }
     document.addEventListener("mousedown", onDocClick);
     return function cleanup() {
       document.removeEventListener("mousedown", onDocClick);
     };
-  }, [open]);
+  }, [panelMode]);
 
   function stopQuickBufferOnDoubleClick(ev) {
     if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
     if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
     if (window.msmeGisStopQuickBuffer) window.msmeGisStopQuickBuffer();
-    setOpen(false);
+    setPanelMode(null);
   }
 
   function distanceMeters() {
@@ -58,12 +58,20 @@ export default function BufferButton({ t }) {
 
   function startPickMode() {
     var meters = distanceMeters();
+    if (panelMode === "closest") {
+      if (window.msmeGisStartClosestPointSelection) {
+        window.msmeGisStartClosestPointSelection(meters);
+      }
+      setPanelMode(null);
+      return;
+    }
+
     if (window.msmeGisStartQuickBufferWithDistance) {
       window.msmeGisStartQuickBufferWithDistance(meters);
     } else if (window.msmeGisStartQuickBuffer) {
       window.msmeGisStartQuickBuffer();
     }
-    setOpen(false);
+    setPanelMode(null);
   }
 
   function applyTypedLocation() {
@@ -74,19 +82,62 @@ export default function BufferButton({ t }) {
       runBuffer: true,
       source: "popup-location",
     });
-    setOpen(false);
+    setPanelMode(null);
+  }
+
+  function togglePanel(mode) {
+    setPanelMode(function (cur) {
+      return cur === mode ? null : mode;
+    });
   }
 
   return (
     <div className="buffer-fab-wrap" ref={rootRef}>
       <button
         type="button"
+        id="closestMapFab"
+        className="buffer-map-fab closest-map-fab"
+        data-map-label="Closest"
+        title="Closest"
+        aria-label="Closest"
+        aria-pressed={panelMode === "closest" ? "true" : "false"}
+        onClick={() => togglePanel("closest")}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className="buffer-map-fab-ico"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <circle cx="12" cy="12" r="1.8" fill="currentColor" />
+          <circle
+            cx="12"
+            cy="12"
+            r="6.2"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            opacity="0.9"
+          />
+          <path
+            d="M12 2.8v3.1M12 18.1v3.1M2.8 12h3.1M18.1 12h3.1"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+
+      <button
+        type="button"
         id="bufferMapFab"
         className="buffer-map-fab"
-        title={`${label} settings`}
-        aria-label="Open buffer panel"
-        aria-pressed={open ? "true" : "false"}
-        onClick={() => setOpen((s) => !s)}
+        data-map-label="Proximity"
+        title="Proximity"
+        aria-label="Proximity"
+        aria-pressed={panelMode === "proximity" ? "true" : "false"}
+        onClick={() => togglePanel("proximity")}
         onDoubleClick={stopQuickBufferOnDoubleClick}
       >
         <svg
@@ -96,26 +147,47 @@ export default function BufferButton({ t }) {
           focusable="false"
         >
           <circle cx="12" cy="12" r="2.2" fill="currentColor" />
-          <circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" strokeWidth="1.7" opacity="0.9" />
-          <circle cx="12" cy="12" r="8.6" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.55" />
+          <circle
+            cx="12"
+            cy="12"
+            r="5.2"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            opacity="0.9"
+          />
+          <circle
+            cx="12"
+            cy="12"
+            r="8.6"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            opacity="0.55"
+          />
         </svg>
       </button>
 
-      {open ? (
-        <div className="buffer-mini-panel" role="dialog" aria-label="Near By Proximity">
+      {panelMode ? (
+        <div
+          className="buffer-mini-panel"
+          role="dialog"
+          aria-label={panelMode === "closest" ? "Closest Point" : "Near By Proximity"}
+        >
           <div className="buffer-mini-panel__head">
-            <strong>Near By Proximity</strong>
-            <button type="button" className="buffer-mini-panel__close" onClick={() => setOpen(false)} aria-label="Close">
-              ×
+            <strong>{panelMode === "closest" ? "Closest Point" : "Near By Proximity"}</strong>
+            <button
+              type="button"
+              className="buffer-mini-panel__close"
+              onClick={() => setPanelMode(null)}
+              aria-label="Close"
+            >
+              x
             </button>
           </div>
           <div className="buffer-mini-panel__body">
             <label className="buffer-mini-panel__label">Location</label>
-            <div className="buffer-mini-panel__icons" aria-hidden="true">
-              <span>⌖</span>
-              <span>∿</span>
-              <span>▱</span>
-            </div>
+            <div className="buffer-mini-panel__icons" aria-hidden="true"></div>
             <div className="buffer-mini-panel__row">
               <input
                 type="number"
@@ -125,31 +197,47 @@ export default function BufferButton({ t }) {
                 value={distanceValue}
                 onChange={(e) => setDistanceValue(e.target.value)}
               />
-              <select className="buffer-mini-panel__unit" value={unit} onChange={(e) => setUnit(e.target.value)}>
+              <select
+                className="buffer-mini-panel__unit"
+                value={unit}
+                onChange={(e) => setUnit(e.target.value)}
+              >
                 <option value="km">Kilometer</option>
                 <option value="m">Meter</option>
               </select>
             </div>
-            <label className="buffer-mini-panel__label">Input location</label>
-            <input
-              type="text"
-              className="buffer-mini-panel__text"
-              placeholder="lat, lon (optional)"
-              value={locationText}
-              onChange={(e) => setLocationText(e.target.value)}
-            />
+
+            {panelMode === "proximity" ? (
+              <>
+                <label className="buffer-mini-panel__label">Input location</label>
+                <input
+                  type="text"
+                  className="buffer-mini-panel__text"
+                  placeholder="lat, lon (optional)"
+                  value={locationText}
+                  onChange={(e) => setLocationText(e.target.value)}
+                />
+              </>
+            ) : null}
+
             <div className="buffer-mini-panel__actions">
               <button type="button" className="buffer-mini-panel__btn" onClick={startPickMode}>
                 Pick on map
               </button>
-              <button
-                type="button"
-                className="buffer-mini-panel__btn is-primary"
-                onClick={applyTypedLocation}
-                disabled={!parseLatLon(locationText)}
-              >
-                Run
-              </button>
+              {panelMode === "proximity" ? (
+                <button
+                  type="button"
+                  className="buffer-mini-panel__btn is-primary"
+                  onClick={applyTypedLocation}
+                  disabled={!parseLatLon(locationText)}
+                >
+                  Run
+                </button>
+              ) : (
+                <button type="button" className="buffer-mini-panel__btn is-primary" onClick={startPickMode}>
+                  Run
+                </button>
+              )}
             </div>
           </div>
         </div>

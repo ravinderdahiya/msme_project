@@ -326,7 +326,7 @@ export default function LandLocationReport() {
 
   return (
     <>
-      <button
+      {/* <button
         type="button"
         className="land-report-fab"
         title={t('reportOpen')}
@@ -335,15 +335,15 @@ export default function LandLocationReport() {
           refreshSnapshots()
           setOpen(true)
         }}
-      >
-        <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden focusable="false">
+      > */}
+        {/* <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden focusable="false">
           <rect x="5" y="3.5" width="14" height="17" rx="2.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
           <line x1="8" y1="8" x2="16" y2="8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           <line x1="8" y1="11.5" x2="16" y2="11.5" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           <line x1="8" y1="15" x2="13.5" y2="15" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
           <rect x="9" y="2" width="6" height="3.2" rx="1" fill="none" stroke="currentColor" strokeWidth="1.6" />
         </svg>
-      </button>
+      </button> */}
 
       {open ? (
         <div

@@ -110,6 +110,35 @@ function zipTs() {
   return new Date().toISOString().replace(/[:.]/g, '-')
 }
 
+function stripCoordinateFieldsDeep(value) {
+  const banned = new Set([
+    'lat',
+    'latitude',
+    'lon',
+    'lng',
+    'long',
+    'longitude',
+    'latitute',
+    'lattitude',
+  ])
+
+  if (Array.isArray(value)) {
+    return value.map((item) => stripCoordinateFieldsDeep(item))
+  }
+
+  if (!value || typeof value !== 'object') {
+    return value
+  }
+
+  const out = {}
+  Object.keys(value).forEach((k) => {
+    const keyLower = String(k).toLowerCase().trim()
+    if (banned.has(keyLower)) return
+    out[k] = stripCoordinateFieldsDeep(value[k])
+  })
+  return out
+}
+
 export default function ResultsFlyout() {
   const { t } = useI18n()
   const [open, setOpen] = useState(false)
@@ -353,8 +382,6 @@ export default function ResultsFlyout() {
       generatedAt,
       source: 'MSME GIS map selection',
       currentView: {
-        lat: sourcePayload.lat ?? null,
-        lon: sourcePayload.lon ?? null,
         radiusM: sourcePayload.radiusM ?? null,
         selectedAtClickCount: selectedAtClickRows.length,
         selectedNearbyCount: selectedNearbyRows.length,
@@ -380,33 +407,36 @@ export default function ResultsFlyout() {
 
     zip.file('summary.json', JSON.stringify(summary, null, 2))
 
-    zip.file('current-view/at-click.json', JSON.stringify(selectedAtClickRows, null, 2))
-    zip.file('current-view/nearby.json', JSON.stringify(selectedNearbyRows, null, 2))
+    const safeAtClickRows = stripCoordinateFieldsDeep(selectedAtClickRows)
+    const safeNearbyRows = stripCoordinateFieldsDeep(selectedNearbyRows)
+
+    zip.file('current-view/at-click.json', JSON.stringify(safeAtClickRows, null, 2))
+    zip.file('current-view/nearby.json', JSON.stringify(safeNearbyRows, null, 2))
     zip.file(
       'current-view/at-click.geojson',
-      JSON.stringify(rowsToFeatureCollection(selectedAtClickRows, 'layer'), null, 2),
+      JSON.stringify(rowsToFeatureCollection(safeAtClickRows, 'layer'), null, 2),
     )
     zip.file(
       'current-view/nearby.geojson',
-      JSON.stringify(rowsToFeatureCollection(selectedNearbyRows, 'label'), null, 2),
+      JSON.stringify(rowsToFeatureCollection(safeNearbyRows, 'label'), null, 2),
     )
 
     clicks.forEach((click, i) => {
       const prefix = `all-clicks/click-${String(i + 1).padStart(2, '0')}`
       const atRows = click.atClickRows || []
       const nearRows = click.nearbyRows || []
+      const safeAtRows = stripCoordinateFieldsDeep(atRows)
+      const safeNearRows = stripCoordinateFieldsDeep(nearRows)
       zip.file(`${prefix}-meta.json`, JSON.stringify({
         clickIndex: click.clickIndex ?? i + 1,
-        lat: click.lat ?? null,
-        lon: click.lon ?? null,
         radiusM: click.radiusM ?? null,
         atClickCount: atRows.length,
         nearbyCount: nearRows.length,
       }, null, 2))
-      zip.file(`${prefix}-at-click.json`, JSON.stringify(atRows, null, 2))
-      zip.file(`${prefix}-nearby.json`, JSON.stringify(nearRows, null, 2))
-      zip.file(`${prefix}-at-click.geojson`, JSON.stringify(rowsToFeatureCollection(atRows, 'layer'), null, 2))
-      zip.file(`${prefix}-nearby.geojson`, JSON.stringify(rowsToFeatureCollection(nearRows, 'label'), null, 2))
+      zip.file(`${prefix}-at-click.json`, JSON.stringify(safeAtRows, null, 2))
+      zip.file(`${prefix}-nearby.json`, JSON.stringify(safeNearRows, null, 2))
+      zip.file(`${prefix}-at-click.geojson`, JSON.stringify(rowsToFeatureCollection(safeAtRows, 'layer'), null, 2))
+      zip.file(`${prefix}-nearby.geojson`, JSON.stringify(rowsToFeatureCollection(safeNearRows, 'label'), null, 2))
     })
 
     const blob = await zip.generateAsync({

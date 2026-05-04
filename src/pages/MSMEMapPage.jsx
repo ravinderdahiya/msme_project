@@ -5,6 +5,7 @@ import Sidebar from "../components/Sidebar.jsx";
 import HaryanaMap from "../components/Haryana_map.jsx";
 import HeaderGis from "../components/Header_gis.jsx";
 import "../msme-webgis.css";
+import "./MSMEGisPageShell.css";
 
 const MSMEGISPage = () => {
   const { t, lang, setLang, languages } = useI18n();
@@ -151,39 +152,19 @@ const MSMEGISPage = () => {
   };
 
   return (
-    <>
+    <div id="msmeGisRoot" className="msme-gis-page">
       <HeaderGis
-        t={t}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        searchBusy={searchBusy}
+        onSearchSubmit={handleTopSearchSubmit}
         lang={lang}
         setLang={setLang}
         languages={languages}
-        theme={theme}
-        setTheme={setTheme}
       />
-      <form className="gis-top-search" aria-label="Place search" onSubmit={handleTopSearchSubmit}>
-        <label htmlFor="gisGlobalSearch" className="visually-hidden">
-          Search
-        </label>
-        <input
-          id="gisGlobalSearch"
-          className="gis-top-search__input"
-          type="search"
-          placeholder="Search place or enter lat,lon"
-          autoComplete="off"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          disabled={searchBusy}
-        />
-        <button type="submit" className="gis-top-search__btn" disabled={searchBusy} aria-label="Search">
-          <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-            <circle cx="11" cy="11" r="6.5" fill="none" stroke="currentColor" strokeWidth="2"></circle>
-            <line x1="16" y1="16" x2="21" y2="21" stroke="currentColor" strokeWidth="2" strokeLinecap="round"></line>
-          </svg>
-        </button>
-      </form>
       <Sidebar t={t} />
       <HaryanaMap t={t} />
-    </>
+    </div>
   );
 };
 
