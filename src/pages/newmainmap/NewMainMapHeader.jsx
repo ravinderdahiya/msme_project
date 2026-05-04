@@ -1,12 +1,18 @@
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { History, LogIn, Search, Sparkles } from "lucide-react";
+import { History, LogIn, Moon, Search, Sparkles, Sun } from "lucide-react";
 import "./NewMainMapHeader.css";
 
 const SEARCH_PLACEHOLDER =
   "Search places across Haryana or use the sidebar record search";
 
-export default function NewMainMapHeader({ search, setSearch, onSearchSubmit }) {
+export default function NewMainMapHeader({
+  search,
+  setSearch,
+  onSearchSubmit,
+  theme = "light",
+  onToggleTheme = () => {},
+}) {
   const navigate = useNavigate();
   const [langEn, setLangEn] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(false);
@@ -72,6 +78,16 @@ export default function NewMainMapHeader({ search, setSearch, onSearchSubmit }) 
       </form>
 
       <div className="nmhdr-actions">
+        <button
+          type="button"
+          className={`nmhdr-theme-btn${theme === "dark" ? " is-dark" : ""}`}
+          onClick={onToggleTheme}
+          aria-pressed={theme === "dark"}
+          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
+          title={theme === "dark" ? "Light mode" : "Dark mode"}
+        >
+          {theme === "dark" ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
+        </button>
         <button type="button" className="nmhdr-icon-btn" aria-label="Assistant">
           <Sparkles size={18} strokeWidth={2} />
         </button>

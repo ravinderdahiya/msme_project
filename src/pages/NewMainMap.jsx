@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import BufferPanel from "./newmainmap/BufferPanel";
 import AnalysisPanel from "./newmainmap/AnalysisPanel";
@@ -24,9 +24,21 @@ import {
 } from "./newmainmap/config";
 import "./NewMainMap.css";
 
+const THEME_STORAGE_KEY = "nm-main-map-theme";
+
+function readStoredTheme() {
+  try {
+    const v = localStorage.getItem(THEME_STORAGE_KEY);
+    return v === "dark" ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
 export default function NewMainMap() {
   const navigate = useNavigate();
   const location = useLocation();
+  const [theme, setTheme] = useState(readStoredTheme);
   const [search, setSearch] = useState("");
   const [layerSearch, setLayerSearch] = useState("");
   const [draftLayers, setDraftLayers] = useState(buildDefaultSelection);
@@ -82,9 +94,21 @@ export default function NewMainMap() {
     return false;
   };
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme);
+    } catch {
+      /* ignore */
+    }
+  }, [theme]);
+
+  const toggleTheme = useCallback(() => {
+    setTheme((t) => (t === "dark" ? "light" : "dark"));
+  }, []);
+
   return (
     <div
-      className={`new-main-map-page${layersOpen ? " nm-page--layers-open" : ""}${
+      className={`new-main-map-page${theme === "dark" ? " nm-theme-dark" : ""}${layersOpen ? " nm-page--layers-open" : ""}${
         bufferOpen ? " nm-page--buffer-open" : ""
       }${analysisOpen ? " nm-page--analysis-open" : ""}${
         selectLandOpen ? " nm-page--aoi-open" : ""
@@ -100,7 +124,12 @@ export default function NewMainMap() {
       )}
 
       <div className="nm-site-header">
-        <NewMainMapHeader search={search} setSearch={setSearch} />
+        <NewMainMapHeader
+          search={search}
+          setSearch={setSearch}
+          theme={theme}
+          onToggleTheme={toggleTheme}
+        />
       </div>
 
       <MainSidebar
@@ -159,6 +188,8 @@ export default function NewMainMap() {
         analysisAmenities={ANALYSIS_AMENITIES}
         bufferDistance={bufferDistance}
         activeLayerCount={LAYER_ITEMS.filter((l) => appliedLayers[l.id]).length}
+        onOpenLayers={() => navigate(LAYERS_PATH)}
+        onOpenAnalysis={() => navigate(ANALYSIS_PATH)}
       />
     </div>
   );
