@@ -1,3 +1,4 @@
+import { sendOtpApi, verifyOtpApi } from "../services/authService";
 import {
   ArrowLeft,
   KeyRound,
@@ -10,12 +11,16 @@ import AuthLayout from "../components/auth/AuthLayout";
 import hepcLogo from "../assets/images/hepc-logo.png";
 import govtLogo from "../assets/images/govtlogo.png";
 
+
 export default function NewLoginPage() {
   const [mobileNumber, setMobileNumber] = useState("");
   const [otp, setOtp] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [message, setMessage] = useState("");
   const [showHepc, setShowHepc] = useState(true);
+
+  const [loading, setLoading] = useState(false);
+  const [resendTimer, setResendTimer] = useState(0);
 
   const navigate = useNavigate();
 
@@ -27,11 +32,22 @@ export default function NewLoginPage() {
     return () => clearInterval(timer);
   }, []);
 
+
+  useEffect(() => {
+    if (resendTimer > 0) {
+      const timer = setInterval(() => {
+        setResendTimer((prev) => prev - 1);
+      }, 1000);
+
+      return () => clearInterval(timer);
+    }
+  }, [resendTimer]);
+
   const cleanMobile = mobileNumber.replace(/\D/g, "").slice(0, 10);
   const isValidMobile = cleanMobile.length === 10;
   const isValidOtp = otp.replace(/\D/g, "").slice(0, 6).length === 6;
 
-  function handleSendOtp(e) {
+  async function handleSendOtp(e) {
     e.preventDefault();
 
     if (!isValidMobile) {
@@ -39,11 +55,32 @@ export default function NewLoginPage() {
       return;
     }
 
-    setOtpSent(true);
-    setMessage(`OTP sent to +91 ${cleanMobile}.`);
+    try {
+      setLoading(true);
+
+      const res = await sendOtpApi(cleanMobile);
+      console.log(res)
+
+      setOtpSent(true);
+      setResendTimer(30);
+      if (otpSent) {
+        setMessage("OTP sent again successfully ✅");
+      } else {
+        setMessage(res.message || "OTP sent successfully");
+      }
+
+    } catch (err) {
+      console.log(err.message),
+        setMessage(
+          err.response?.data?.message || "Failed to send OTP"
+        );
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function handleVerifyOtp(e) {
+
+  async function handleVerifyOtp(e) {
     e.preventDefault();
 
     if (!isValidOtp) {
@@ -51,7 +88,24 @@ export default function NewLoginPage() {
       return;
     }
 
-    navigate("/dashboard");
+    try {
+      setLoading(true);
+
+      const res = await verifyOtpApi(cleanMobile, otp);
+
+      localStorage.setItem("token", res.token);
+
+      setMessage("Login successful");
+
+      navigate("/dashboard");
+
+    } catch (err) {
+      setMessage(
+        err.response?.data?.message || "Invalid OTP ❌"
+      );
+    } finally {
+      setLoading(false);
+    }
   }
 
   function resetOtpFlow() {
@@ -209,9 +263,17 @@ export default function NewLoginPage() {
                 <button
                   type="button"
                   onClick={handleSendOtp}
-                  className="font-semibold text-blue-600 hover:underline"
+                  disabled={loading || resendTimer > 0}
+                  className={`font-semibold transition ${loading || resendTimer > 0
+                      ? "text-gray-400 cursor-not-allowed"
+                      : "text-blue-600 hover:underline"
+                    }`}
                 >
-                  Resend
+                  {loading
+                    ? "Sending..."
+                    : resendTimer > 0
+                      ? `Resend in ${resendTimer}s`
+                      : "Resend OTP"}
                 </button>
               </div>
             </>
@@ -219,11 +281,10 @@ export default function NewLoginPage() {
 
           {message && (
             <p
-              className={`mb-4 rounded-xl px-4 py-3 text-sm ${
-                message.includes("sent")
+              className={`mb-4 rounded-xl px-4 py-3 text-sm ${message.includes("sent")
                   ? "bg-green-50 text-green-700"
                   : "bg-red-50 text-red-600"
-              }`}
+                }`}
             >
               {message}
             </p>

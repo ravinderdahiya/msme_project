@@ -584,6 +584,15 @@ function buildRoutePinDataUrl(primaryHex, secondaryHex) {
 var routeStartMarkerUrl = buildRoutePinDataUrl("#34d399", "#059669");
 var routeEndMarkerUrl = buildRoutePinDataUrl("#fb7185", "#e11d48");
 
+function shortRouteLabelText(text, maxLen) {
+  var s = String(text == null ? "" : text).trim();
+  if (!s) return "";
+  var lim = Number(maxLen);
+  if (!isFinite(lim) || lim <= 0) lim = 28;
+  if (s.length <= lim) return s;
+  return s.slice(0, Math.max(3, lim - 1)).trim() + "…";
+}
+
 function addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, routeGeom) {
   if (!routeLineLayer || !fromWgs || !toWgs) return;
 
@@ -657,6 +666,26 @@ function addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, routeGeom) 
 
   routeLineLayer.add(pointGraphic(startWgs, fromLabel, true));
   routeLineLayer.add(pointGraphic(endWgs, toLabel, false));
+  var endText = shortRouteLabelText(toLabel, 36);
+  if (endText) {
+    routeLineLayer.add(new Graphic({
+      geometry: {
+        type: "point",
+        longitude: Number(endWgs.lon),
+        latitude: Number(endWgs.lat),
+        spatialReference: SR4326
+      },
+      symbol: new TextSymbol({
+        text: endText,
+        color: "#0f2a4f",
+        haloColor: "#ffffff",
+        haloSize: 1.4,
+        xoffset: 14,
+        yoffset: -24,
+        font: { size: 10, family: "Segoe UI", weight: "700" }
+      })
+    }));
+  }
 }
 
 function drawOsrmFallbackRouteLine(fromWgs, toWgs, opts) {
@@ -7040,6 +7069,14 @@ function drawCommunityCategoryConnectors(detail) {
     if (!p326 || !pWeb) return null;
     return { p326: p326, pWeb: pWeb };
   }
+  function resolveItemLabelText(item, fallbackIndex) {
+    var src = (item && item.item) ? item.item : item;
+    var raw =
+      (item && (item.name || item.label || item.title || item.Name)) ||
+      (src && (src.name || src.Name || src.label || src.title || src.itiName || src.iti_name)) ||
+      ("Location " + String((fallbackIndex || 0) + 1));
+    return shortRouteLabelText(raw, 34);
+  }
 
   function resolveConnectorStyle(catKey) {
     var cat = String(catKey || "").toLowerCase();
@@ -7076,14 +7113,16 @@ function drawCommunityCategoryConnectors(detail) {
 
   clearConnectorGraphics();
   clearCommunityZoomGraphic();
+  routeLineLayer.removeAll();
 
   var minX = anchor.x;
   var minY = anchor.y;
   var maxX = anchor.x;
   var maxY = anchor.y;
+  var validItems = [];
   var validCount = 0;
   var skipped = 0;
-  var maxRender = 200;
+  var maxRender = 80;
   var limit = Math.min(allItems.length, maxRender);
 
   for (var i = 0; i < limit; i++) {
@@ -7101,42 +7140,15 @@ function drawCommunityCategoryConnectors(detail) {
       skipped++;
       continue;
     }
-
-    var line = new Polyline({
-      paths: [[[anchor.x, anchor.y], [dest.x, dest.y]]],
-      spatialReference: SR_METER
+    validItems.push({
+      item: item,
+      category: itemCategory,
+      style: itemStyle,
+      p326: dest,
+      pWeb: pt.pWeb,
+      labelText: resolveItemLabelText(item, i),
+      directMeters: dM
     });
-    var lineW = projection.project(line, SR_WEB);
-    if (lineW) {
-      connectorLayer.add(new Graphic({
-        geometry: lineW,
-        symbol: new SimpleLineSymbol({ color: itemStyle.lineColor, width: 1.5, style: "short-dash" })
-      }));
-    }
-
-    var midPt = new Point({
-      x: (anchor.x + dest.x) / 2,
-      y: (anchor.y + dest.y) / 2,
-      spatialReference: SR_METER
-    });
-    var midW = projection.project(midPt, SR_WEB);
-    if (midW) {
-      connectorLayer.add(new Graphic({
-        geometry: midW,
-        symbol: new TextSymbol({
-          text: String(Math.round(dM)) + " m",
-          color: [22, 28, 45, 1],
-          font: { size: 9, weight: "700" },
-          haloColor: [255, 255, 255, 0.98],
-          haloSize: 1
-        })
-      }));
-    }
-
-    connectorLayer.add(new Graphic({
-      geometry: pt.pWeb,
-      symbol: getMarkerSymbolForCategory(itemCategory)
-    }));
 
     minX = Math.min(minX, dest.x);
     minY = Math.min(minY, dest.y);
@@ -7148,6 +7160,240 @@ function drawCommunityCategoryConnectors(detail) {
   if (!validCount) {
     setStatus("No valid " + label + " coordinates found for center connection.");
     return Promise.resolve(false);
+  }
+
+  if (validItems.length === 1) {
+    var onlyItem = validItems[0];
+    var onlyLabel = deriveCommunityZoomLabel({ item: onlyItem.item });
+    return routeFromAnchorToTarget(anchor, onlyItem.p326, {
+      fromLabel: "Selected area",
+      toLabel: onlyLabel
+    }).then(function (routed) {
+      if (routed) {
+        addPoiEndpointGraphic(onlyItem);
+        setStatus("Showing " + label + " route from center.");
+        return true;
+      }
+      drawStraightFallback(onlyItem);
+      addAnchorStartGraphic();
+      addPoiEndpointGraphic(onlyItem);
+      setStatus("Route not available, showing direct line for " + label + ".");
+      return true;
+    });
+  }
+
+  var maxDirectMeters = 0;
+  validItems.forEach(function (v) {
+    if (isFinite(v.directMeters) && v.directMeters > maxDirectMeters) maxDirectMeters = v.directMeters;
+  });
+  var padM = Math.max(3000, Math.min(32000, (isFinite(maxDirectMeters) ? maxDirectMeters : 2500) * 1.2));
+  var routeQueryExtent = new Extent({
+    xmin: minX - padM,
+    ymin: minY - padM,
+    xmax: maxX + padM,
+    ymax: maxY + padM,
+    spatialReference: SR_METER
+  });
+
+  function drawStraightFallback(targetItem) {
+    var line = new Polyline({
+      paths: [[[anchor.x, anchor.y], [targetItem.p326.x, targetItem.p326.y]]],
+      spatialReference: SR_METER
+    });
+    var lineW = projection.project(line, SR_WEB);
+    if (!lineW) return false;
+    connectorLayer.add(new Graphic({
+      geometry: lineW,
+      symbol: new SimpleLineSymbol({
+        color: targetItem.style.lineColor,
+        width: 1.6,
+        style: "short-dash"
+      })
+    }));
+    return true;
+  }
+
+  function addAnchorStartGraphic() {
+    var aWeb = projection.project(anchor, SR_WEB) || null;
+    if (!aWeb) return;
+    connectorLayer.add(new Graphic({
+      geometry: aWeb,
+      symbol: {
+        type: "picture-marker",
+        url: routeStartMarkerUrl,
+        width: "24px",
+        height: "30px",
+        yoffset: "15px"
+      }
+    }));
+  }
+
+  function addPoiEndpointGraphic(v) {
+    if (!v || !v.pWeb) return;
+    connectorLayer.add(new Graphic({
+      geometry: v.pWeb,
+      symbol: {
+        type: "picture-marker",
+        url: routeEndMarkerUrl,
+        width: "24px",
+        height: "30px",
+        yoffset: "15px"
+      }
+    }));
+    if (v.labelText) {
+      connectorLayer.add(new Graphic({
+        geometry: v.pWeb,
+        symbol: new TextSymbol({
+          text: v.labelText,
+          color: [12, 42, 84, 1],
+          haloColor: [255, 255, 255, 0.98],
+          haloSize: 1.4,
+          xoffset: 14,
+          yoffset: -22,
+          font: { size: 10, family: "Segoe UI", weight: "700" }
+        })
+      }));
+    }
+  }
+
+  function drawStraightFallbackForAll(itemsList) {
+    var items = Array.isArray(itemsList) ? itemsList : validItems;
+    var count = 0;
+    items.forEach(function (v) {
+      if (drawStraightFallback(v)) count++;
+    });
+    return count;
+  }
+
+  function finalizeGraphics(routeStats) {
+    routeStats = routeStats || { routed: 0, fallback: 0 };
+    addAnchorStartGraphic();
+    validItems.forEach(function (v) {
+      addPoiEndpointGraphic(v);
+    });
+    var extra = allItems.length > maxRender ? (" (showing first " + maxRender + ")") : "";
+    var skipMsg = skipped > 0 ? (", " + skipped + " skipped") : "";
+    setStatus(
+      "Connected " + validCount + " " + label +
+      " from center. Route paths: " + routeStats.routed +
+      ", fallback lines: " + routeStats.fallback + skipMsg + extra + "."
+    );
+    return true;
+  }
+
+  function drawFromRoadGraph(graph, itemsList, routedSeed) {
+    var items = Array.isArray(itemsList) ? itemsList : validItems;
+    var startNode = findNearestGraphNode(graph, anchor, 7000);
+    var routedCount = Number(routedSeed) || 0;
+    var fallbackCount = 0;
+
+    items.forEach(function (v) {
+      var routed = false;
+      if (startNode) {
+        var maxSnapM = Math.max(900, Math.min(7000, Number(v.directMeters || 0) * 0.75));
+        var endNode = findNearestGraphNode(graph, v.p326, maxSnapM);
+        if (endNode) {
+          var path = shortestPathRoadGraph(graph, startNode.node.key, endNode.node.key);
+          if (path && path.nodeKeys && path.nodeKeys.length) {
+            var pathCoords = [[anchor.x, anchor.y]];
+            path.nodeKeys.forEach(function (k) {
+              var n = graph.nodesByKey[k];
+              if (n) pathCoords.push([n.x, n.y]);
+            });
+            pathCoords.push([v.p326.x, v.p326.y]);
+            pathCoords = compactPathCoords(pathCoords);
+            if (pathCoords.length >= 2) {
+              var line326 = new Polyline({
+                paths: [pathCoords],
+                spatialReference: SR_METER
+              });
+              var lineW = projection.project(line326, SR_WEB);
+              if (lineW) {
+                connectorLayer.add(new Graphic({
+                  geometry: lineW,
+                  symbol: new SimpleLineSymbol({
+                    color: v.style.lineColor,
+                    width: 2.6,
+                    style: "solid"
+                  })
+                }));
+                routed = true;
+                routedCount++;
+              }
+            }
+          }
+        }
+      }
+
+      if (!routed) {
+        if (drawStraightFallback(v)) fallbackCount++;
+      }
+    });
+
+    return finalizeGraphics({ routed: routedCount, fallback: fallbackCount });
+  }
+
+  function drawOsrmRouteForItem(v) {
+    if (!v || !v.p326) return Promise.resolve(false);
+    var a4326 = projection.project(anchor, SR4326);
+    var b4326 = projection.project(v.p326, SR4326);
+    if (!a4326 || !b4326) return Promise.resolve(false);
+    var fromWgs = { lat: Number(a4326.y), lon: Number(a4326.x) };
+    var toWgs = { lat: Number(b4326.y), lon: Number(b4326.x) };
+    if (!isValidWgsLatLon(fromWgs.lat, fromWgs.lon) || !isValidWgsLatLon(toWgs.lat, toWgs.lon)) {
+      return Promise.resolve(false);
+    }
+    var url =
+      "https://router.project-osrm.org/route/v1/driving/" +
+      encodeURIComponent(fromWgs.lon + "," + fromWgs.lat) + ";" +
+      encodeURIComponent(toWgs.lon + "," + toWgs.lat) +
+      "?overview=full&geometries=geojson";
+    return fetch(url).then(function (res) {
+      if (!res || !res.ok) return null;
+      return res.json();
+    }).then(function (json) {
+      if (!json || json.code !== "Ok" || !json.routes || !json.routes.length) return false;
+      var coords = json.routes[0] && json.routes[0].geometry && json.routes[0].geometry.coordinates;
+      if (!coords || coords.length < 2) return false;
+      var line4326 = new Polyline({
+        paths: [coords.map(function (xy) { return [xy[0], xy[1]]; })],
+        spatialReference: SR4326
+      });
+      var lineWeb = projection.project(line4326, SR_WEB);
+      if (!lineWeb) return false;
+      connectorLayer.add(new Graphic({
+        geometry: lineWeb,
+        symbol: new SimpleLineSymbol({
+          color: v.style.lineColor,
+          width: 2.6,
+          style: "solid"
+        })
+      }));
+      return true;
+    }).catch(function () {
+      return false;
+    });
+  }
+
+  function drawOsrmRoutesBatch(itemsList) {
+    var items = Array.isArray(itemsList) ? itemsList.slice() : [];
+    if (!items.length) return Promise.resolve({ routed: 0, unresolved: [] });
+    var maxOsrm = Math.min(items.length, 20);
+    var head = items.slice(0, maxOsrm);
+    var tail = items.slice(maxOsrm);
+    return Promise.all(head.map(function (v) {
+      return drawOsrmRouteForItem(v);
+    })).then(function (oks) {
+      var unresolved = tail.slice();
+      var routed = 0;
+      for (var i = 0; i < head.length; i++) {
+        if (oks[i]) routed++;
+        else unresolved.push(head[i]);
+      }
+      return { routed: routed, unresolved: unresolved };
+    }).catch(function () {
+      return { routed: 0, unresolved: items };
+    });
   }
 
   var ext = new Extent({
@@ -7165,11 +7411,41 @@ function drawCommunityCategoryConnectors(detail) {
     });
   });
 
-  return doneZoom.then(function () {
-    var extra = allItems.length > maxRender ? (" (showing first " + maxRender + ")") : "";
-    var skipMsg = skipped > 0 ? (", " + skipped + " skipped") : "";
-    setStatus("Connected " + validCount + " " + label + " from center point with distance labels in meters" + skipMsg + extra + ".");
-    return true;
+  return drawOsrmRoutesBatch(validItems).then(function (osrmState) {
+    if (!osrmState || !osrmState.unresolved || !osrmState.unresolved.length) {
+      return finalizeGraphics({ routed: (osrmState && osrmState.routed) || 0, fallback: 0 });
+    }
+    return queryLayer(TRANS_MS, LAYER_ROADS_LINE, Object.assign({
+      where: "1=1",
+      returnGeometry: true,
+      outFields: "OBJECTID",
+      resultRecordCount: 2200
+    }, geometryToQueryParams(routeQueryExtent))).then(function (data) {
+      var roads = (data && data.features) || [];
+      if (!roads.length) {
+        return finalizeGraphics({
+          routed: osrmState.routed || 0,
+          fallback: drawStraightFallbackForAll(osrmState.unresolved)
+        });
+      }
+      var graph = buildRoadGraph(roads, 8);
+      if (!graph || !graph.keys || !graph.keys.length) {
+        return finalizeGraphics({
+          routed: osrmState.routed || 0,
+          fallback: drawStraightFallbackForAll(osrmState.unresolved)
+        });
+      }
+      return drawFromRoadGraph(graph, osrmState.unresolved, osrmState.routed || 0);
+    }).catch(function () {
+      return finalizeGraphics({
+        routed: osrmState.routed || 0,
+        fallback: drawStraightFallbackForAll(osrmState.unresolved)
+      });
+    });
+  }).catch(function () {
+    return finalizeGraphics({ routed: 0, fallback: drawStraightFallbackForAll(validItems) });
+  }).then(function () {
+    return doneZoom.then(function () { return true; });
   });
 }
 
@@ -7178,6 +7454,93 @@ function formatDistanceLabel(meters) {
   if (!isFinite(m) || m < 0) return "-";
   if (m >= 1000) return (m / 1000).toFixed(2) + " km";
   return Math.round(m) + " m";
+}
+
+function routeFromAnchorToTarget(anchor32643, target32643, opts) {
+  opts = opts || {};
+  var fromLabel = String(opts.fromLabel || "Selected area");
+  var toLabel = String(opts.toLabel || "Selected location");
+
+  return projection.load().then(function () {
+    var start = anchor32643 && anchor32643.type === "point" ? anchor32643 : getGeometryCentroid(anchor32643);
+    var end = target32643 && target32643.type === "point" ? target32643 : getGeometryCentroid(target32643);
+    if (!start || !end) return false;
+
+    var startWgsPt = projection.project(start, SR4326);
+    var endWgsPt = projection.project(end, SR4326);
+    if (!startWgsPt || !endWgsPt) return false;
+
+    var fromWgs = { lat: Number(startWgsPt.y), lon: Number(startWgsPt.x) };
+    var toWgs = { lat: Number(endWgsPt.y), lon: Number(endWgsPt.x) };
+    if (!isValidWgsLatLon(fromWgs.lat, fromWgs.lon) || !isValidWgsLatLon(toWgs.lat, toWgs.lon)) {
+      return false;
+    }
+
+    var solveUrl = getEsriRouteSolveUrl();
+    function drawFallback() {
+      return drawBestAvailableFallbackRoute(fromWgs, toWgs, {
+        fromLabel: fromLabel,
+        toLabel: toLabel
+      }).then(function (res) {
+        return !!res;
+      }).catch(function () {
+        return false;
+      });
+    }
+
+    if (!hasArcGisRoutingApiKey() && routeServiceNeedsApiKey(solveUrl)) {
+      return drawFallback();
+    }
+
+    var p0 = new Point({ x: fromWgs.lon, y: fromWgs.lat, spatialReference: SR4326 });
+    var p1 = new Point({ x: toWgs.lon, y: toWgs.lat, spatialReference: SR4326 });
+    var fs = new FeatureSet({
+      features: [
+        new Graphic({ geometry: p0, attributes: { Name: fromLabel } }),
+        new Graphic({ geometry: p1, attributes: { Name: toLabel } })
+      ]
+    });
+    var rparams = new RouteParameters({
+      stops: fs,
+      returnDirections: false,
+      returnRoutes: true
+    });
+    if (esriConfig.apiKey) rparams.apiKey = esriConfig.apiKey;
+
+    routeLineLayer.removeAll();
+    return solve(solveUrl, rparams, { apiKey: esriConfig.apiKey }).then(function (res) {
+      var rr = res.routeResults && res.routeResults[0];
+      var routeFeat = rr && rr.route;
+      var altFeat = null;
+      var geom = routeFeat && (routeFeat.geometry || routeFeat);
+      if (!geom || !geom.type) {
+        altFeat = res.routes && res.routes.features && res.routes.features[0];
+        geom = altFeat && altFeat.geometry;
+      }
+      if (!geom) return drawFallback();
+
+      var gLine = geom.spatialReference && geom.spatialReference.wkid === 3857
+        ? geom
+        : projection.project(geom, SR_WEB);
+      if (!gLine) return drawFallback();
+
+      routeLineLayer.add(new Graphic({
+        geometry: gLine,
+        symbol: new SimpleLineSymbol({ color: [0, 92, 230, 1], width: 4 })
+      }));
+      addRouteEndpointMarkers(fromWgs, toWgs, fromLabel, toLabel, gLine);
+      return view.goTo(gLine, { padding: getUiZoomPadding() }).catch(function () {
+        return null;
+      }).then(function () {
+        return true;
+      });
+    }).catch(function (err) {
+      if (isRoutingAuthError(err)) return drawFallback();
+      return drawFallback();
+    });
+  }).catch(function () {
+    return false;
+  });
 }
 
 function createSafeBuffer32643(geom, distM) {
@@ -8679,11 +9042,20 @@ function onCommunityZoomToLocation(event) {
     if (p32643) {
       var bufferCenter = resolveBufferCenterPoint32643();
       if (bufferCenter && bufferCenter.type === "point") {
-        drawConnectorBetweenFeatures(bufferCenter, p32643);
-        var dMeters = geometryEngine.distance(bufferCenter, p32643, "meters");
-        var dTxt = formatDistanceLabel(dMeters);
-        var cat0 = String(detail.category || "location");
-        setStatus("Zoomed to " + cat0 + ". Distance from buffer center: " + dTxt + ".");
+        routeFromAnchorToTarget(bufferCenter, p32643, {
+          fromLabel: "Selected area",
+          toLabel: deriveCommunityZoomLabel(detail)
+        }).then(function (routed) {
+          if (routed) {
+            clearConnectorGraphics();
+            return;
+          }
+          drawConnectorBetweenFeatures(bufferCenter, p32643);
+          var dMeters = geometryEngine.distance(bufferCenter, p32643, "meters");
+          var dTxt = formatDistanceLabel(dMeters);
+          var cat0 = String(detail.category || "location");
+          setStatus("Zoomed to " + cat0 + ". Distance from buffer center: " + dTxt + ".");
+        });
       } else {
         clearConnectorGraphics();
       }
