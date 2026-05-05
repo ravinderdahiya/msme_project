@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { CheckSquare, Compass, LocateFixed, Minus, Plus } from "lucide-react";
 import { MapDecorChrome, MapDecorGeometries } from "./MapDecorLayer.jsx";
 import { findClosestDecorMarker } from "./mapDecorConfig.js";
-
 const MSME_MAP_IMG = "/public/msmemap.png";
 
 const MIN_SCALE = 1;
@@ -23,7 +22,8 @@ export default function MapStage({
   bufferDistance,
   activeLayerCount,
   onOpenLayers,
-  onOpenAnalysis,
+  onOpenNearbyPlaces,
+  nearbyPlacesOpen,
 }) {
   const [basemapMode, setBasemapMode] = useState(0);
   const [baseMapPopoverOpen, setBaseMapPopoverOpen] = useState(false);
@@ -75,9 +75,9 @@ export default function MapStage({
   }, []);
 
   const onNearby = useCallback(() => {
-    onOpenAnalysis?.();
-    setToast("Opening proximity / nearby analysis.");
-  }, [onOpenAnalysis]);
+    onOpenNearbyPlaces?.();
+    setToast("Opening nearby places.");
+  }, [onOpenNearbyPlaces]);
 
   const onClosestPoint = useCallback(() => {
     const { approxKm, label } = findClosestDecorMarker();
@@ -189,7 +189,7 @@ export default function MapStage({
             <div className={`nm-map-buffer-circle${bufferVisible ? "" : " is-hidden"}`} aria-hidden={!bufferVisible} />
           )}
           <div className="nm-map-layer-summary" aria-live="polite">
-            {!bufferOpen && !analysisOpen && (
+            {!bufferOpen && !analysisOpen && !nearbyPlacesOpen && (
               <>
                 {activeLayerCount === 0 && <span>No thematic layers</span>}
                 {activeLayerCount > 0 && (
@@ -201,6 +201,7 @@ export default function MapStage({
             )}
             {bufferOpen && <span>Buffer: {bufferDistance}</span>}
             {analysisOpen && <span>Proximity analysis active</span>}
+            {nearbyPlacesOpen && <span>Nearby places</span>}
           </div>
 
           {toast && (

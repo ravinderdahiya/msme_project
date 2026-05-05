@@ -88,9 +88,9 @@ export default function NewMainMapHeader({
         >
           {theme === "dark" ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
         </button>
-        <button type="button" className="nmhdr-icon-btn" aria-label="Assistant">
+        {/* <button type="button" className="nmhdr-icon-btn" aria-label="Assistant">
           <Sparkles size={18} strokeWidth={2} />
-        </button>
+        </button> */}
         <button type="button" className="nmhdr-icon-btn" aria-label="History">
           <History size={18} strokeWidth={2} />
         </button>
