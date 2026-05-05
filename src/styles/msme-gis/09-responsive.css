@@ -258,14 +258,21 @@
   }
 
   #rail button.rail-btn {
-    width: 44px;
-    min-width: 44px;
-    height: 44px;
+    width: 64px;
+    min-width: 64px;
+    min-height: 62px;
+    padding: 6px 4px;
+    gap: 3px;
   }
 
   #rail button.rail-btn .rail-ico-wrap {
-    width: 36px;
-    height: 36px;
+    width: 34px;
+    height: 34px;
+  }
+
+  #rail .rail-lbl {
+    font-size: 10px;
+    line-height: 1.1;
   }
 
   #legendFab {
@@ -304,6 +311,12 @@
   .current-location-fab {
     right: 12px;
     bottom: calc(246px + env(safe-area-inset-bottom));
+    top: auto;
+  }
+
+  .closest-print-fab {
+    right: 12px;
+    bottom: calc(190px + env(safe-area-inset-bottom));
     top: auto;
   }
 

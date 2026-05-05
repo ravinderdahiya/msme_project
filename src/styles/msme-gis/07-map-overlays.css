@@ -281,6 +281,34 @@
   height: 21px;
 }
 
+.closest-print-fab {
+  position: fixed;
+  right: 50px;
+  bottom: 258px;
+  z-index: 96;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.94);
+  color: var(--primary-dark);
+  box-shadow: var(--shadow);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(12px);
+}
+
+.closest-print-fab:hover {
+  background: #fff;
+}
+
+.closest-print-fab svg {
+  width: 21px;
+  height: 21px;
+}
+
 .buffer-map-fab {
   position: fixed;
   right: 46px;

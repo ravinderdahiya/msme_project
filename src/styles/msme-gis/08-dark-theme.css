@@ -58,6 +58,31 @@
   color: #d7e9f8;
 }
 
+[data-theme='black'] #rail .rail-lbl {
+  color: #d7e9f8;
+}
+
+[data-theme='black'] #spatialPanel .sp-head,
+[data-theme='black'] #selectToolsPanel .stools-head,
+[data-theme='black'] #aoiPanel .ap-head,
+[data-theme='black'] #toolsPanel .tp-head {
+  border-color: #3a4d62 !important;
+  border-bottom-color: #3a4d62 !important;
+  background: linear-gradient(180deg, rgba(30, 41, 55, 0.96) 0%, rgba(24, 34, 46, 0.96) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.04),
+    0 8px 18px rgba(0, 0, 0, 0.26) !important;
+}
+
+[data-theme='black'] #spatialPanel .ap-close,
+[data-theme='black'] #selectToolsPanel .ap-close,
+[data-theme='black'] #aoiPanel .ap-close,
+[data-theme='black'] #toolsPanel .ap-close {
+  border-color: #3a4d62 !important;
+  background: linear-gradient(180deg, #202c3a 0%, #1a2431 100%) !important;
+  color: #d7e9f8 !important;
+}
+
 [data-theme='black'] #spatialToolbar .st-tabs button.tab {
   color: #c9ddef;
 }

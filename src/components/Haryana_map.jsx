@@ -51,6 +51,7 @@
 // }
 import LocationButton from './LocationButton.jsx'
 import BufferButton from './BufferButton.jsx'
+import PrintScreenButton from './PrintScreenButton.jsx'
 
 export default function HaryanaMap({ t }) {
   return (
@@ -73,6 +74,7 @@ export default function HaryanaMap({ t }) {
 
       <LocationButton t={t} />
       <BufferButton t={t} />
+      <PrintScreenButton t={t} />
       <div id="gisLoadingOverlay" className="is-hidden" aria-hidden="true">
         <div className="gis-loading-chip" role="status" aria-live="polite">
           <span className="gis-loading-spinner" aria-hidden="true"></span>

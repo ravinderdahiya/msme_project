@@ -23,7 +23,7 @@
   font-size: 14px;
   font-weight: 800;
   color: #4f6b82;
-  border-radius: 12px;
+  border-radius: 999px;
   border-bottom: none;
   transition:
     transform 0.16s ease,
@@ -60,6 +60,7 @@
 #aoiPanel .modal-tabs button {
   width: 100%;
   flex: 0 0 auto;
+  border-radius: 999px;
 }
 
 #aoiPanel .modal-panel,
@@ -525,10 +526,27 @@
 }
 
 /* Layer panel */
-#layerListContainer {
-  max-height: 240px;
+#toolsPanel .tp-scroll {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+#toolsPanel .tp-scroll #layerListContainer {
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
   overflow: auto;
   font-size: 12px;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+#toolsPanel .tp-scroll #layerListContainer::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;
 }
 
 #status {

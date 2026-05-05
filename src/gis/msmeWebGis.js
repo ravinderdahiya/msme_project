@@ -2074,6 +2074,301 @@ function buildBufferPdfReport() {
   });
 }
 
+function buildClosestScreenPdfReport() {
+  var filename = "closest-screen-" + new Date().toISOString().replace(/[:.]/g, "-") + ".pdf";
+  if (!view || view.destroyed || typeof view.takeScreenshot !== "function") {
+    window.alert("Map screenshot not available right now.");
+    return;
+  }
+
+  setStatus("Preparing map PDF...");
+
+  function captureLegendImageForPdf() {
+    var panel = document.getElementById("legendPanel");
+    var inner = document.getElementById("legendInner");
+    if (!panel || !inner) return Promise.resolve(null);
+    if (!String(inner.textContent || "").trim()) return Promise.resolve(null);
+
+    var clone = panel.cloneNode(true);
+    clone.id = "legendPanelPrintClone";
+    clone.classList.add("visible");
+    clone.style.display = "block";
+    clone.style.position = "fixed";
+    clone.style.left = "-10000px";
+    clone.style.top = "0";
+    clone.style.maxHeight = "none";
+    clone.style.height = "auto";
+    clone.style.overflow = "visible";
+    clone.style.opacity = "1";
+    clone.style.visibility = "visible";
+    clone.style.pointerEvents = "none";
+    var basePanelW = Math.max(panel.clientWidth || 0, 340);
+    var boostedW = Math.round(basePanelW * 1.8);
+    clone.style.width = Math.max(560, Math.min(780, boostedW)) + "px";
+    clone.style.padding = "16px 18px";
+    clone.style.borderRadius = "14px";
+    clone.style.fontSize = "22px";
+    clone.style.lineHeight = "1.35";
+    clone.style.boxSizing = "border-box";
+    clone.style.background = "#ffffff";
+    clone.style.border = "1px solid #d3e1ee";
+    clone.style.boxShadow = "none";
+    clone.style.transform = "none";
+    clone.style.zoom = "1";
+    clone.style.overflowX = "hidden";
+    clone.style.overflowY = "visible";
+    var cloneLegendRoot = clone.querySelector(".esri-legend");
+    if (cloneLegendRoot) {
+      cloneLegendRoot.style.fontSize = "22px";
+      cloneLegendRoot.style.lineHeight = "1.35";
+    }
+    var cloneLabelNodes = clone.querySelectorAll(".esri-legend__layer-caption, .esri-legend__service-label, .esri-legend__layer-cell--label, .esri-legend__layer-body, .esri-legend__layer-table");
+    for (var i = 0; i < cloneLabelNodes.length; i++) {
+      cloneLabelNodes[i].style.fontSize = "22px";
+      cloneLabelNodes[i].style.lineHeight = "1.35";
+    }
+    var legendBoostStyle = document.createElement("style");
+    legendBoostStyle.textContent = [
+      ".esri-legend, .esri-legend * {",
+      "  font-size: 22px !important;",
+      "  line-height: 1.35 !important;",
+      "}",
+      ".esri-legend__layer-caption, .esri-legend__service-label, .esri-legend__layer-cell--label {",
+      "  font-weight: 700 !important;",
+      "}",
+      ".esri-legend__symbol img, .esri-legend__symbol svg, .esri-legend__symbol canvas, .esri-legend__layer-cell--symbols img, .esri-legend__layer-cell--symbols svg, .esri-legend__layer-cell--symbols canvas {",
+      "  width: 30px !important;",
+      "  height: 30px !important;",
+      "  min-width: 30px !important;",
+      "  min-height: 30px !important;",
+      "}",
+      ".esri-legend__layer-cell--symbols {",
+      "  width: 44px !important;",
+      "  min-width: 44px !important;",
+      "}",
+    ].join("\n");
+    clone.appendChild(legendBoostStyle);
+    document.body.appendChild(clone);
+
+    function cropCanvasToContent(sourceCanvas) {
+      if (!sourceCanvas || !sourceCanvas.width || !sourceCanvas.height) return sourceCanvas;
+      var ctx = sourceCanvas.getContext("2d", { willReadFrequently: true });
+      if (!ctx || typeof ctx.getImageData !== "function") return sourceCanvas;
+      var w = sourceCanvas.width;
+      var h = sourceCanvas.height;
+      var imgData;
+      try {
+        imgData = ctx.getImageData(0, 0, w, h);
+      } catch (eCrop) {
+        return sourceCanvas;
+      }
+      var data = imgData.data;
+      var minX = w, minY = h, maxX = -1, maxY = -1;
+      for (var y = 0; y < h; y++) {
+        for (var x = 0; x < w; x++) {
+          var idx = (y * w + x) * 4;
+          var a = data[idx + 3];
+          if (a < 18) continue;
+          var r = data[idx];
+          var g = data[idx + 1];
+          var b = data[idx + 2];
+          if (r > 246 && g > 246 && b > 246) continue;
+          if (x < minX) minX = x;
+          if (x > maxX) maxX = x;
+          if (y < minY) minY = y;
+          if (y > maxY) maxY = y;
+        }
+      }
+      if (maxX < minX || maxY < minY) return sourceCanvas;
+      var pad = 10;
+      minX = Math.max(0, minX - pad);
+      minY = Math.max(0, minY - pad);
+      maxX = Math.min(w - 1, maxX + pad);
+      maxY = Math.min(h - 1, maxY + pad);
+      var cw = maxX - minX + 1;
+      var ch = maxY - minY + 1;
+      if (cw <= 0 || ch <= 0) return sourceCanvas;
+      var cropped = document.createElement("canvas");
+      cropped.width = cw;
+      cropped.height = ch;
+      var cctx = cropped.getContext("2d");
+      if (!cctx) return sourceCanvas;
+      cctx.drawImage(sourceCanvas, minX, minY, cw, ch, 0, 0, cw, ch);
+      return cropped;
+    }
+
+    return import("html2canvas").then(function (mod) {
+      var html2canvas = mod && mod.default ? mod.default : mod;
+      return html2canvas(clone, {
+        backgroundColor: "#ffffff",
+        useCORS: true,
+        allowTaint: true,
+        logging: false,
+        scale: Math.min(3, Math.max(2, Number(window.devicePixelRatio) || 1)),
+      });
+    }).then(function (legendCanvas) {
+      if (!legendCanvas || !legendCanvas.width || !legendCanvas.height) return null;
+      var cropped = cropCanvasToContent(legendCanvas);
+      return {
+        canvas: cropped,
+        dataUrl: cropped.toDataURL("image/png", 1.0),
+        width: cropped.width,
+        height: cropped.height,
+      };
+    }).catch(function (e0) {
+      console.warn("[closest pdf] legend capture failed", e0);
+      return null;
+    }).finally(function () {
+      try {
+        if (clone && clone.parentNode) clone.parentNode.removeChild(clone);
+      } catch (e1) {}
+    });
+  }
+
+  var shotPromise = view.takeScreenshot({ format: "png", quality: 0.95, width: 2200 });
+  Promise.all([shotPromise, captureLegendImageForPdf()]).then(function (res) {
+    var shot = res && res[0] ? res[0] : null;
+    var legendImg = res && res[1] ? res[1] : null;
+    if (!shot || !shot.dataUrl) {
+      window.alert("Map screenshot failed. Please try again.");
+      return;
+    }
+
+    var sw = Number(shot.width || 1);
+    var sh = Number(shot.height || 1);
+    var orientation = sw >= sh ? "landscape" : "portrait";
+    var doc = new jsPDF({ orientation: orientation, unit: "pt", format: "a4" });
+    var pageW = doc.internal.pageSize.getWidth();
+    var pageH = doc.internal.pageSize.getHeight();
+    var margin = 18;
+    var sectionGap = 12;
+    var contentW = pageW - margin * 2;
+    var contentH = pageH - margin * 2;
+    var mapSectionH = Math.floor(contentH * 0.7);
+    var legendSectionH = contentH - mapSectionH - sectionGap;
+
+    var mapFrameX = margin;
+    var mapFrameY = margin;
+    var mapFrameW = contentW;
+    var mapFrameH = mapSectionH;
+
+    var legendFrameX = margin;
+    var legendFrameY = mapFrameY + mapFrameH + sectionGap;
+    var legendFrameW = contentW;
+    var legendFrameH = legendSectionH;
+
+    doc.setFillColor(247, 250, 253);
+    doc.rect(mapFrameX, mapFrameY, mapFrameW, mapFrameH, "F");
+    doc.setDrawColor(188, 205, 222);
+    doc.setLineWidth(1);
+    doc.rect(mapFrameX, mapFrameY, mapFrameW, mapFrameH, "S");
+
+    doc.setFillColor(252, 253, 255);
+    doc.rect(legendFrameX, legendFrameY, legendFrameW, legendFrameH, "F");
+    doc.setDrawColor(188, 205, 222);
+    doc.setLineWidth(1);
+    doc.rect(legendFrameX, legendFrameY, legendFrameW, legendFrameH, "S");
+
+    // Fill complete 70% map frame ("cover" fit) so no empty side bands remain.
+    var mapScaleCover = Math.max(mapFrameW / sw, mapFrameH / sh);
+    var mapDrawW = Math.max(10, sw * mapScaleCover);
+    var mapDrawH = Math.max(10, sh * mapScaleCover);
+    var mapDrawX = mapFrameX + (mapFrameW - mapDrawW) / 2;
+    var mapDrawY = mapFrameY + (mapFrameH - mapDrawH) / 2;
+    if (typeof doc.saveGraphicsState === "function" && typeof doc.clip === "function" && typeof doc.restoreGraphicsState === "function") {
+      doc.saveGraphicsState();
+      doc.rect(mapFrameX, mapFrameY, mapFrameW, mapFrameH, null);
+      doc.clip();
+      if (typeof doc.discardPath === "function") doc.discardPath();
+      doc.addImage(shot.dataUrl, "PNG", mapDrawX, mapDrawY, mapDrawW, mapDrawH, undefined, "FAST");
+      doc.restoreGraphicsState();
+    } else {
+      // Fallback for older jsPDF builds.
+      var mapScaleContain = Math.min(mapFrameW / sw, mapFrameH / sh);
+      var mapContainW = Math.max(10, sw * mapScaleContain);
+      var mapContainH = Math.max(10, sh * mapScaleContain);
+      var mapContainX = mapFrameX + (mapFrameW - mapContainW) / 2;
+      var mapContainY = mapFrameY + (mapFrameH - mapContainH) / 2;
+      doc.addImage(shot.dataUrl, "PNG", mapContainX, mapContainY, mapContainW, mapContainH, undefined, "FAST");
+    }
+
+    var legendPad = 10;
+    var legendInnerX = legendFrameX + legendPad;
+    var legendInnerY = legendFrameY + legendPad;
+    var legendInnerW = legendFrameW - legendPad * 2;
+    var legendInnerH = legendFrameH - legendPad * 2;
+
+    if (legendImg && legendImg.width && legendImg.height && (legendImg.dataUrl || legendImg.canvas)) {
+      var lgScale = Math.min(legendInnerW / legendImg.width, legendInnerH / legendImg.height);
+      // If legend is too tall/small, split it into columns for better readability.
+      if (lgScale < 0.85 && legendImg.canvas && legendImg.canvas.width && legendImg.canvas.height) {
+        var bestCols = 1;
+        var bestScale = lgScale;
+        var gapCols = 10;
+        for (var colsTry = 2; colsTry <= 4; colsTry++) {
+          var colAvailW = (legendInnerW - gapCols * (colsTry - 1)) / colsTry;
+          if (colAvailW <= 10) continue;
+          var sliceH = legendImg.height / colsTry;
+          var testScale = Math.min(colAvailW / legendImg.width, legendInnerH / sliceH);
+          if (testScale > bestScale) {
+            bestScale = testScale;
+            bestCols = colsTry;
+          }
+        }
+        if (bestCols > 1) {
+          var colW = (legendInnerW - gapCols * (bestCols - 1)) / bestCols;
+          var sliceSrcH = Math.ceil(legendImg.height / bestCols);
+          var maxDrawH = 0;
+          for (var c = 0; c < bestCols; c++) {
+            var srcY = c * sliceSrcH;
+            var srcH = Math.min(sliceSrcH, legendImg.height - srcY);
+            if (srcH <= 0) continue;
+            var drawScale = Math.min(colW / legendImg.width, legendInnerH / srcH);
+            var drawW = legendImg.width * drawScale;
+            var drawH = srcH * drawScale;
+            if (drawH > maxDrawH) maxDrawH = drawH;
+            var tmpSlice = document.createElement("canvas");
+            tmpSlice.width = legendImg.width;
+            tmpSlice.height = srcH;
+            var sctx = tmpSlice.getContext("2d");
+            if (!sctx) continue;
+            sctx.drawImage(legendImg.canvas, 0, srcY, legendImg.width, srcH, 0, 0, legendImg.width, srcH);
+            var drawX = legendInnerX + c * (colW + gapCols) + (colW - drawW) / 2;
+            var drawY = legendInnerY + (legendInnerH - drawH) / 2;
+            doc.addImage(tmpSlice, "PNG", drawX, drawY, drawW, drawH, undefined, "FAST");
+          }
+        } else {
+          var lgDrawW0 = Math.max(10, legendImg.width * lgScale);
+          var lgDrawH0 = Math.max(10, legendImg.height * lgScale);
+          var lgDrawX0 = legendInnerX + (legendInnerW - lgDrawW0) / 2;
+          var lgDrawY0 = legendInnerY + (legendInnerH - lgDrawH0) / 2;
+          doc.addImage(legendImg.canvas || legendImg.dataUrl, "PNG", lgDrawX0, lgDrawY0, lgDrawW0, lgDrawH0, undefined, "FAST");
+        }
+      } else {
+        var lgDrawW = Math.max(10, legendImg.width * lgScale);
+        var lgDrawH = Math.max(10, legendImg.height * lgScale);
+        var lgDrawX = legendInnerX + (legendInnerW - lgDrawW) / 2;
+        var lgDrawY = legendInnerY + (legendInnerH - lgDrawH) / 2;
+        doc.addImage(legendImg.canvas || legendImg.dataUrl, "PNG", lgDrawX, lgDrawY, lgDrawW, lgDrawH, undefined, "FAST");
+      }
+    } else {
+      doc.setTextColor(82, 106, 128);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(14);
+      doc.text("Legend / components not available.", legendInnerX, legendInnerY + 18);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(12);
+      doc.text("Turn on legend once and retry download.", legendInnerX, legendInnerY + 40);
+    }
+
+    doc.save(filename);
+    setStatus("Map PDF downloaded (70/30 layout).");
+  }).catch(function (e0) {
+    console.warn("[closest pdf] map screenshot failed", e0);
+    window.alert("Map screenshot failed. Please try again.");
+  });
+}
+
 /** @deprecated Use getters per report type; returns map selection only for backward compatibility. */
 window.msmeGisGetLandReportSnapshot = function () {
   return lastMapSelectionReportSnapshot;
@@ -7097,6 +7392,27 @@ function drawCommunityCategoryConnectors(detail) {
       lineColor: [124, 58, 237, 0.9]
     };
   }
+  function polylineLengthMetersFromCoords(pathCoords) {
+    if (!Array.isArray(pathCoords) || pathCoords.length < 2) return 0;
+    var sum = 0;
+    for (var i = 1; i < pathCoords.length; i++) {
+      var a = pathCoords[i - 1];
+      var b = pathCoords[i];
+      if (!a || !b || a.length < 2 || b.length < 2) continue;
+      var dx = Number(b[0]) - Number(a[0]);
+      var dy = Number(b[1]) - Number(a[1]);
+      if (!isFinite(dx) || !isFinite(dy)) continue;
+      sum += Math.sqrt(dx * dx + dy * dy);
+    }
+    return sum;
+  }
+  function getDistanceTextForItem(v) {
+    if (!v) return "";
+    var m = Number(v.routeMeters);
+    if (!isFinite(m) || m <= 0) m = Number(v.directMeters);
+    if (!isFinite(m) || m <= 0) return "";
+    return "Radius: " + formatDistanceLabel(m);
+  }
   var markerSymbolCache = {};
   function getMarkerSymbolForCategory(catKey) {
     var k = String(catKey || "default").toLowerCase();
@@ -7147,7 +7463,8 @@ function drawCommunityCategoryConnectors(detail) {
       p326: dest,
       pWeb: pt.pWeb,
       labelText: resolveItemLabelText(item, i),
-      directMeters: dM
+      directMeters: dM,
+      routeMeters: dM
     });
 
     minX = Math.min(minX, dest.x);
@@ -7210,6 +7527,7 @@ function drawCommunityCategoryConnectors(detail) {
         style: "short-dash"
       })
     }));
+    targetItem.routeMeters = targetItem.directMeters;
     return true;
   }
 
@@ -7240,17 +7558,22 @@ function drawCommunityCategoryConnectors(detail) {
         yoffset: "15px"
       }
     }));
-    if (v.labelText) {
+    var distTxt = getDistanceTextForItem(v);
+    if (v.labelText || distTxt) {
+      var txt = String(v.labelText || "");
+      if (distTxt) txt = txt ? (txt + "\n" + distTxt) : distTxt;
       connectorLayer.add(new Graphic({
         geometry: v.pWeb,
         symbol: new TextSymbol({
-          text: v.labelText,
+          text: txt,
           color: [12, 42, 84, 1],
           haloColor: [255, 255, 255, 0.98],
           haloSize: 1.4,
-          xoffset: 14,
-          yoffset: -22,
-          font: { size: 10, family: "Segoe UI", weight: "700" }
+          xoffset: 18,
+          yoffset: -28,
+          horizontalAlignment: "left",
+          verticalAlignment: "bottom",
+          font: { size: 11, family: "Segoe UI", weight: "700" }
         })
       }));
     }
@@ -7317,6 +7640,7 @@ function drawCommunityCategoryConnectors(detail) {
                     style: "solid"
                   })
                 }));
+                v.routeMeters = polylineLengthMetersFromCoords(pathCoords);
                 routed = true;
                 routedCount++;
               }
@@ -7353,7 +7677,8 @@ function drawCommunityCategoryConnectors(detail) {
       return res.json();
     }).then(function (json) {
       if (!json || json.code !== "Ok" || !json.routes || !json.routes.length) return false;
-      var coords = json.routes[0] && json.routes[0].geometry && json.routes[0].geometry.coordinates;
+      var route0 = json.routes[0] || null;
+      var coords = route0 && route0.geometry && route0.geometry.coordinates;
       if (!coords || coords.length < 2) return false;
       var line4326 = new Polyline({
         paths: [coords.map(function (xy) { return [xy[0], xy[1]]; })],
@@ -7369,6 +7694,8 @@ function drawCommunityCategoryConnectors(detail) {
           style: "solid"
         })
       }));
+      var routeDistM = Number(route0 && route0.distance);
+      if (isFinite(routeDistM) && routeDistM > 0) v.routeMeters = routeDistM;
       return true;
     }).catch(function () {
       return false;
@@ -7663,6 +7990,7 @@ function buildFallbackAnchorBuffer32643(qg, distM) {
 msmeBind("runBuffer", "click", function () {
   clearResults();
   bufferCommunitySummaryToken++;
+  var hasPointAnchor = !!(bufferMarkPoint32643 && bufferMarkPoint32643.type === "point");
   var roadLayerEl = document.getElementById("bufRoadLayer");
   var roadLayerId = parseInt(roadLayerEl.value, 10);
   var roadSourceText = roadLayerEl && roadLayerEl.selectedOptions && roadLayerEl.selectedOptions[0]
@@ -7681,7 +8009,7 @@ msmeBind("runBuffer", "click", function () {
     where: "1=1",
     returnGeometry: true,
     outFields: "OBJECTID",
-    resultRecordCount: 220
+    resultRecordCount: hasPointAnchor ? 140 : 220
   };
   function setBufferContextAndHydrate(ctxObj) {
     setLastBufferExportContext(ctxObj);
@@ -7951,24 +8279,40 @@ window.msmeGisDownloadBufferPdf = function () {
   buildBufferPdfReport();
 };
 
+window.msmeGisDownloadClosestPdf = function () {
+  buildClosestScreenPdfReport();
+};
+
 msmeBind("btnBufferPdf", "click", function () {
   if (window.msmeGisDownloadBufferPdf) {
     window.msmeGisDownloadBufferPdf();
   }
 });
 
+var closestPdfBtn = document.getElementById("closestPrintFab") || document.getElementById("btnClosestPdf");
+if (closestPdfBtn) {
+  closestPdfBtn.addEventListener("click", function () {
+    if (window.msmeGisDownloadClosestPdf) {
+      window.msmeGisDownloadClosestPdf();
+    }
+  });
+}
+
 msmeBind("runProximity", "click", function () {
   clearResults();
   var maxD = parseFloat(document.getElementById("proxDist").value) || 2000;
   var qg = activeQueryGeometry();
+  var hasPointAnchor = !!(bufferMarkPoint32643 && bufferMarkPoint32643.type === "point");
+  var villageRecordLimit = hasPointAnchor ? 260 : 600;
+  var poiRecordLimit = hasPointAnchor ? 180 : 400;
   var checks = Array.prototype.slice.call(document.querySelectorAll(".prox-cb")).filter(function (c) { return c.checked; });
   if (!checks.length) { alertNoData("select POI layer"); return; }
   var qV = queryLayer(ADMIN_MS, LAYER_VILLAGE, Object.assign({
-    where: "1=1", returnGeometry: true, outFields: "OBJECTID", resultRecordCount: 600
+    where: "1=1", returnGeometry: true, outFields: "OBJECTID", resultRecordCount: villageRecordLimit
   }, geometryToQueryParams(qg)));
   var qPois = checks.map(function (c) {
     return queryLayer(c.getAttribute("data-url"), parseInt(c.getAttribute("data-layer"), 10), Object.assign({
-      where: "1=1", returnGeometry: true, outFields: "OBJECTID", resultRecordCount: 400
+      where: "1=1", returnGeometry: true, outFields: "OBJECTID", resultRecordCount: poiRecordLimit
     }, geometryToQueryParams(qg))).catch(function () { return { features: [] }; });
   });
   Promise.all([qV].concat(qPois)).then(function (results) {
@@ -8227,6 +8571,7 @@ view.on("pointer-move", function (evt) {
 
 var selectParcelToolActive = false;
 var quickBufferAutoRunAfterAnchorPick = false;
+var quickProximityAutoRunAfterAnchorPick = false;
 var closestPointPickModeActive = false;
 var closestPointBufferMeters = 1500;
 
@@ -8250,6 +8595,74 @@ function setBufferDistanceMeters(nextMeters) {
     out.textContent = String(d);
   }
   return d;
+}
+
+function setProximityDistanceMeters(nextMeters) {
+  var d = parseInt(nextMeters, 10);
+  if (!isFinite(d) || d <= 0) d = 2000;
+  var slider = document.getElementById("proxDist");
+  var out = document.getElementById("proxDistVal");
+  if (slider) {
+    var minV = parseInt(slider.min, 10);
+    var maxV = parseInt(slider.max, 10);
+    if (isFinite(minV)) d = Math.max(minV, d);
+    if (isFinite(maxV)) d = Math.min(maxV, d);
+    slider.value = String(d);
+    try {
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    } catch (e0) {
+      if (out) out.textContent = String(d);
+    }
+  } else if (out) {
+    out.textContent = String(d);
+  }
+  return d;
+}
+
+function setBufferQueryRadiusMeters(nextMeters) {
+  var d = parseInt(nextMeters, 10);
+  if (!isFinite(d) || d <= 0) d = 5000;
+  var slider = document.getElementById("bufMarkQueryRadius");
+  var out = document.getElementById("bufMarkQueryRadiusVal");
+  if (slider) {
+    var minV = parseInt(slider.min, 10);
+    var maxV = parseInt(slider.max, 10);
+    if (isFinite(minV)) d = Math.max(minV, d);
+    if (isFinite(maxV)) d = Math.min(maxV, d);
+    slider.value = String(d);
+    try {
+      slider.dispatchEvent(new Event("input", { bubbles: true }));
+    } catch (e0) {
+      if (out) out.textContent = String(d);
+    }
+  } else if (out) {
+    out.textContent = String(d);
+  }
+  return d;
+}
+
+function readDistanceMetersFromNumUnit(numId, unitId, fallbackMeters) {
+  var raw = Number((document.getElementById(numId) || {}).value);
+  var unit = String(((document.getElementById(unitId) || {}).value) || "m").toLowerCase();
+  var m = NaN;
+  if (isFinite(raw) && raw > 0) {
+    m = unit === "km" ? Math.round(raw * 1000) : Math.round(raw);
+  }
+  if (!isFinite(m) || m <= 0) m = Number(fallbackMeters);
+  if (!isFinite(m) || m <= 0) m = 1000;
+  return Math.round(m);
+}
+
+function readBufferPickDistanceMetersFromUi() {
+  var slider = document.getElementById("bufDist");
+  var fallback = slider ? parseInt(slider.value, 10) : 1500;
+  return readDistanceMetersFromNumUnit("bufferPickDistNum", "bufferPickDistUnit", fallback);
+}
+
+function readProximityDistanceMetersFromUi() {
+  var slider = document.getElementById("proxDist");
+  var fallback = slider ? parseInt(slider.value, 10) : 2000;
+  return readDistanceMetersFromNumUnit("proximityPickDistNum", "proximityPickDistUnit", fallback);
 }
 
 function readClosestDistanceMetersFromUi() {
@@ -8360,6 +8773,7 @@ function setSelectParcelTool(on) {
   if (on) {
     closestPointPickModeActive = false;
     quickBufferAutoRunAfterAnchorPick = false;
+    quickProximityAutoRunAfterAnchorPick = false;
     setBufferMarkMode(false, false);
     setStatus("Select tool ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â click the map. Results appear in the left panel with distances.");
   } else {
@@ -8369,6 +8783,8 @@ function setSelectParcelTool(on) {
 
 (function bufferMarkUi() {
   var bMark = document.getElementById("btnBufferMarkPoint");
+  var bBufferPick = document.getElementById("btnBufferPickPoint");
+  var bProxPick = document.getElementById("btnProximityPickPoint");
   var bClr = document.getElementById("btnBufferClearMark");
   var bClosestPick = document.getElementById("btnClosestPickPoint");
   if (bMark) {
@@ -8391,8 +8807,21 @@ function setSelectParcelTool(on) {
       clearBufferAnchorMarker();
       closestPointPickModeActive = false;
       quickBufferAutoRunAfterAnchorPick = false;
+      quickProximityAutoRunAfterAnchorPick = false;
       setBufferMarkMode(false, false);
       setStatus("Buffer anchor cleared.");
+    });
+  }
+  if (bBufferPick) {
+    bBufferPick.addEventListener("click", function () {
+      var dist = readBufferPickDistanceMetersFromUi();
+      window.msmeGisStartQuickBufferWithDistance(dist);
+    });
+  }
+  if (bProxPick) {
+    bProxPick.addEventListener("click", function () {
+      var dist = readProximityDistanceMetersFromUi();
+      window.msmeGisStartQuickProximityWithDistance(dist);
     });
   }
   if (bClosestPick) {
@@ -8405,8 +8834,10 @@ function setSelectParcelTool(on) {
 })();
 
 window.msmeGisStartQuickBuffer = function () {
-  setBufferDistanceMeters(1500);
+  var pickedDist = setBufferDistanceMeters(1500);
+  setBufferQueryRadiusMeters(Math.round(Math.max(1200, Math.min(6000, pickedDist * 1.8))));
   closestPointPickModeActive = false;
+  quickProximityAutoRunAfterAnchorPick = false;
   if (bufferMarkModeActive) {
     quickBufferAutoRunAfterAnchorPick = false;
     setBufferMarkMode(false, false);
@@ -8429,7 +8860,9 @@ window.msmeGisStartQuickBufferWithDistance = function (distanceM) {
   var n = Number(distanceM);
   var dist = isFinite(n) && n > 0 ? Math.round(n) : 1500;
   setBufferDistanceMeters(dist);
+  setBufferQueryRadiusMeters(Math.round(Math.max(1200, Math.min(6000, dist * 1.8))));
   closestPointPickModeActive = false;
+  quickProximityAutoRunAfterAnchorPick = false;
   if (bufferMarkModeActive) {
     quickBufferAutoRunAfterAnchorPick = false;
     setBufferMarkMode(false, false);
@@ -8451,8 +8884,34 @@ window.msmeGisStartQuickBufferWithDistance = function (distanceM) {
 window.msmeGisStopQuickBuffer = function () {
   closestPointPickModeActive = false;
   quickBufferAutoRunAfterAnchorPick = false;
+  quickProximityAutoRunAfterAnchorPick = false;
   setBufferMarkMode(false, false);
   setStatus("Buffer mode OFF.");
+};
+
+window.msmeGisStartQuickProximityWithDistance = function (distanceM) {
+  var n = Number(distanceM);
+  var dist = isFinite(n) && n > 0 ? Math.round(n) : readProximityDistanceMetersFromUi();
+  setProximityDistanceMeters(dist);
+  setBufferQueryRadiusMeters(Math.round(Math.max(1000, Math.min(5000, dist * 1.4))));
+  closestPointPickModeActive = false;
+  quickBufferAutoRunAfterAnchorPick = false;
+  if (bufferMarkModeActive) {
+    quickProximityAutoRunAfterAnchorPick = false;
+    setBufferMarkMode(false, false);
+    setStatus("Proximity pick mode OFF.");
+    return;
+  }
+  if (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") {
+    clearBufferAnchorMarker();
+    quickProximityAutoRunAfterAnchorPick = true;
+    setBufferMarkMode(true, false);
+    setStatus("Old point removed. Click new location to run Proximity (" + dist + " m).");
+    return;
+  }
+  quickProximityAutoRunAfterAnchorPick = true;
+  setBufferMarkMode(true, false);
+  setStatus("Proximity mode active. Click map to place point and run Proximity (" + dist + " m).");
 };
 
 window.msmeGisStartClosestPointSelection = function (distanceM) {
@@ -8460,6 +8919,7 @@ window.msmeGisStartClosestPointSelection = function (distanceM) {
   var dist = isFinite(n) && n > 0 ? Math.round(n) : readClosestDistanceMetersFromUi();
   closestPointBufferMeters = setBufferDistanceMeters(dist);
   quickBufferAutoRunAfterAnchorPick = false;
+  quickProximityAutoRunAfterAnchorPick = false;
   closestPointPickModeActive = true;
   setBufferMarkMode(true, false);
   setStatus("Closest point mode active. Click map to set point and build " + closestPointBufferMeters + " m buffer.");
@@ -8499,6 +8959,7 @@ window.msmeGisSetBufferAnchorFromWgs = function (lat, lon, opts) {
     bufferMarkPoint32643 = p32643;
     closestPointPickModeActive = false;
     quickBufferAutoRunAfterAnchorPick = false;
+    quickProximityAutoRunAfterAnchorPick = false;
     setBufferMarkMode(false, false);
     bufferMarkLayer.removeAll();
     bufferMarkLayer.add(new Graphic({ geometry: pWeb, symbol: symBufferMark }));
@@ -9096,6 +9557,7 @@ function onCommunityClearGraphics(event) {
   try {
     closestPointPickModeActive = false;
     quickBufferAutoRunAfterAnchorPick = false;
+    quickProximityAutoRunAfterAnchorPick = false;
     setBufferMarkMode(false, false);
   } catch (e4) {}
   setStatus("Community lines and buffer cleared.");
@@ -9125,10 +9587,20 @@ view.on("click", function (event) {
       }
       var shouldQuickRun = !!quickBufferAutoRunAfterAnchorPick;
       quickBufferAutoRunAfterAnchorPick = false;
+      var shouldProxRun = !!quickProximityAutoRunAfterAnchorPick;
+      quickProximityAutoRunAfterAnchorPick = false;
       if (shouldQuickRun) {
-        setStatus("Buffer anchor point set. Running 1500 m buffer...");
+        var curBufDist = parseInt((document.getElementById("bufDist") || {}).value, 10);
+        if (!isFinite(curBufDist) || curBufDist <= 0) curBufDist = 1500;
+        setStatus("Buffer anchor point set. Running " + curBufDist + " m buffer...");
         var runBtn = document.getElementById("runBuffer");
         if (runBtn) runBtn.click();
+      } else if (shouldProxRun) {
+        var curProxDist = parseInt((document.getElementById("proxDist") || {}).value, 10);
+        if (!isFinite(curProxDist) || curProxDist <= 0) curProxDist = 2000;
+        setStatus("Point set. Running Proximity analysis (" + curProxDist + " m)...");
+        var proxBtn = document.getElementById("runProximity");
+        if (proxBtn) proxBtn.click();
       } else {
         setStatus("Buffer anchor point set ÃƒÂ¢Ã¢â€šÂ¬Ã¢â‚¬Â adjust search radius, then Run buffer.");
       }

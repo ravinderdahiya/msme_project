@@ -32,7 +32,7 @@ export default function Sidebar({ t }) {
           <div className="ap-head-row">
             <h2 id="spatialPanelTitle">{t('spatialTitle')}</h2>
             <button type="button" className="ap-close" id="btnSpatialClose" title={t('closePanel')}>
-              ×
+              &times;
             </button>
           </div>
           <p className="sp-intro">{t('spatialIntro')}</p>
@@ -49,19 +49,32 @@ export default function Sidebar({ t }) {
               <button type="button" className="tab" data-panel="pC" role="tab">
                 {t('spatialTabIntersect')}
               </button>
-              <button type="button" className="tab" data-panel="pD" role="tab">
+              {/* <button type="button" className="tab" data-panel="pD" role="tab">
                 {t('spatialTabMulti')}
               </button>
               <button type="button" className="tab" data-panel="pE" role="tab">
                 {t('spatialTabSuit')}
-              </button>
+              </button> */}
             </div>
 
             <div className="st-panels">
               <div id="pA" className="panel active" role="tabpanel">
                 <div className="buffer-mark-row">
-                  <button type="button" className="btn-secondary" id="btnBufferMarkPoint">
-                    {t('bufferMark')}
+                  <input
+                    type="number"
+                    id="bufferPickDistNum"
+                    className="closest-dist-num"
+                    min="0.1"
+                    step="0.5"
+                    defaultValue="1.5"
+                    aria-label="Buffer distance value"
+                  />
+                  <select id="bufferPickDistUnit" className="sm" defaultValue="km" aria-label="Buffer distance unit">
+                    <option value="km">Kilometer</option>
+                    <option value="m">Meter</option>
+                  </select>
+                  <button type="button" className="btn-secondary" id="btnBufferPickPoint">
+                    {t('closestPickPoint')}
                   </button>
                   <button type="button" className="btn-ghost" id="btnBufferClearMark">
                     {t('bufferClearMark')}
@@ -95,6 +108,24 @@ export default function Sidebar({ t }) {
 
               <div id="pB" className="panel" role="tabpanel">
                 <div className="row">
+                  <input
+                    type="number"
+                    id="proximityPickDistNum"
+                    className="closest-dist-num"
+                    min="0.1"
+                    step="0.5"
+                    defaultValue="2"
+                    aria-label="Proximity distance value"
+                  />
+                  <select id="proximityPickDistUnit" className="sm" defaultValue="km" aria-label="Proximity distance unit">
+                    <option value="km">Kilometer</option>
+                    <option value="m">Meter</option>
+                  </select>
+                  <button type="button" className="btn-secondary" id="btnProximityPickPoint">
+                    {t('closestPickPoint')}
+                  </button>
+                </div>
+                <div className="row">
                   <label>
                     <input type="checkbox" id="proxCheckAll" /> {t('proximitySelectPoi')}
                   </label>
@@ -119,7 +150,7 @@ export default function Sidebar({ t }) {
                   </button> */}
                 </div>
                 <div className="row">
-                ?  <span className="lbl">{t('closestBufferDist')}</span>
+                  <span className="lbl">{t('closestBufferDist')}</span>
                   <input
                     type="number"
                     id="closestDistNum"
@@ -141,7 +172,7 @@ export default function Sidebar({ t }) {
                 <p className="panel-hint">{t('intersectHint')}</p>
               </div>
 
-              <div id="pD" className="panel" role="tabpanel">
+              {/* <div id="pD" className="panel" role="tabpanel">
                 <div className="row">
                   <label>
                     <input type="checkbox" id="multiCheckAll" /> {t('multiSelectUtility')}
@@ -159,7 +190,7 @@ export default function Sidebar({ t }) {
                 </div>
                 <div id="multiCheckboxes" className="chk-grid"></div>
                 <p className="panel-hint">{t('multiHint')}</p>
-              </div>
+              </div> */}
 
               <div id="pE" className="panel" role="tabpanel">
                 <div className="row">
@@ -190,6 +221,7 @@ export default function Sidebar({ t }) {
               <circle cx="17" cy="8" r="1.2" fill="currentColor" />
             </svg>
           </span>
+          <span className="rail-lbl">{t('railAnalysis')}</span>
         </button>
 
         <button type="button" className="rail-btn" id="btnOpenNav" title={t('railTitleAoi')}>
@@ -199,6 +231,7 @@ export default function Sidebar({ t }) {
               <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M12 8v8M8 12h8" />
             </svg>
           </span>
+          <span className="rail-lbl">{t('railAoi')}</span>
         </button>
 
         <button type="button" className="rail-btn active" id="btnTogglePanel" title={t('railTitleLayers')}>
@@ -209,8 +242,8 @@ export default function Sidebar({ t }) {
               <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M20 16l-8 4-8-4" />
             </svg>
           </span>
+          <span className="rail-lbl">{t('railLayers')}</span>
         </button>
-        <span className="rail-tip">{t('railLayers')}</span>
         {/* <button
           type="button"
           className="rail-btn"
@@ -241,6 +274,7 @@ export default function Sidebar({ t }) {
               <circle cx="18" cy="18" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
             </svg>
           </span>
+          <span className="rail-lbl">{t('railSelect')}</span>
         </button>
 
         <button type="button" className="rail-btn" id="btnMapMultiSelect" title={t('railTitleMultiSelect')} aria-pressed="false">
@@ -252,6 +286,7 @@ export default function Sidebar({ t }) {
               <rect x="13" y="13" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
             </svg>
           </span>
+          <span className="rail-lbl">{t('railMultiSelect')}</span>
         </button>
 
         <button type="button" className="rail-btn" id="btnMapSelToAnalysis" title={t('railTitleMapSelAnalysis')}>
@@ -261,6 +296,7 @@ export default function Sidebar({ t }) {
               <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M4 19h10M4 15h14M4 11h8" />
             </svg>
           </span>
+          <span className="rail-lbl">{t('railMapSelAnalysis')}</span>
         </button>
       </aside>
 
@@ -269,7 +305,7 @@ export default function Sidebar({ t }) {
           <div className="ap-head-row">
             <h2 id="gisToolsPanelTitle">{t('layersTitle')}</h2>
             <button type="button" className="ap-close" id="btnToolsPanelClose" title={t('closePanel')}>
-              ×
+              &times;
             </button>
           </div>
           <p>{t('layersIntro')}</p>
@@ -291,7 +327,7 @@ export default function Sidebar({ t }) {
           <div className="ap-head-row">
             <h2 id="aoiModalTitle">{t('aoiLandTitle')}</h2>
             <button type="button" className="ap-close" id="btnNavClose" title={t('closePanel')}>
-              ×
+              &times;
             </button>
           </div>
         </div>
@@ -529,7 +565,7 @@ export default function Sidebar({ t }) {
           <div className="ap-head-row">
             <h2 id="selectToolsTitle">{t('selectToolsLabel')}</h2>
             <button type="button" className="ap-close" id="btnSelectToolsClose" title={t('closePanel')}>
-              ×
+              &times;
             </button>
           </div>
           <p className="stools-intro">{t('selectToolsIntro')}</p>
@@ -656,3 +692,4 @@ export default function Sidebar({ t }) {
     </>
   )
 }
+
