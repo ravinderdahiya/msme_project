@@ -7,16 +7,20 @@ import MainSidebar from "./newmainmap/MainSidebar";
 import MapStage from "./newmainmap/MapStage";
 import NewMainMapHeader from "./newmainmap/NewMainMapHeader";
 import SelectLandPanel from "./newmainmap/SelectLandPanel";
+import NearbyPlacesPanel from "./newmainmap/NearbyPlacesPanel";
 import {
   AOI_LAND_OPTIONS,
   ANALYSIS_AMENITIES,
   ANALYSIS_PATH,
   BASE_MAP_PATH,
+  NEARBY_PLACES_PATH,
+  NEARBY_PLACES_RESULTS,
   BUFFER_PATH,
   BUFFER_PRESETS,
   BUFFER_SUMMARY,
   LAYERS_PATH,
-  LAYER_ITEMS,
+  LAYER_GROUPS,
+  getAllSublayerEntries,
   SELECT_LAND_PATH,
   buildDefaultSelection,
   otherMenu,
@@ -47,26 +51,43 @@ export default function NewMainMap() {
   const [showWithinBuffer, setShowWithinBuffer] = useState(true);
   const [bufferVisible, setBufferVisible] = useState(true);
   const [bufferApplied, setBufferApplied] = useState(true);
-  const [selectedAoiOption, setSelectedAoiOption] = useState(AOI_LAND_OPTIONS[0]?.id ?? "");
-
   const selectLandOpen = location.pathname === SELECT_LAND_PATH;
   const layersOpen = location.pathname === LAYERS_PATH;
   const bufferOpen = location.pathname === BUFFER_PATH;
   const analysisOpen = location.pathname === ANALYSIS_PATH;
+  const nearbyPlacesOpen = location.pathname === NEARBY_PLACES_PATH;
   const sidePanelOpen = selectLandOpen || layersOpen || bufferOpen || analysisOpen;
+  const backdropOpen = sidePanelOpen || nearbyPlacesOpen;
 
   const openLayers = useCallback(() => navigate(LAYERS_PATH), [navigate]);
   const openBuffer = useCallback(() => navigate(BUFFER_PATH), [navigate]);
   const closeSidePanel = useCallback(() => navigate(BASE_MAP_PATH), [navigate]);
 
-  const filteredLayerItems = useMemo(() => {
+  const filteredLayerGroups = useMemo(() => {
     const q = layerSearch.trim().toLowerCase();
-    if (!q) return LAYER_ITEMS;
-    return LAYER_ITEMS.filter((l) => l.label.toLowerCase().includes(q));
+    if (!q) return LAYER_GROUPS;
+    return LAYER_GROUPS.map((g) => {
+      const gMatch = g.label.toLowerCase().includes(q);
+      const matchedSublayers = g.sublayers.filter((s) => s.label.toLowerCase().includes(q));
+      if (gMatch) return g;
+      if (matchedSublayers.length) return { ...g, sublayers: matchedSublayers };
+      return null;
+    }).filter(Boolean);
   }, [layerSearch]);
 
   const toggleLayer = (id) => {
     setDraftLayers((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const toggleLayerGroup = (group) => {
+    const ids = group.sublayers.map((s) => s.id);
+    setDraftLayers((prev) => {
+      const allOn = ids.every((id) => prev[id]);
+      const next = { ...prev };
+      const v = !allOn;
+      for (const id of ids) next[id] = v;
+      return next;
+    });
   };
 
   const handleApplyLayers = () => {
@@ -74,7 +95,7 @@ export default function NewMainMap() {
   };
 
   const handleResetLayers = () => {
-    const cleared = Object.fromEntries(LAYER_ITEMS.map((l) => [l.id, false]));
+    const cleared = Object.fromEntries(getAllSublayerEntries().map((l) => [l.id, false]));
     setDraftLayers(cleared);
   };
 
@@ -83,7 +104,7 @@ export default function NewMainMap() {
       navigate(item.route);
       return;
     }
-    if (sidePanelOpen) closeSidePanel();
+    if (sidePanelOpen || nearbyPlacesOpen) closeSidePanel();
   };
 
   const isSidebarItemActive = (item) => {
@@ -112,9 +133,9 @@ export default function NewMainMap() {
         bufferOpen ? " nm-page--buffer-open" : ""
       }${analysisOpen ? " nm-page--analysis-open" : ""}${
         selectLandOpen ? " nm-page--aoi-open" : ""
-      }`}
+      }${nearbyPlacesOpen ? " nm-page--nearby-open" : ""}`}
     >
-      {sidePanelOpen && (
+      {backdropOpen && (
         <button
           type="button"
           className="nm-layers-backdrop"
@@ -140,21 +161,17 @@ export default function NewMainMap() {
       />
 
       {selectLandOpen && (
-        <SelectLandPanel
-          options={AOI_LAND_OPTIONS}
-          selectedOptionId={selectedAoiOption}
-          onSelectOption={setSelectedAoiOption}
-          onClose={closeSidePanel}
-        />
+        <SelectLandPanel options={AOI_LAND_OPTIONS} onClose={closeSidePanel} />
       )}
 
       {layersOpen && (
         <LayersPanel
           layerSearch={layerSearch}
           setLayerSearch={setLayerSearch}
-          filteredLayerItems={filteredLayerItems}
+          filteredLayerGroups={filteredLayerGroups}
           draftLayers={draftLayers}
           toggleLayer={toggleLayer}
+          toggleLayerGroup={toggleLayerGroup}
           onApplyLayers={handleApplyLayers}
           onResetLayers={handleResetLayers}
           onClose={closeSidePanel}
@@ -175,8 +192,6 @@ export default function NewMainMap() {
         />
       )}
 
-      {analysisOpen && <AnalysisPanel amenities={ANALYSIS_AMENITIES} onClose={closeSidePanel} />}
-
       <MapStage
         sidePanelOpen={sidePanelOpen}
         onCloseSidePanel={closeSidePanel}
@@ -186,11 +201,16 @@ export default function NewMainMap() {
         setBufferVisible={setBufferVisible}
         analysisOpen={analysisOpen}
         analysisAmenities={ANALYSIS_AMENITIES}
+        nearbyPlacesOpen={nearbyPlacesOpen}
         bufferDistance={bufferDistance}
-        activeLayerCount={LAYER_ITEMS.filter((l) => appliedLayers[l.id]).length}
+        activeLayerCount={getAllSublayerEntries().filter((l) => appliedLayers[l.id]).length}
         onOpenLayers={() => navigate(LAYERS_PATH)}
-        onOpenAnalysis={() => navigate(ANALYSIS_PATH)}
+        onOpenNearbyPlaces={() => navigate(NEARBY_PLACES_PATH)}
       />
+
+      {analysisOpen && <AnalysisPanel amenities={ANALYSIS_AMENITIES} onClose={closeSidePanel} />}
+
+      {nearbyPlacesOpen && <NearbyPlacesPanel places={NEARBY_PLACES_RESULTS} onClose={closeSidePanel} />}
     </div>
   );
 }

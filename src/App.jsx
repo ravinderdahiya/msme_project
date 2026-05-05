@@ -56,6 +56,7 @@ function App() {
                     <Route path="/newmainmap/select-land" element={<NewMainMap />} />
                     <Route path="/newmainmap/layers" element={<NewMainMap />} />
                     <Route path="/newmainmap/analysis" element={<NewMainMap />} />
+                    <Route path="/newmainmap/nearby-places" element={<NewMainMap />} />
                     <Route path="/newmainmap/buffer" element={<NewMainMap />} />
                     <Route path="/newmainmap" element={<NewMainMap />} />
                     <Route path="/Admin" element={<Admin />} />
