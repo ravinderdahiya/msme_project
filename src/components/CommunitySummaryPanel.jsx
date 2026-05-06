@@ -68,11 +68,22 @@ const LOADING_ROWS = [
   { key: 'schools', label: 'Schools' },
   { key: 'iti', label: 'ITI' },
   { key: 'hospitals', label: 'Hospitals' },
+  { key: 'governmentHospitals', label: 'Government Hospital' },
+  { key: 'phcChc', label: 'PHC & CHC' },
+  { key: 'aayushBharatFacilities', label: 'Aayush Bharat Facilites' },
+  { key: 'privateHospitals', label: 'Private Hospital' },
   { key: 'electricPoles', label: 'Electric poles' },
+  { key: 'electricStations', label: 'Electric Station' },
+  { key: 'secUgElectricLineSegments', label: 'SecUG Electric Line Segment' },
   { key: 'roads', label: 'Roads' },
   { key: 'airports', label: 'Airports' },
   { key: 'mobileTowers', label: 'Mobile towers' },
+  { key: 'policeStations', label: 'Police Station' },
+  { key: 'industrialSites', label: 'Industrial Sites' },
+  { key: 'proposedMetroStations', label: 'Proposed Metro Station' },
   { key: 'canals', label: 'Canals' },
+  { key: 'hsvpPlots', label: 'HSVP Plots' },
+  { key: 'hsvpSectorBoundary', label: 'HSVP Sector Boundary' },
   { key: 'entertainment', label: 'Entertainment' },
 ]
 
@@ -93,11 +104,22 @@ const CATEGORY_DESCRIPTIONS = {
   schools: 'Nearby schools and education infrastructure in the selected area',
   iti: 'Industrial training institutes close to your selected point or buffer',
   hospitals: 'Hospitals and healthcare facilities available near the selected area',
+  governmenthospitals: 'Government hospital facilities near your selected area',
+  phcchc: 'PHC and CHC healthcare facilities near your selected area',
+  aayushbharatfacilities: 'Aayush Bharat facilities available around your selected area',
+  privatehospitals: 'Private hospital facilities near your selected area',
   electricpoles: 'Electric power distribution points available around the location',
+  electricstations: 'Electric station infrastructure around the selected area',
+  secugelectriclinesegments: 'Secondary underground electric line segments near the selected area',
   roads: 'Road accessibility and transport links around your selected area',
   airports: 'Closest aviation connectivity points for passenger and cargo movement',
   mobiletowers: 'Telecom tower availability supporting network coverage nearby',
+  policestations: 'Police station points available around the selected area',
+  industrialsites: 'Industrial site locations available near your selected area',
+  proposedmetrostations: 'Planned metro station points near your selected area',
   canals: 'Canal and waterway infrastructure in and around the selected area',
+  hsvpplots: 'HSVP plot features available around your selected area',
+  hsvpsectorboundary: 'HSVP sector boundary features near your selected area',
   entertainment: 'Entertainment and leisure destinations around your selected area',
 }
 
@@ -128,6 +150,17 @@ function getCategoryItems(row) {
   if (Array.isArray(row.list)) return row.list
 
   return []
+}
+
+function hasCategoryData(row) {
+  if (!row) return false
+  var count = Number(row.count)
+  if (Number.isFinite(count) && count > 0) return true
+  var rawCount = Number(row.rawCount)
+  if (Number.isFinite(rawCount) && rawCount > 0) return true
+  if (getCategoryItems(row).length > 0) return true
+  if (row.nearestItem) return true
+  return false
 }
 
 function getItemName(item, fallbackIndex) {
@@ -358,11 +391,13 @@ export default function CommunitySummaryPanel() {
   if (!open) return null
   if (!displaySummary && !waitingForCounts) return null
 
-  const rows = Array.isArray(displaySummary && displaySummary.categories)
+  const allRows = Array.isArray(displaySummary && displaySummary.categories)
     ? displaySummary.categories
     : LOADING_ROWS
 
-  const hasUnavailable = rows.some((r) => r && r.available === false)
+  const rows = displaySummary ? allRows.filter((row) => hasCategoryData(row)) : allRows
+
+  const hasUnavailable = allRows.some((r) => r && r.available === false)
 
   const totalCountNum = rows.reduce((sum, row) => {
     var value = row && Number.isFinite(Number(row.count)) ? Number(row.count) : 0
@@ -382,6 +417,12 @@ export default function CommunitySummaryPanel() {
       : latestReport && latestReport.radiusM
 
   const locationLabel = getLocationLabel(displaySummary, latestReport)
+  const selectableCategoryKeys = rows
+    .map((row) => String(row && row.key ? row.key : '').toLowerCase())
+    .filter((key) => key)
+  const allSelected =
+    selectableCategoryKeys.length > 0 &&
+    selectableCategoryKeys.every((key) => selectedCategoryKeys.includes(key))
 
   function handleDownloadCsv() {
     if (!displaySummary) return
@@ -601,6 +642,25 @@ export default function CommunitySummaryPanel() {
     )
   }
 
+  function handleSelectAllCategories() {
+    if (waitingForCounts) return
+    var seen = {}
+    var keys = []
+    rows.forEach((row) => {
+      var key = String(row && row.key ? row.key : '').toLowerCase()
+      if (!key || seen[key]) return
+      seen[key] = true
+      keys.push(key)
+    })
+    setSelectedCategoryKeys(keys)
+  }
+
+  function handleClearCategories() {
+    setSelectedCategoryKeys([])
+    setOpenCategoryKey(null)
+    handleClearMapGraphics()
+  }
+
   return (
     <aside
       className="community-summary-panel community-ba-panel"
@@ -631,7 +691,7 @@ export default function CommunitySummaryPanel() {
       </div>
 
       <div className="community-ba-toolbar">
-        <p className="community-ba-toolbar-title">What's in My Community?</p>
+        <p className="community-ba-toolbar-title">POI</p>
         <div className="community-ba-toolbar-actions">
           <button
             type="button"
@@ -667,9 +727,25 @@ export default function CommunitySummaryPanel() {
             o
           </div>
           <div>
-            <h4>What's in My Community?</h4>
-            <p>Places that make your life richer and community better</p>
-            <small>{locationLabel}</small>
+            <h4>Near by  Community</h4>
+            {/* <p>Places that make your life richer and community better</p> */}
+            <div className="community-ba-intro-actions">
+              <button
+                type="button"
+                className="community-ba-intro-chip-btn"
+                onClick={handleSelectAllCategories}
+                disabled={!rows.length || waitingForCounts || allSelected}
+              >
+                {allSelected ? 'All selected' : 'Select all'}
+              </button>
+              <button
+                type="button"
+                className="community-ba-intro-chip-btn community-ba-intro-chip-btn-clear"
+                onClick={handleClearCategories}
+              >
+                Clear
+              </button>
+            </div>
           </div>
         </div>
 

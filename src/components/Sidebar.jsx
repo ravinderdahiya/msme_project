@@ -98,11 +98,11 @@ export default function Sidebar({ t }) {
                     {t('runBuffer')}
                   </button>
                 </div>
-                <div className="buffer-mark-row">
+                {/* <div className="buffer-mark-row">
                   <button type="button" className="btn-secondary" id="btnBufferPdf">
                     Download buffer PDF
                   </button>
-                </div>
+                </div> */}
                 <p className="panel-hint">{t('bufferHint')}</p>
               </div>
 
