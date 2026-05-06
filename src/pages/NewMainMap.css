@@ -971,6 +971,10 @@
   width: 100%;
   min-height: 46px;
   padding: 12px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   border: none;
   border-radius: 10px;
   font-family: inherit;
@@ -995,6 +999,10 @@
   width: 100%;
   margin-top: 2px;
   padding: 14px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   border: none;
   border-radius: 12px;
   font-family: inherit;
@@ -1200,6 +1208,10 @@
   width: 100%;
   min-height: 46px;
   padding: 12px 14px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   border-radius: 10px;
   border: 2px solid rgba(33, 89, 216, 0.45);
   background: var(--surface);
@@ -1223,6 +1235,10 @@
   width: 100%;
   margin-top: 2px;
   padding: 14px 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
   border: none;
   border-radius: 12px;
   font-size: 1rem;

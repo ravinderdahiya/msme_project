@@ -370,7 +370,7 @@ export default function Sidebar({ t }) {
                     type="number"
                     min="0.1"
                     step="0.1"
-                    defaultValue="2"
+                    defaultValue="0"
                     disabled
                   />
                   <select id="aoiVillageBufferUnit" defaultValue="km" disabled>
@@ -500,7 +500,7 @@ export default function Sidebar({ t }) {
 
                 <label>{t('cadRadius')}</label>
                 <div className="aoi-buffer-distance-row">
-                  <input id="cadNearM" type="number" min="0.1" step="0.1" defaultValue="5" />
+                  <input id="cadNearM" type="number" min="0.1" step="0.1" defaultValue="0" />
                   <select id="cadNearUnit" defaultValue="km">
                     <option value="km">Kilometer</option>
                     <option value="m">Meter</option>

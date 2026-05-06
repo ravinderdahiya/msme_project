@@ -5,10 +5,7 @@ export default function PrintScreenButton({ t }) {
       id="closestPrintFab"
       className="closest-print-fab"
       title={t?.("printScreenPdf") || "Print screen PDF"}
-      onClick={() =>
-        window.msmeGisDownloadClosestPdf &&
-        window.msmeGisDownloadClosestPdf()
-      }
+      aria-label={t?.("printScreenPdf") || "Print screen PDF"}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path
