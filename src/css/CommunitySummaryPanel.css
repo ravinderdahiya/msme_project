@@ -303,6 +303,45 @@
   line-height: 1.4;
 }
 
+.community-ba-intro-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin: 4px 0 8px;
+}
+
+.community-ba-intro-chip-btn {
+  border: none;
+  border-radius: 999px;
+  background: #e8fff6;
+  color: #087452;
+  padding: 6px 11px;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+  box-shadow: inset 0 0 0 1px rgba(8, 116, 82, 0.14);
+}
+
+.community-ba-intro-chip-btn:hover {
+  background: #dcfaee;
+}
+
+.community-ba-intro-chip-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.community-ba-intro-chip-btn-clear {
+  background: #fff1f1;
+  color: #b42318;
+  box-shadow: inset 0 0 0 1px rgba(180, 35, 24, 0.16);
+}
+
+.community-ba-intro-chip-btn-clear:hover {
+  background: #ffe7e7;
+}
+
 .community-ba-intro-card small {
   display: inline-flex;
   max-width: 250px;

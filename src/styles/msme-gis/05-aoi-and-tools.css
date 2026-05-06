@@ -61,6 +61,11 @@
   width: 100%;
   flex: 0 0 auto;
   border-radius: 999px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-left: 18px;
 }
 
 #aoiPanel .modal-panel,

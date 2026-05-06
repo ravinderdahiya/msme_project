@@ -127,7 +127,7 @@ export default function Sidebar({ t }) {
 
               <button
                 type="button"
-              className="nm-sidebar-item"
+                className="nm-sidebar-item"
                 id="btnMapMultiSelect"
                 title={t('railTitleMultiSelect')}
                 aria-pressed="false"
@@ -148,7 +148,7 @@ export default function Sidebar({ t }) {
 
               <button
                 type="button"
-              className="nm-sidebar-item"
+                className="nm-sidebar-item"
                 id="btnMapSelToAnalysis"
                 title={t('railTitleMapSelAnalysis')}
               >
