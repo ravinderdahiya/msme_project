@@ -44,6 +44,11 @@ const MSMEGISPage = () => {
         } catch {}
         window.__msmeGisCleanup = null;
       }
+      /* Allow initMsmeWebGis to run again after StrictMode remount or route change. */
+      if (typeof window !== "undefined") {
+        window.__msmeGisInitialized = false;
+        window.__msmeGisInitInProgress = false;
+      }
     };
   }, []);
 
