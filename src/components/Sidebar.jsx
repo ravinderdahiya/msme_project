@@ -423,6 +423,7 @@ export default function Sidebar({ t }) {
                     <input type="checkbox" id="chkLokSabhaBoundary" />
                     <span>{t('lokSabhaBoundary')}</span>
                   </label>
+                  {/*
                   <label className="const-boundary-item">
                     <input type="checkbox" id="chkParliamentaryBoundary" />
                     <span>{t('parliamentaryBoundary')}</span>
@@ -431,6 +432,7 @@ export default function Sidebar({ t }) {
                     <input type="checkbox" id="chkRajyaSabhaBoundary" />
                     <span>{t('rajyaSabhaBoundary')}</span>
                   </label>
+                  */}
                 </div>
                 <div className="actions">
                   <button type="button" className="btn-clear" id="btnParliamentaryClear">
@@ -446,10 +448,12 @@ export default function Sidebar({ t }) {
               <section className="aoi-card">
                 <h3 className="aoi-card-title">Assembly Boundary</h3>
                 <p className="aoi-card-desc">Select district and Vidhan Sabha constituency.</p>
+                {/*
                 <label>{t('district')}</label>
                 <select id="parliamentaryDistrictSelect">
                   <option value="">{t('placeholderDistrict')}</option>
                 </select>
+                */}
                 <label>{t('vidhanSabha')}</label>
                 <select id="parliamentaryAssemblySelect" disabled>
                   <option value="">{t('placeholderVidhanSabha')}</option>
