@@ -4,36 +4,42 @@
  */
 
 #toolsPanel.gis-tools-layer-panel {
-  background: #ffffff;
-  border: 1px solid rgba(15, 35, 64, 0.12);
-  border-radius: 22px 22px 0 0;
-  box-shadow: 0 22px 60px rgba(15, 35, 64, 0.1);
-  padding: 20px 20px 16px;
-  gap: 16px;
-}
-
-#toolsPanel.gis-tools-layer-panel .gis-tools-layer-head-wrap {
-  padding: 0 0 4px;
+  /* The outer card is provided by `.nm-sidebar-gis-panels` in `MSMEGisPageShell.css`. */
   background: transparent;
-  border-bottom: none;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-height: 0;
 }
 
-#toolsPanel.gis-tools-layer-panel .gis-tools-layer-header {
+#toolsPanel.gis-tools-layer-panel .tp-head {
+  flex-shrink: 0;
+  padding: 0;
+  margin: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+#toolsPanel.gis-tools-layer-panel .tp-head .ap-head-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
 }
 
-#toolsPanel.gis-tools-layer-panel .gis-tools-layer-header h2 {
+#toolsPanel.gis-tools-layer-panel .tp-head h2 {
   margin: 0;
   font-size: 1.15rem;
   font-weight: 700;
-  color: #0f233f;
+  color: var(--nm-text, #0f233f);
   letter-spacing: -0.01em;
 }
 
-#toolsPanel.gis-tools-layer-panel .gis-tools-layer-close {
+#toolsPanel.gis-tools-layer-panel #btnToolsPanelClose {
   width: 40px;
   height: 40px;
   flex-shrink: 0;
@@ -41,26 +47,27 @@
   place-items: center;
   border: none;
   border-radius: 14px;
-  background: #f0f4fb;
-  color: #0f233f;
+  background: var(--nm-elev-muted, #f0f4fb);
+  color: var(--nm-text, #0f233f);
   font-size: 1.35rem;
   line-height: 1;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
 
-#toolsPanel.gis-tools-layer-panel .gis-tools-layer-close:hover {
-  background: #e2e9f5;
+#toolsPanel.gis-tools-layer-panel #btnToolsPanelClose:hover {
+  background: rgba(15, 35, 64, 0.08);
+  transform: translateY(-1px);
 }
 
-#toolsPanel.gis-tools-layer-panel .gis-tools-layer-intro {
+#toolsPanel.gis-tools-layer-panel .tp-head p {
   margin: 10px 0 0;
-  font-size: 0.88rem;
+  font-size: 0.92rem;
   line-height: 1.5;
-  color: #5f718f;
+  color: var(--nm-muted, #5f718f);
 }
 
-#toolsPanel.gis-tools-layer-panel .gis-tools-layer-scroll {
+#toolsPanel.gis-tools-layer-panel .tp-scroll {
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -70,15 +77,50 @@
   overflow: hidden;
 }
 
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 16px;
+  background: var(--field-bg, #f5f8ff);
+  border: 1px solid rgba(15, 35, 64, 0.08);
+  color: var(--nm-muted, #5f718f);
+  flex-shrink: 0;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-search-ico {
+  width: 18px;
+  height: 18px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-search input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: 0.95rem;
+  color: var(--nm-text, #0f233f);
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-search input::placeholder {
+  color: var(--nm-muted, #5f718f);
+}
+
 #toolsPanel.gis-tools-layer-panel #layerListContainer.gis-layer-list-mount {
   max-height: none !important;
   flex: 1 1 auto;
   min-height: 160px;
   overflow: auto;
   border-radius: 16px;
-  background: #f5f8ff;
-  border: 1px solid rgba(15, 35, 64, 0.08);
-  padding: 8px 6px;
+  background: var(--nm-layerlist-bg, #f5f8ff);
+  border: 1px solid var(--nm-layerlist-border, rgba(15, 35, 64, 0.08));
+  padding: 6px 6px 6px 6px;
   font-size: 13px;
 }
 
@@ -97,20 +139,48 @@
 #toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list {
   --calcite-color-background: transparent;
   --calcite-list-background-color: transparent;
-  --calcite-color-border-1: rgba(15, 35, 64, 0.1);
-  --calcite-color-border-2: rgba(15, 35, 64, 0.06);
+  --calcite-color-border-1: var(--nm-layerlist-outline, rgba(15, 35, 64, 0.08));
+  --calcite-color-border-2: var(--nm-layerlist-outline, rgba(15, 35, 64, 0.08));
   --calcite-corner-radius: 12px;
   --calcite-font-size--1: 13px;
+  /* Ensure readable text/icons inside shadow DOM */
+  --calcite-color-text-1: var(--nm-text, #0f233f);
+  --calcite-color-text-2: var(--nm-muted, #5f718f);
+  --calcite-color-text-3: var(--nm-muted, #5f718f);
+  --calcite-color-icon: var(--nm-muted, #5f718f);
+  --calcite-color-brand: var(--nm-primary, #2159d8);
+  --calcite-color-brand-hover: var(--nm-primary, #2159d8);
 }
 
 #toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item {
-  --calcite-color-foreground-1: #0f233f;
-  --calcite-color-foreground-2: #5f718f;
+  --calcite-color-foreground-1: var(--nm-text, #0f233f);
+  --calcite-color-foreground-2: var(--nm-muted, #5f718f);
   --calcite-list-item-spacing-indent: 10px;
 }
 
 #toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item:hover {
-  --calcite-ui-foreground-hover: #f4f8ff;
+  --calcite-ui-foreground-hover: var(--nm-layerlist-hover, rgba(33, 89, 216, 0.06));
+}
+
+/* Calcite list item hover/focus (shadow DOM parts) */
+#toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item::part(container) {
+  border-radius: 12px;
+}
+
+#toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item:hover::part(container),
+#toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item:focus-within::part(container) {
+  background: var(--nm-layerlist-hover, rgba(33, 89, 216, 0.06));
+}
+
+#toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item:focus-within::part(container) {
+  box-shadow: 0 0 0 3px rgba(33, 89, 216, 0.18);
+}
+
+/* Esri LayerList fallback hover (non-calcite DOM) */
+#toolsPanel.gis-tools-layer-panel #layerListContainer .esri-layer-list__item:hover,
+#toolsPanel.gis-tools-layer-panel #layerListContainer .esri-layer-list__item:focus-within {
+  background: var(--nm-layerlist-hover, rgba(33, 89, 216, 0.06));
+  border-radius: 12px;
 }
 
 #toolsPanel.gis-tools-layer-panel #status {
@@ -119,19 +189,105 @@
   font-size: 0.82rem;
   padding: 10px 14px;
   border-radius: 14px;
-  background: #ffffff;
-  border: 1px solid rgba(15, 35, 64, 0.1);
-  color: #5f718f;
+  background: var(--nm-surface, #ffffff);
+  border: 1px solid var(--nm-layerlist-border, rgba(15, 35, 64, 0.08));
+  color: var(--nm-muted, #5f718f);
   box-shadow: 0 2px 8px rgba(15, 35, 64, 0.04);
 }
 
-@media (max-width: 768px) {
-  #toolsPanel.gis-tools-layer-panel {
-    border-radius: 24px 24px 0 0;
-    padding: 18px 18px max(16px, env(safe-area-inset-bottom, 0px));
-  }
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-footer {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-top: 8px;
+  flex-shrink: 0;
+  border-top: 1px solid rgba(15, 35, 64, 0.08);
+}
 
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-apply {
+  width: 100%;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-reset {
+  border: none;
+  background: none;
+  padding: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--nm-primary, #2159d8);
+  cursor: pointer;
+  text-align: center;
+}
+
+#toolsPanel.gis-tools-layer-panel .gis-tools-layer-reset:hover {
+  text-decoration: underline;
+}
+
+@media (max-width: 768px) {
   #toolsPanel.gis-tools-layer-panel #layerListContainer.gis-layer-list-mount {
     min-height: 120px;
   }
+}
+
+/* Dark mode parity with NewMainMap */
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel {
+  --nm-layerlist-bg: rgba(26, 35, 50, 0.95);
+  --nm-layerlist-border: rgba(232, 237, 245, 0.12);
+  --nm-layerlist-outline: rgba(232, 237, 245, 0.10);
+  --nm-layerlist-hover: rgba(110, 160, 255, 0.14);
+}
+
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list {
+  --calcite-color-text-1: rgba(241, 245, 253, 0.96);
+  --calcite-color-text-2: rgba(148, 163, 184, 0.92);
+  --calcite-color-text-3: rgba(148, 163, 184, 0.9);
+  --calcite-color-icon: rgba(184, 197, 217, 0.9);
+  --calcite-color-brand: #6ea0ff;
+  --calcite-color-brand-hover: #9ec5ff;
+}
+
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item {
+  --calcite-color-foreground-1: rgba(241, 245, 253, 0.96);
+  --calcite-color-foreground-2: rgba(148, 163, 184, 0.9);
+  opacity: 1;
+}
+
+/* Fallbacks for various Esri / Calcite internals */
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item,
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer calcite-list-item * {
+  color: rgba(241, 245, 253, 0.95);
+}
+
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer .esri-layer-list__item-title,
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer .esri-layer-list__item-label,
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer .esri-layer-list__item-toggle {
+  color: rgba(241, 245, 253, 0.95) !important;
+}
+
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer .esri-layer-list__item-caption,
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer .esri-layer-list__item-description {
+  color: rgba(148, 163, 184, 0.92) !important;
+}
+
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer calcite-action,
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #layerListContainer calcite-action * {
+  color: rgba(241, 245, 253, 0.9);
+}
+
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel #btnToolsPanelClose:hover {
+  background: rgba(232, 237, 245, 0.08);
+}
+
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel .gis-tools-layer-search {
+  background: rgba(26, 35, 50, 0.95);
+  border-color: rgba(232, 237, 245, 0.12);
+  color: rgba(232, 237, 245, 0.8);
+}
+
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel .gis-tools-layer-search input {
+  color: rgba(241, 245, 253, 0.95);
+}
+
+[data-theme='black'] #toolsPanel.gis-tools-layer-panel .gis-tools-layer-footer {
+  border-top-color: rgba(232, 237, 245, 0.12);
 }

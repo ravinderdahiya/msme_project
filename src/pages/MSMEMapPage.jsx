@@ -21,6 +21,8 @@ const MSMEGISPage = () => {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    // ArcGIS Calcite components (LayerList uses calcite) need calcite-mode for correct contrast.
+    document.documentElement.setAttribute("calcite-mode", theme === "black" ? "dark" : "light");
     try {
       localStorage.setItem("msme-ui-theme", theme);
     } catch {
@@ -163,6 +165,8 @@ const MSMEGISPage = () => {
         setSearchQuery={setSearchQuery}
         searchBusy={searchBusy}
         onSearchSubmit={handleTopSearchSubmit}
+        theme={theme}
+        onToggleTheme={() => setTheme((v) => (v === "black" ? "white" : "black"))}
         lang={lang}
         setLang={setLang}
         languages={languages}

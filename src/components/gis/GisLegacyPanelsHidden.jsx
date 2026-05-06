@@ -2,7 +2,83 @@
  * GIS panel DOM — required by initMsmeWebGis (getElementById / LayerList mount).
  * Mounted inside `#rail` beside the nm-sidebar controls; styled by MSMEGisPageShell.css.
  */
+import { useEffect, useState } from "react";
+
 export default function GisLegacyPanelsHidden({ t }) {
+  const [layerSearch, setLayerSearch] = useState("");
+
+  useEffect(() => {
+    const container = document.getElementById("layerListContainer");
+    if (!container) return;
+
+    const applyThemeVars = () => {
+      const isDark = document.documentElement.getAttribute("data-theme") === "black";
+
+      // Set vars on container (cascades into Calcite web-components).
+      container.style.setProperty("--calcite-color-text-1", isDark ? "rgba(241,245,253,0.96)" : "#0f233f");
+      container.style.setProperty("--calcite-color-text-2", isDark ? "rgba(148,163,184,0.92)" : "#5f718f");
+      container.style.setProperty("--calcite-color-text-3", isDark ? "rgba(148,163,184,0.9)" : "#5f718f");
+      container.style.setProperty("--calcite-color-icon", isDark ? "rgba(184,197,217,0.92)" : "#5f718f");
+      container.style.setProperty("--calcite-color-brand", isDark ? "#6ea0ff" : "#2159d8");
+      container.style.setProperty("--calcite-color-brand-hover", isDark ? "#9ec5ff" : "#2159d8");
+      container.style.setProperty("--calcite-color-background", "transparent");
+
+      // Ensure list + items are not dimmed by internal defaults.
+      const lists = container.querySelectorAll("calcite-list, calcite-list-item");
+      lists.forEach((el) => {
+        el.style.setProperty("--calcite-color-text-1", isDark ? "rgba(241,245,253,0.96)" : "#0f233f");
+        el.style.setProperty("--calcite-color-text-2", isDark ? "rgba(148,163,184,0.92)" : "#5f718f");
+        el.style.setProperty("--calcite-color-icon", isDark ? "rgba(184,197,217,0.92)" : "#5f718f");
+        el.style.setProperty("--calcite-color-brand", isDark ? "#6ea0ff" : "#2159d8");
+        el.style.setProperty("--calcite-ui-foreground-hover", isDark ? "rgba(110,160,255,0.14)" : "rgba(33,89,216,0.06)");
+        el.style.opacity = "1";
+        el.style.filter = "none";
+      });
+    };
+
+    // Observe LayerList DOM updates (LayerList renders async + updates as layers load).
+    const mo = new MutationObserver(() => applyThemeVars());
+    mo.observe(container, { childList: true, subtree: true });
+
+    // Observe theme changes.
+    const ao = new MutationObserver(() => applyThemeVars());
+    ao.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme", "calcite-mode"] });
+
+    applyThemeVars();
+    return () => {
+      mo.disconnect();
+      ao.disconnect();
+    };
+  }, []);
+
+  useEffect(() => {
+    const root = document.getElementById("layerListContainer");
+    if (!root) return;
+
+    const q = String(layerSearch || "").trim().toLowerCase();
+    const items = root.querySelectorAll("calcite-list-item, .esri-layer-list__item, [role='listitem']");
+    if (!q) {
+      items.forEach((el) => {
+        el.style.removeProperty("display");
+      });
+      return;
+    }
+
+    items.forEach((el) => {
+      const txt = (el.textContent || "").trim().toLowerCase();
+      el.style.display = txt.includes(q) ? "" : "none";
+    });
+  }, [layerSearch]);
+
+  function resetLayerSearch() {
+    setLayerSearch("");
+  }
+
+  function applyLayersClosePanel() {
+    const btn = document.getElementById("btnTogglePanel");
+    if (btn && typeof btn.click === "function") btn.click();
+  }
+
   return (
     <div className="nm-sidebar-gis-panels">
       <aside
@@ -180,12 +256,32 @@ export default function GisLegacyPanelsHidden({ t }) {
               &times;
             </button>
           </div>
-          <p>{t("layersIntro")}</p>
+          {/* <p>{t("layersIntro")}</p> */}
+        </div>
+        <div className="gis-tools-layer-search">
+          <span className="gis-tools-layer-search-ico" aria-hidden>
+            🔎
+          </span>
+          <input
+            type="search"
+            value={layerSearch}
+            onChange={(e) => setLayerSearch(e.target.value)}
+            placeholder="Search layers..."
+            aria-label="Search layers"
+          />
         </div>
         <div className="tp-scroll">
           <div id="layerListContainer" className="gis-layer-list-mount" />
           <div id="status" />
         </div>
+        {/* <div className="gis-tools-layer-footer">
+          <button type="button" className="nm-btn nm-btn-primary gis-tools-layer-apply" onClick={applyLayersClosePanel}>
+            Apply Layers
+          </button>
+          <button type="button" className="gis-tools-layer-reset" onClick={resetLayerSearch}>
+            Reset
+          </button>
+        </div> */}
       </aside>
 
       <aside
@@ -277,7 +373,7 @@ export default function GisLegacyPanelsHidden({ t }) {
             <div id="mpParliamentary" className="modal-panel inline-tab-panel">
               <section className="aoi-card">
                 <h3 className="aoi-card-title">{t("tabParliamentaryBoundary")}</h3>
-                <p className="aoi-card-desc">{t("parliamentaryBoundaryHelp")}</p>
+                {/* <p className="aoi-card-desc">{t("parliamentaryBoundaryHelp")}</p> */}
                 <label>{t("lokSabha")}</label>
                 <select id="parliamentaryLokSabhaSelect" disabled>
                   <option value="">{t("placeholderLokSabha")}</option>
@@ -288,14 +384,14 @@ export default function GisLegacyPanelsHidden({ t }) {
                     <input type="checkbox" id="chkLokSabhaBoundary" />
                     <span>{t("lokSabhaBoundary")}</span>
                   </label>
-                  <label className="const-boundary-item">
+                  {/* <label className="const-boundary-item">
                     <input type="checkbox" id="chkParliamentaryBoundary" />
                     <span>{t("parliamentaryBoundary")}</span>
                   </label>
                   <label className="const-boundary-item">
                     <input type="checkbox" id="chkRajyaSabhaBoundary" />
                     <span>{t("rajyaSabhaBoundary")}</span>
-                  </label>
+                  </label> */}
                 </div>
                 <div className="actions">
                   <button type="button" className="btn-clear" id="btnParliamentaryClear">
@@ -311,11 +407,11 @@ export default function GisLegacyPanelsHidden({ t }) {
             <div id="mpAssemblyBoundary" className="modal-panel inline-tab-panel">
               <section className="aoi-card">
                 <h3 className="aoi-card-title">Assembly Boundary</h3>
-                <p className="aoi-card-desc">Select district and Vidhan Sabha constituency.</p>
-                <label>{t("district")}</label>
+                <p className="aoi-card-desc"> Vidhan Sabha constituency.</p>
+                {/* <label>{t("district")}</label>
                 <select id="parliamentaryDistrictSelect">
                   <option value="">{t("placeholderDistrict")}</option>
-                </select>
+                </select> */}
                 <label>{t("vidhanSabha")}</label>
                 <select id="parliamentaryAssemblySelect" disabled>
                   <option value="">{t("placeholderVidhanSabha")}</option>
