@@ -363,6 +363,27 @@
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
 }
 
+/* MSME shell: spatial toolbar should be ONE card (outer bg + content inside),
+   not nested "card inside card" (which makes content look tiny). */
+#msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs {
+  background: transparent !important;
+  border-bottom-color: rgba(15, 35, 64, 0.14) !important;
+  box-shadow: none !important;
+  padding: 0 0 10px !important;
+  border-radius: 0 !important;
+}
+
+#msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-panels {
+  padding: 12px 0 0 !important;
+}
+
+#msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .panel {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
 #msmeGisRoot.msme-gis-page #rail #aoiPanel .modal-tabs > button {
   width: 100%;
   margin: 0 0 10px;
@@ -580,7 +601,7 @@
   bottom: auto !important;
 }
 
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-left.esri-ui-corner,
+/* #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-left.esri-ui-corner, */
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-bottom-right.esri-ui-corner,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-bottom-left.esri-ui-corner {
   display: flex;
@@ -1229,6 +1250,25 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.04),
     0 10px 26px rgba(0, 0, 0, 0.25) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs {
+  background: transparent !important;
+  border-bottom-color: rgba(232, 237, 245, 0.14) !important;
+  box-shadow: none !important;
+  padding: 0 0 10px !important;
+  border-radius: 0 !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-panels {
+  padding: 12px 0 0 !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .panel {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel .modal-tabs > button,

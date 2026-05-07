@@ -282,7 +282,7 @@ export default function GisLegacyPanelsHidden({ t }) {
         </div>
         <div className="tp-scroll">
           <div id="layerListContainer" className="gis-layer-list-mount" />
-          <div id="status" />
+          {/* <div id="status" /> */}
         </div>
         {/* <div className="gis-tools-layer-footer">
           <button type="button" className="nm-btn nm-btn-primary gis-tools-layer-apply" onClick={applyLayersClosePanel}>
@@ -482,18 +482,18 @@ export default function GisLegacyPanelsHidden({ t }) {
                 </div>
 
                 <div className="actions actions-spaced">
-                  <button type="button" className="btn-go" id="btnCadShow">
+                  {/* <button type="button" className="btn-go" id="btnCadShow">
                     {t("cadShow")}
-                  </button>
+                  </button> */}
                   <button type="button" className="btn-go btn-go-accent" id="btnCadNearby">
                     {t("Features near me")}
                   </button>
                 </div>
 
                 <div className="actions">
-                  <button type="button" className="btn-clear" id="btnCadRoute" title={t("cadRoute")}>
+                  {/* <button type="button" className="btn-clear" id="btnCadRoute" title={t("cadRoute")}>
                     {t("cadRoute")}
-                  </button>
+                  </button> */}
                   <button type="button" className="btn-clear" id="btnCadClear">
                     {t("cadClear")}
                   </button>

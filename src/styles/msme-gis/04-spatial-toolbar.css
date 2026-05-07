@@ -9,12 +9,15 @@
 
 #spatialToolbar .st-tabs {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   gap: 6px;
   padding: 12px 12px 10px;
   border-bottom: 1px solid rgba(191, 208, 223, 0.65);
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.94) 0%, rgba(246, 250, 254, 0.8) 100%);
   border-radius: 16px 16px 0 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: thin;
 }
 
 #spatialToolbar .st-tabs button.tab {
@@ -28,6 +31,8 @@
   cursor: pointer;
   color: #4e7089;
   transition: all 0.18s ease;
+  white-space: nowrap;
+  flex: 0 0 auto;
 }
 
 #spatialToolbar .st-tabs button.tab:hover {
