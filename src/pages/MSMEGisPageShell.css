@@ -1167,6 +1167,40 @@
   background: linear-gradient(180deg, #0d131d 0%, #070b10 100%) !important;
 }
 
+/* Dark mode: make left menu tiles look "raised" with crisp borders (like reference UI) */
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item {
+  background: linear-gradient(180deg, rgba(48, 64, 86, 0.62), rgba(34, 48, 68, 0.62));
+  border: 1px solid rgba(232, 237, 245, 0.18);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    0 14px 28px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item:hover,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item.active {
+  border-color: rgba(110, 160, 255, 0.3);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 18px 34px rgba(0, 0, 0, 0.3);
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item:active {
+  transform: translateY(0px);
+  filter: brightness(1.02);
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-icon {
+  background: linear-gradient(180deg, rgba(52, 70, 94, 0.62), rgba(40, 56, 78, 0.62));
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.07),
+    inset 0 0 0 1px rgba(110, 160, 255, 0.16);
+  color: rgba(110, 160, 255, 0.95);
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item small {
+  color: rgba(148, 163, 184, 0.92);
+}
+
 [data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv {
   background:
     radial-gradient(circle at top left, rgba(110, 160, 255, 0.08), transparent 26%),

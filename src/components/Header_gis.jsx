@@ -116,7 +116,7 @@ export default function HeaderGis({
       </form>
 
       <div className="nmhdr-actions">
-        {/* <button
+        <button
           type="button"
           className={`nmhdr-theme-btn${theme === "black" ? " is-dark" : ""}`}
           onClick={onToggleTheme}
@@ -125,7 +125,7 @@ export default function HeaderGis({
           title={theme === "black" ? "Light mode" : "Dark mode"}
         >
           {theme === "black" ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
-        </button> */}
+        </button>
         {/* <button type="button" className="nmhdr-icon-btn" aria-label="Assistant">
           <Sparkles size={18} strokeWidth={2} />
         </button> */}
