@@ -3,9 +3,27 @@ import { useEffect, useRef } from "react";
 export default function PrintScreenButton({ t }) {
   const rootRef = useRef(null);
 
+  function triggerPrint() {
+    if (typeof window !== "undefined" && typeof window.msmeGisDownloadClosestPdf === "function") {
+      window.msmeGisDownloadClosestPdf();
+    } else {
+      const legacyBtn = document.getElementById("btnClosestPdf");
+      if (legacyBtn && typeof legacyBtn.click === "function") legacyBtn.click();
+    }
+  }
+
   useEffect(() => {
     const root = rootRef.current;
     if (!root) return;
+
+    function onClickCapture(ev) {
+      if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
+      if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
+      if (ev && ev.stopImmediatePropagation) ev.stopImmediatePropagation();
+      triggerPrint();
+    }
+
+    root.addEventListener("click", onClickCapture, true);
 
     const originalParent = root.parentElement;
     const originalNextSibling = root.nextSibling;
@@ -38,6 +56,7 @@ export default function PrintScreenButton({ t }) {
     }
 
     return () => {
+      root.removeEventListener("click", onClickCapture, true);
       if (mo) mo.disconnect();
       if (moveTimer) window.clearTimeout(moveTimer);
       if (!root || !originalParent) return;
@@ -56,7 +75,7 @@ export default function PrintScreenButton({ t }) {
       ref={rootRef}
       type="button"
       id="closestPrintFab"
-      className="closest-print-fab"
+      className="closest-print-fab esri-component esri-widget--button"
       title={t?.("printScreenPdf") || "Print screen PDF"}
       aria-label={t?.("printScreenPdf") || "Print screen PDF"}
     >

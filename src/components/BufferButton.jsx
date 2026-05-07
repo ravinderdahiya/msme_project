@@ -116,8 +116,15 @@ export default function BufferButton({ t }) {
     }
 
     if (panelMode === "proximity") {
+      var proxDistEl = document.getElementById("proxDist");
+      var proxDistValEl = document.getElementById("proxDistVal");
+      if (proxDistEl) proxDistEl.value = String(meters);
+      if (proxDistValEl) proxDistValEl.textContent = String(meters);
       if (window.msmeGisStartQuickProximityWithDistance) {
         window.msmeGisStartQuickProximityWithDistance(meters);
+      } else if (document.getElementById("btnProximityPickPoint")) {
+        var proxPickBtn = document.getElementById("btnProximityPickPoint");
+        if (proxPickBtn && typeof proxPickBtn.click === "function") proxPickBtn.click();
       } else if (window.msmeGisStartQuickBufferWithDistance) {
         // Backward-compatible fallback for builds that only expose quick buffer.
         window.msmeGisStartQuickBufferWithDistance(meters);
@@ -190,11 +197,11 @@ export default function BufferButton({ t }) {
   }
 
   return (
-    <div className="buffer-fab-wrap" ref={rootRef}>
+    <div className="buffer-fab-wrap esri-component" ref={rootRef}>
       <button
         type="button"
         id="closestMapFab"
-        className="buffer-map-fab closest-map-fab"
+        className="buffer-map-fab closest-map-fab esri-widget--button"
         data-map-label="Closest"
         title="Closest"
         aria-label="Closest"
@@ -230,7 +237,7 @@ export default function BufferButton({ t }) {
       <button
         type="button"
         id="bufferMapFab"
-        className="buffer-map-fab"
+        className="buffer-map-fab esri-widget--button"
         data-map-label="Proximity"
         title="Proximity"
         aria-label="Proximity"

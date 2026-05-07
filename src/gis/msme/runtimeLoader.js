@@ -575,6 +575,93 @@ function patchLegacySource(source) {
     console.warn("[msme runtime patch] HSVP UI wiring patch not applied.");
   }
 
+  var proximityReportPattern =
+    /publishAnalysisToolResult\("proximity",\s*msgP,\s*\{\s*count:\s*hits,\s*maxDistanceM:\s*maxD\s*\}\s*\);/;
+  var proximityReportReplacement =
+    'publishAnalysisToolResult("proximity", msgP, { count: hits, maxDistanceM: maxD, radiusM: maxD });';
+  if (proximityReportPattern.test(out)) {
+    out = out.replace(proximityReportPattern, proximityReportReplacement);
+  } else {
+    console.warn("[msme runtime patch] proximity report radius patch not applied.");
+  }
+
+  // When proximity succeeds, also trigger community-summary calculation for the drawn proximity buffer.
+  var proximitySuccessBlockPattern =
+    /else\s*\{\s*var msgP = "Proximity: " \+ hits \+ " villages within " \+ maxD \+ " m of selected POI\."\;\s*setStatus\(msgP\);\s*publishAnalysisToolResult\("proximity",\s*msgP,\s*\{\s*count:\s*hits,\s*maxDistanceM:\s*maxD,\s*radiusM:\s*maxD\s*\}\);\s*\}/;
+  var proximitySuccessBlockReplacement = [
+    "else {",
+    '      var msgP = "Proximity: " + hits + " villages within " + maxD + " m of selected POI.";',
+    "      setStatus(msgP);",
+    '      var baseProxReport = publishAnalysisToolResult("proximity", msgP, { count: hits, maxDistanceM: maxD, radiusM: maxD });',
+    "      var proxSummaryGeom = proxPreview32643 || buildFallbackAnchorBuffer32643(qg, maxD);",
+    "      if (proxSummaryGeom) {",
+    "        publishBufferCommunitySummaryInBackground(baseProxReport, proxSummaryGeom, null);",
+    "      }",
+    "    }",
+  ].join("\n");
+  if (proximitySuccessBlockPattern.test(out)) {
+    out = out.replace(proximitySuccessBlockPattern, proximitySuccessBlockReplacement);
+  } else {
+    console.warn("[msme runtime patch] proximity success community-summary patch not applied.");
+  }
+
+  // In proximity mode, show the clicked-point buffer on map (same UX expectation as buffer/closest tools).
+  var proximityBufferPreviewPattern =
+    /var qg = activeQueryGeometry\(\);\s*var hasPointAnchor = !!\(bufferMarkPoint32643 && bufferMarkPoint32643\.type === "point"\);/;
+  var proximityBufferPreviewReplacement = [
+    'var qg = activeQueryGeometry();',
+    '  var proxPreview32643 = buildFallbackAnchorBuffer32643(qg, maxD);',
+    '  if (proxPreview32643) {',
+    '    var proxPreviewWeb = projection.project(proxPreview32643, SR_WEB);',
+    '    if (proxPreviewWeb) {',
+    '      resultsLayer.add(new Graphic({',
+    '        geometry: proxPreviewWeb,',
+    '        symbol: symBuffer,',
+    '        attributes: { type: "proximity-buffer", radiusM: maxD }',
+    '      }));',
+    '    }',
+    '  }',
+    '  var hasPointAnchor = !!(bufferMarkPoint32643 && bufferMarkPoint32643.type === "point");',
+  ].join("\n");
+  if (proximityBufferPreviewPattern.test(out)) {
+    out = out.replace(proximityBufferPreviewPattern, proximityBufferPreviewReplacement);
+  } else {
+    console.warn("[msme runtime patch] proximity buffer preview patch not applied.");
+  }
+
+  // Avoid blocking browser alert for zero-hit proximity runs; keep workflow smooth.
+  var proximityNoHitAlertPattern = /if\s*\(!hits\)\s*alertNoData\("proximity"\);/;
+  var proximityNoHitAlertReplacement =
+    [
+      'if (!hits) {',
+      '  var msgP0 = "No nearby results found for proximity. Increase distance and try again.";',
+      '  setStatus(msgP0);',
+      '  var proxNoHitReport = publishAnalysisToolResult("proximity", msgP0, { count: 0, maxDistanceM: maxD, radiusM: maxD });',
+      '  var proxSummaryGeom0 = proxPreview32643 || buildFallbackAnchorBuffer32643(qg, maxD);',
+      '  if (proxSummaryGeom0) {',
+      '    publishBufferCommunitySummaryInBackground(proxNoHitReport, proxSummaryGeom0, null);',
+      '  }',
+      '}',
+    ].join("\n");
+  if (proximityNoHitAlertPattern.test(out)) {
+    out = out.replace(proximityNoHitAlertPattern, proximityNoHitAlertReplacement);
+  } else {
+    console.warn("[msme runtime patch] proximity no-hit alert patch not applied.");
+  }
+
+  // Hide anchor marker graphic on map after point pick (keeps analysis behavior but removes visible white spot).
+  var hideAnchorGraphicPattern =
+    /bufferMarkLayer\.removeAll\(\);\s*var gw = projection\.project\(bufferMarkPoint32643, SR_WEB\);\s*bufferMarkLayer\.add\(new Graphic\(\{ geometry: gw, symbol: symBufferMark \}\)\);/;
+  var hideAnchorGraphicReplacement = [
+    "bufferMarkLayer.removeAll();",
+    "      // Marker intentionally hidden; point is still stored in bufferMarkPoint32643.",
+  ].join("\n");
+  if (hideAnchorGraphicPattern.test(out)) {
+    out = out.replace(hideAnchorGraphicPattern, hideAnchorGraphicReplacement);
+  } else {
+    console.warn("[msme runtime patch] hide anchor marker patch not applied.");
+  }
+
   return out;
 }
 
