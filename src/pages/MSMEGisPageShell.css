@@ -519,6 +519,12 @@
   order: 1 !important;
 }
 
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap .buffer-map-fab,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab {
+  pointer-events: auto !important;
+}
+
 /* Keep Print FAB in the same top row and right after Proximity/Closest. */
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab {
   position: relative !important;
