@@ -1,6 +1,59 @@
+import { useEffect, useRef } from "react";
+
 export default function PrintScreenButton({ t }) {
+  const rootRef = useRef(null);
+
+  useEffect(() => {
+    const root = rootRef.current;
+    if (!root) return;
+
+    const originalParent = root.parentElement;
+    const originalNextSibling = root.nextSibling;
+    let mo = null;
+    let moveTimer = null;
+
+    function moveIntoTopRight() {
+      const host = document.querySelector("#viewDiv .esri-ui-top-right.esri-ui-corner");
+      if (!host || !root) return false;
+      if (root.parentElement !== host) {
+        host.appendChild(root);
+      }
+      return true;
+    }
+
+    if (!moveIntoTopRight()) {
+      mo = new MutationObserver(() => {
+        if (moveIntoTopRight() && mo) {
+          mo.disconnect();
+          mo = null;
+        }
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+      moveTimer = window.setTimeout(() => {
+        if (mo) {
+          mo.disconnect();
+          mo = null;
+        }
+      }, 10000);
+    }
+
+    return () => {
+      if (mo) mo.disconnect();
+      if (moveTimer) window.clearTimeout(moveTimer);
+      if (!root || !originalParent) return;
+      if (root.parentElement !== originalParent) {
+        if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+          originalParent.insertBefore(root, originalNextSibling);
+        } else {
+          originalParent.appendChild(root);
+        }
+      }
+    };
+  }, []);
+
   return (
     <button
+      ref={rootRef}
       type="button"
       id="closestPrintFab"
       className="closest-print-fab"

@@ -21,6 +21,8 @@ const MSMEGISPage = () => {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
+    // ArcGIS Calcite components (LayerList uses calcite) need calcite-mode for correct contrast.
+    document.documentElement.setAttribute("calcite-mode", theme === "black" ? "dark" : "light");
     try {
       localStorage.setItem("msme-ui-theme", theme);
     } catch {
@@ -43,6 +45,11 @@ const MSMEGISPage = () => {
           window.__msmeGisCleanup();
         } catch {}
         window.__msmeGisCleanup = null;
+      }
+      /* Allow initMsmeWebGis to run again after StrictMode remount or route change. */
+      if (typeof window !== "undefined") {
+        window.__msmeGisInitialized = false;
+        window.__msmeGisInitInProgress = false;
       }
     };
   }, []);
@@ -158,6 +165,8 @@ const MSMEGISPage = () => {
         setSearchQuery={setSearchQuery}
         searchBusy={searchBusy}
         onSearchSubmit={handleTopSearchSubmit}
+        theme={theme}
+        onToggleTheme={() => setTheme((v) => (v === "black" ? "white" : "black"))}
         lang={lang}
         setLang={setLang}
         languages={languages}

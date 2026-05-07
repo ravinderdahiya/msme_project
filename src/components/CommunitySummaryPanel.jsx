@@ -60,6 +60,12 @@ function isCommunitySummaryCandidate(reportSnap) {
   ) {
     return !!(reportSnap.communitySummary || reportSnap.radiusM)
   }
+  if (
+    reportSnap.reportKind === 'analysis' &&
+    String(reportSnap.tool || '').toLowerCase() === 'proximity'
+  ) {
+    return !!(reportSnap.communitySummary || reportSnap.radiusM)
+  }
 
   return false
 }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { History, LogOut, Search, Sparkles } from "lucide-react";
+import { History, LogOut, Moon, Search, Sparkles, Sun } from "lucide-react";
 import "../pages/newmainmap/NewMainMapHeader.css";
 import "./Header_gis_nm.css";
 
@@ -12,6 +12,8 @@ export default function HeaderGis({
   setSearchQuery,
   searchBusy,
   onSearchSubmit,
+  theme = "white",
+  onToggleTheme = () => {},
   lang,
   setLang,
   languages,
@@ -114,9 +116,19 @@ export default function HeaderGis({
       </form>
 
       <div className="nmhdr-actions">
-        <button type="button" className="nmhdr-icon-btn" aria-label="Assistant">
+        {/* <button
+          type="button"
+          className={`nmhdr-theme-btn${theme === "black" ? " is-dark" : ""}`}
+          onClick={onToggleTheme}
+          aria-pressed={theme === "black"}
+          aria-label={theme === "black" ? "Switch to light mode" : "Switch to dark mode"}
+          title={theme === "black" ? "Light mode" : "Dark mode"}
+        >
+          {theme === "black" ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
+        </button> */}
+        {/* <button type="button" className="nmhdr-icon-btn" aria-label="Assistant">
           <Sparkles size={18} strokeWidth={2} />
-        </button>
+        </button> */}
         <button type="button" className="nmhdr-icon-btn" aria-label="History">
           <History size={18} strokeWidth={2} />
         </button>

@@ -215,7 +215,8 @@
 .results-actions .linkish,
 .results-flyout .winbtn,
 .stools-btn,
-#rail button.rail-btn {
+#rail button.rail-btn,
+#rail .nm-sidebar-item {
   transition:
     all 0.16s ease,
     box-shadow 0.18s ease,

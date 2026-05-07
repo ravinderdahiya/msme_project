@@ -42,6 +42,55 @@ export default function BufferButton({ t }) {
     };
   }, [panelMode]);
 
+  useEffect(() => {
+    var root = rootRef.current;
+    if (!root) return;
+
+    var originalParent = root.parentElement;
+    var originalNextSibling = root.nextSibling;
+    var mo = null;
+    var moveTimer = null;
+
+    function moveIntoTopRight() {
+      var host = document.querySelector("#viewDiv .esri-ui-top-right.esri-ui-corner");
+      if (!host || !root) return false;
+      if (root.parentElement !== host) {
+        host.insertBefore(root, host.firstChild || null);
+      }
+      return true;
+    }
+
+    // ArcGIS widgets mount asynchronously; keep trying briefly.
+    if (!moveIntoTopRight()) {
+      mo = new MutationObserver(function () {
+        if (moveIntoTopRight() && mo) {
+          mo.disconnect();
+          mo = null;
+        }
+      });
+      mo.observe(document.body, { childList: true, subtree: true });
+      moveTimer = window.setTimeout(function () {
+        if (mo) {
+          mo.disconnect();
+          mo = null;
+        }
+      }, 10000);
+    }
+
+    return function cleanupMountMove() {
+      if (mo) mo.disconnect();
+      if (moveTimer) window.clearTimeout(moveTimer);
+      if (!root || !originalParent) return;
+      if (root.parentElement !== originalParent) {
+        if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
+          originalParent.insertBefore(root, originalNextSibling);
+        } else {
+          originalParent.appendChild(root);
+        }
+      }
+    };
+  }, []);
+
   function stopQuickBufferOnDoubleClick(ev) {
     if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
     if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
@@ -66,6 +115,19 @@ export default function BufferButton({ t }) {
       return;
     }
 
+    if (panelMode === "proximity") {
+      if (window.msmeGisStartQuickProximityWithDistance) {
+        window.msmeGisStartQuickProximityWithDistance(meters);
+      } else if (window.msmeGisStartQuickBufferWithDistance) {
+        // Backward-compatible fallback for builds that only expose quick buffer.
+        window.msmeGisStartQuickBufferWithDistance(meters);
+      } else if (window.msmeGisStartQuickBuffer) {
+        window.msmeGisStartQuickBuffer();
+      }
+      setPanelMode(null);
+      return;
+    }
+
     if (window.msmeGisStartQuickBufferWithDistance) {
       window.msmeGisStartQuickBufferWithDistance(meters);
     } else if (window.msmeGisStartQuickBuffer) {
@@ -76,10 +138,46 @@ export default function BufferButton({ t }) {
 
   function applyTypedLocation() {
     var ll = parseLatLon(locationText);
-    if (!ll || !window.msmeGisSetBufferAnchorFromWgs) return;
+    if (!ll) return;
+    var meters = distanceMeters();
+
+    if (panelMode === "proximity") {
+      // Keep legacy proximity slider/state in sync, then run proximity from the typed anchor.
+      var proxDistEl = document.getElementById("proxDist");
+      var proxDistValEl = document.getElementById("proxDistVal");
+      if (proxDistEl) proxDistEl.value = String(meters);
+      if (proxDistValEl) proxDistValEl.textContent = String(meters);
+
+      var setAnchorPromise = window.msmeGisSetBufferAnchorFromWgs
+        ? window.msmeGisSetBufferAnchorFromWgs(ll.lat, ll.lon, {
+            distanceM: meters,
+            autoRun: false,
+            label: "typed location",
+            source: "popup-location",
+          })
+        : Promise.resolve(true);
+
+      Promise.resolve(setAnchorPromise)
+        .then(function () {
+          var proxBtn = document.getElementById("runProximity");
+          if (proxBtn && typeof proxBtn.click === "function") {
+            proxBtn.click();
+            return;
+          }
+          if (window.msmeGisStartQuickProximityWithDistance) {
+            window.msmeGisStartQuickProximityWithDistance(meters);
+          }
+        })
+        .finally(function () {
+          setPanelMode(null);
+        });
+      return;
+    }
+
+    if (!window.msmeGisSetBufferAnchorFromWgs) return;
     window.msmeGisSetBufferAnchorFromWgs(ll.lat, ll.lon, {
-      distanceM: distanceMeters(),
-      runBuffer: true,
+      distanceM: meters,
+      autoRun: true,
       source: "popup-location",
     });
     setPanelMode(null);
