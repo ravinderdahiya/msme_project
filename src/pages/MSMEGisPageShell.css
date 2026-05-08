@@ -744,13 +744,49 @@
   background: #ffffff !important;
   border: 1px solid var(--border) !important;
   box-shadow: var(--shadow) !important;
-  border-radius:50%;
+}
+
+/* Keep circular chrome for other expands; basemap + layer panels stay square (incl. hover). */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__content:not(:has(.esri-basemap-gallery)):not(:has(.esri-layer-list)),
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__panel:not(:has(.esri-basemap-gallery)):not(:has(.esri-layer-list)) {
+  border-radius: 50%;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__content:has(.esri-basemap-gallery),
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__panel:has(.esri-basemap-gallery),
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__content:has(.esri-layer-list),
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__panel:has(.esri-layer-list) {
+  border-radius: 0 !important;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-basemap-gallery,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-layer-list {
+  border-radius: 0 !important;
+  --calcite-button-corner-radius: 0 !important;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-basemap-gallery:hover,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-layer-list:hover,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-basemap-gallery:focus-within,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-layer-list:focus-within {
+  border-radius: 0 !important;
+}
+
+/* ArcGIS/CALCITE item tiles get corner radius on hover in light DOM — flatten for these two widgets. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-basemap-gallery *,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-layer-list * {
+  border-radius: 0 !important;
 }
 
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand--expanded .esri-widget--panel {
   background: #ffffff !important;
   border: 1px solid var(--border) !important;
   box-shadow: var(--shadow) !important;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand--expanded .esri-widget--panel:has(.esri-basemap-gallery),
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand--expanded .esri-widget--panel:has(.esri-layer-list) {
+  border-radius: 0 !important;
 }
 
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right calcite-button.esri-widget--button {

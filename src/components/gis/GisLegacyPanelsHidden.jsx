@@ -151,7 +151,7 @@ export default function GisLegacyPanelsHidden({ t }) {
                   </span>
                 </div>
                 <div className="row">
-                  <span className="lbl">{t("bufferRoadSource")}</span>
+                  {/* <span className="lbl">{t("bufferRoadSource")}</span>
                   <select id="bufRoadLayer" className="sm" title={t("bufRoadLayerTitle")} defaultValue="4">
                     <option value="4">{t("bufRoadOptLine")}</option>
                     <option value="0">{t("bufRoadOptAir")}</option>
@@ -160,16 +160,16 @@ export default function GisLegacyPanelsHidden({ t }) {
                   <input type="range" id="bufDist" min="100" max="5000" step="100" defaultValue="1500" />
                   <span className="val" id="bufDistVal">
                     1500
-                  </span>
+                  </span> */}
                   <button type="button" className="btn-run" id="runBuffer">
                     {t("runBuffer")}
                   </button>
                 </div>
-                <div className="buffer-mark-row">
+                {/* <div className="buffer-mark-row">
                   <button type="button" className="btn-secondary" id="btnBufferPdf">
                     Download buffer PDF
                   </button>
-                </div>
+                </div> */}
                 <p className="panel-hint">{t("bufferHint")}</p>
               </div>
 
@@ -210,7 +210,7 @@ export default function GisLegacyPanelsHidden({ t }) {
               </div>
 
               <div id="pC" className="panel" role="tabpanel">
-                <div className="row"></div>
+               
                 <div className="row">
                   <span className="lbl">{t("closestBufferDist")}</span>
                   <input
@@ -230,8 +230,8 @@ export default function GisLegacyPanelsHidden({ t }) {
                     {t("closestPickPoint")}
                   </button>
                 </div>
-                <div id="intCheckboxes" className="chk-grid"></div>
-                <p className="panel-hint">{t("intersectHint")}</p>
+                {/* <div id="intCheckboxes" className="chk-grid"></div> */}
+                {/* <p className="panel-hint">{t("intersectHint")}</p> */}
               </div>
 
               <div id="pE" className="panel" role="tabpanel">
