@@ -602,6 +602,7 @@
 }
 
 /* #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-left.esri-ui-corner, */
+/*
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-bottom-right.esri-ui-corner,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-bottom-left.esri-ui-corner {
   display: flex;
@@ -615,6 +616,7 @@
   box-shadow: 0 10px 28px rgba(15, 35, 64, 0.12);
   backdrop-filter: blur(16px);
 }
+*/
 
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-left.esri-ui-corner .esri-component,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-bottom-right.esri-ui-corner .esri-component,

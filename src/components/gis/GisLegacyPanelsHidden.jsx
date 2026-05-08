@@ -104,7 +104,7 @@ export default function GisLegacyPanelsHidden({ t }) {
               &times;
             </button>
           </div>
-          <p className="sp-intro">{t("spatialIntro")}</p>
+          {/* <p className="sp-intro">{t("spatialIntro")}</p> */}
         </div>
         <div className="sp-scroll">
           <div id="spatialToolbar" aria-label={t("spatialToolbarAria")}>
@@ -170,7 +170,7 @@ export default function GisLegacyPanelsHidden({ t }) {
                     Download buffer PDF
                   </button>
                 </div> */}
-                <p className="panel-hint">{t("bufferHint")}</p>
+                {/* <p className="panel-hint">{t("bufferHint")}</p> */}
               </div>
 
               <div id="pB" className="panel" role="tabpanel">
@@ -206,7 +206,7 @@ export default function GisLegacyPanelsHidden({ t }) {
                   </button>
                 </div>
                 <div id="proxCheckboxes" className="chk-grid"></div>
-                <p className="panel-hint">{t("proximityHint")}</p>
+                {/* <p className="panel-hint">{t("proximityHint")}</p> */}
               </div>
 
               <div id="pC" className="panel" role="tabpanel">
@@ -499,7 +499,7 @@ export default function GisLegacyPanelsHidden({ t }) {
                   </button>
                 </div>
 
-                <div id="cadResults" className="cad-results"></div>
+                {/* <div id="cadResults" className="cad-results"></div> */}
               </section>
             </div>
 
