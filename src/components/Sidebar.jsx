@@ -81,6 +81,7 @@ export default function Sidebar({ t }) {
                   <small>{t('railTitleLayers')}</small>
                 </span>
               </button>
+              
             </div>
           </div>
 
@@ -146,11 +147,13 @@ export default function Sidebar({ t }) {
                 </span>
               </button>
 
-              <button
-                type="button"
+              <a
                 className="nm-sidebar-item"
                 id="btnMapSelToAnalysis"
                 title={t('railTitleMapSelAnalysis')}
+                href="https://investhry.harsac.in/portal/apps/dashboards/42d358b30b5f4311aeec6d9d61b313da"
+                target="_blank"
+                rel="noopener noreferrer"
               >
                 <span className="nm-sidebar-icon" aria-hidden>
                   <svg viewBox="0 0 24 24" width={18} height={18} focusable="false">
@@ -159,10 +162,10 @@ export default function Sidebar({ t }) {
                   </svg>
                 </span>
                 <span>
-                  <strong>{t('railMapSelAnalysis')}</strong>
-                  <small>{t('railTitleMapSelAnalysis')}</small>
+                  <strong>Veiw Assembly</strong>
+                  {/* <small>{t('railTitleMapSelAnalysis')}</small> */}
                 </span>
-              </button>
+              </a>
             </div>
           </div>
         </div>

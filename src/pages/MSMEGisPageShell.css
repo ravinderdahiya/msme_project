@@ -1227,7 +1227,7 @@
 
 /* Dark mode page + map backdrop like NewMainMap */
 [data-theme='black'] #msmeGisRoot.msme-gis-page {
-  background: linear-gradient(180deg, #0d131d 0%, #070b10 100%) !important;
+  background: linear-gradient(180deg, #4b4f57 0%, #2b2f36 100%) !important;
 }
 
 /* Dark mode: make left menu tiles look "raised" with crisp borders (like reference UI) */
@@ -1423,7 +1423,7 @@
 
 /* Dark theme paints #rail globally with !important; keep NewMainMap card look */
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar.rail-nm {
-  background: var(--nm-surface) !important;
+  background: transparent !important;
   border-color: var(--nm-border) !important;
   color: var(--nm-text) !important;
 }
