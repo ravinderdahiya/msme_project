@@ -524,6 +524,178 @@
   z-index: 97;
 }
 
+/* Hide Apps launcher only. Native Basemap stays in DOM (collapsed, no flex slot) so the custom FAB can
+   call .click() on the real toggle — same pattern as Home. Opening does not require showing the old icon. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner
+  .esri-expand:has(.esri-icon-applications) {
+  display: none !important;
+}
+
+/* Keep native Home in DOM for programmatic `.click()` (display:none can block that). */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .esri-home {
+  display: block !important;
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+
+/* Basemap Expand / basemap-toggle: off-layout when collapsed; gallery panel still paints when expanded. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded),
+#msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded)
+  .esri-expand__container {
+  width: 0 !important;
+  height: 0 !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: 0 !important;
+  overflow: visible !important;
+  position: relative !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded)
+  .esri-expand__toggle,
+#msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded)
+  .esri-widget--button,
+#msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded)
+  calcite-button.esri-widget--button {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner > .esri-basemap-toggle {
+  display: block !important;
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner > .esri-expand:has(.esri-icon-basemap).esri-expand--expanded,
+#msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap).esri-expand--expanded
+  .esri-expand__container {
+  width: auto !important;
+  height: auto !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+  z-index: 220 !important;
+}
+
+/* Gallery open: hide the native basemap expand chip (duplicate of custom FAB). FAB `.click()` still toggles close. */
+#msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap).esri-expand--expanded
+  .esri-expand__toggle,
+#msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap).esri-expand--expanded
+  .esri-expand__toggle
+  calcite-button.esri-widget--button,
+#msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap).esri-expand--expanded
+  .esri-expand__toggle
+  .esri-widget--button,
+#msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap).esri-expand--expanded
+  .esri-expand__toggle
+  .esri-button {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* Expand: `.esri-expand__panel` only holds the framework chevron / badges; the widget (basemap gallery, etc.) is in `.esri-expand__content`. Strip all visible panel chrome — FAB or mask can still toggle; `element.click()` still reaches hidden controls. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__panel {
+  min-width: 0 !important;
+  min-height: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__panel > * {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  min-height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  clip-path: inset(50%) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  z-index: -1 !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap {
   position: relative !important;
   inset: auto !important;
@@ -542,7 +714,9 @@
 
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap .buffer-map-fab,
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab {
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .basemap-map-fab,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .home-map-fab {
   pointer-events: auto !important;
 }
 
@@ -570,6 +744,34 @@
   outline: none !important;
 }
 
+/* Keep custom Basemap FAB in the same top row after Print. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .basemap-map-fab {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  margin: 0 !important;
+  z-index: 130 !important;
+  order: 4 !important;
+  pointer-events: auto !important;
+}
+
+/* Custom Home FAB — same row/placement pattern as Basemap. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .home-map-fab {
+  position: relative !important;
+  inset: auto !important;
+  top: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  left: auto !important;
+  margin: 0 !important;
+  z-index: 130 !important;
+  order: 3 !important;
+  pointer-events: auto !important;
+}
+
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab:hover,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab:focus,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab:focus-visible,
@@ -581,14 +783,6 @@
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab svg {
   width: 18px !important;
   height: 18px !important;
-}
-
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .esri-home {
-  order: 3 !important;
-}
-
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .esri-expand {
-  order: 4 !important;
 }
 
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap .buffer-map-fab,
@@ -642,11 +836,74 @@
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-widget:hover,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand:hover,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__container:hover,
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-home:hover,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-basemap-toggle:hover {
   background: transparent !important;
   border-color: transparent !important;
   box-shadow: none !important;
+}
+
+/* When widgets overflow, ArcGIS adds a ">>" overflow toggle at the end.
+   Style it like other round FAB buttons. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__toggle,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__toggle.esri-widget--button,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__toggle.esri-button {
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  min-height: 50px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  border: 1px solid var(--border) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  box-shadow: var(--shadow) !important;
+  backdrop-filter: blur(12px) !important;
+  color: var(--primary-dark) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__toggle,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__toggle.esri-widget--button,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__toggle.esri-button {
+  background: rgba(26, 35, 50, 0.94) !important;
+  border-color: rgba(232, 237, 245, 0.12) !important;
+  color: rgba(232, 237, 245, 0.92) !important;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__toggle:hover {
+  transform: translateY(-1px) !important;
+}
+
+/* Hide the overflow ">>" icon completely. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__toggle {
+  display: none !important;
+}
+
+/* Some ArcGIS builds use additional overflow wrappers/menus. Hide them too. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__menu,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__container,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-ui-overflow__item {
+  display: none !important;
+}
+
+/* Extra safety: some ArcGIS versions render the overflow as a plain component/button. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right [class*="esri-ui-overflow"] {
+  display: none !important;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-component[aria-label="More"],
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-widget[aria-label="More"],
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-button[aria-label="More"],
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-widget--button[aria-label="More"],
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-component[title="More"],
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-widget[title="More"],
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-button[title="More"],
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-widget--button[title="More"],
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right calcite-button[title="More"],
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right calcite-button[aria-label="More"] {
+  display: none !important;
 }
 
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-widget--button,
@@ -707,6 +964,14 @@
   box-shadow: none !important;
   border-radius: 0 !important;
   overflow: visible !important;
+}
+
+/* Same div also gets `esri-expand__container--expanded` when open (from @arcgis/core/widgets/Expand.js — not in app JSX). Strip wrapper chrome; do not remove classes in JS or Expand breaks. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__container.esri-expand__container--expanded {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  outline: none !important;
 }
 
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand:not(.esri-expand--expanded),
@@ -809,9 +1074,77 @@
   color: var(--nm-primary, #2159d8) !important;
 }
 
+/* Dark theme: ArcGIS sometimes renders Basemap/Home as calcite-button.
+   Match the dark FAB styling used by `.esri-widget--button`. */
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right calcite-button.esri-widget--button {
+  --calcite-button-background-color: rgba(26, 35, 50, 0.94);
+  --calcite-button-background-color-hover: rgba(26, 35, 50, 0.94);
+  --calcite-button-background-color-press: rgba(26, 35, 50, 0.94);
+  --calcite-icon-color: rgba(232, 237, 245, 0.92);
+  --calcite-ui-icon-color: rgba(232, 237, 245, 0.92);
+  background: rgba(26, 35, 50, 0.94) !important;
+  border-color: var(--border) !important;
+  color: rgba(232, 237, 245, 0.92) !important;
+}
+
+/* Basemap button: match Proximity/Closest only while collapsed (expanded: toggle stays hidden; custom FAB only). */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner > .esri-basemap-toggle .esri-widget--button,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner > .esri-basemap-toggle .esri-button,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded)
+  .esri-expand__toggle,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded)
+  .esri-widget--button,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded)
+  calcite-button.esri-widget--button {
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  min-height: 50px !important;
+  padding: 0 !important;
+  border-radius: 50% !important;
+  border: 1px solid var(--border) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  color: var(--primary-dark) !important;
+  box-shadow: var(--shadow) !important;
+  backdrop-filter: blur(12px) !important;
+  overflow: hidden !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner > .esri-basemap-toggle .esri-widget--button,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner > .esri-basemap-toggle .esri-button,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded)
+  .esri-expand__toggle,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded)
+  .esri-widget--button,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap):not(.esri-expand--expanded)
+  calcite-button.esri-widget--button {
+  background: rgba(26, 35, 50, 0.94) !important;
+  border-color: rgba(232, 237, 245, 0.12) !important;
+  color: rgba(232, 237, 245, 0.92) !important;
+}
+
+/* Basemap label: basemap widgets often use `title` (not aria-label). */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner
+  > .esri-expand:has(.esri-icon-basemap)
+  calcite-button.esri-widget--button::after,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner
+  > .esri-basemap-toggle
+  .esri-widget--button::after,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner
+  > .esri-basemap-toggle
+  .esri-button::after {
+  content: attr(title);
+}
+
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-home .esri-widget--button,
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand .esri-widget--button,
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand .esri-expand__toggle {
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand:not(:has(.esri-icon-basemap)) .esri-widget--button,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand:not(:has(.esri-icon-basemap)) .esri-expand__toggle {
   width: 50px !important;
   height: 50px !important;
   min-width: 50px !important;
@@ -926,6 +1259,14 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-home calcite-button.esri-widget--button:hover,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-home calcite-button.esri-widget--button:focus,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-home calcite-button.esri-widget--button:active {
+  --calcite-button-background-color: rgba(26, 35, 50, 0.94);
+  --calcite-button-background-color-hover: rgba(26, 35, 50, 0.94);
+  --calcite-button-background-color-press: rgba(26, 35, 50, 0.94);
+}
+
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-home calcite-button.esri-widget--button {
   --calcite-color-focus: transparent;
   --calcite-ui-focus-color: transparent;
@@ -984,8 +1325,6 @@
     0 10px 22px rgba(15, 35, 64, 0.12);
 }
 
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-home:hover,
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-home:focus-within,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand:hover,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand:focus-within,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__toggle:hover,
