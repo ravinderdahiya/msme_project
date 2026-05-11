@@ -11,13 +11,7 @@ const MSMEGISPage = () => {
   const { t, lang, setLang, languages } = useI18n();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchBusy, setSearchBusy] = useState(false);
-  const [theme, setTheme] = useState(() => {
-    try {
-      return localStorage.getItem("msme-ui-theme") || "white";
-    } catch {
-      return "white";
-    }
-  });
+  const [theme, setTheme] = useState("black");
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);

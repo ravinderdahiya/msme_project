@@ -60,11 +60,8 @@ export default function HeaderGis({
     <header id="appHeader" ref={headerRef} className="nmhdr nmhdr-gis">
       <div className="nmhdr-brand">
         <div className="nmhdr-flip" aria-hidden="true">
-          <div className="nmhdr-flip-inner">
+          <div className="nmhdr-flip-inner nmhdr-flip-inner--single">
             <div className="nmhdr-flip-face">
-              <img src="/HARSAC-Logo.png" alt="" />
-            </div>
-            <div className="nmhdr-flip-face nmhdr-flip-back">
               <img src="/hepc-logo.png" alt="" />
             </div>
           </div>

@@ -172,6 +172,7 @@ export const STRINGS = {
     reportOpen: 'Land & location report',
     reportCopy: 'Copy',
     reportPrint: 'Print',
+    printScreenPdf: 'Print',
     reportSecTitle: 'Land & location report',
     reportGenerated: 'Generated (UTC)',
     reportSelectionSource: 'Selection source',

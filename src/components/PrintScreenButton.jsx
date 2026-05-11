@@ -76,8 +76,8 @@ export default function PrintScreenButton({ t }) {
       type="button"
       id="closestPrintFab"
       className="closest-print-fab esri-component esri-widget--button"
-      title={t?.("printScreenPdf") || "Print screen PDF"}
-      aria-label={t?.("printScreenPdf") || "Print screen PDF"}
+      title={t?.("printScreenPdf") || "Print"}
+      aria-label={t?.("printScreenPdf") || "Print"}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
         <path

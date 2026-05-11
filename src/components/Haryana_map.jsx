@@ -72,6 +72,12 @@ export default function HaryanaMap({ t }) {
       '#viewDiv .esri-icon-applications',
       '#viewDiv .esri-icon-basemap',
     ]
+    const HOME_BUTTON_SELECTORS = [
+      '#viewDiv .esri-home.esri-widget--button',
+      '#viewDiv .esri-home .esri-widget--button',
+      '#viewDiv .esri-home .esri-button',
+      '#viewDiv .esri-home calcite-button.esri-widget--button',
+    ]
     const hostSelector = '#viewDiv .esri-ui-top-right.esri-ui-corner'
 
     function styleNode(el, styles) {
@@ -81,9 +87,28 @@ export default function HaryanaMap({ t }) {
       })
     }
 
+    function isDarkTheme() {
+      return document.documentElement.getAttribute('data-theme') === 'black'
+    }
+
     function normalizeBasemapButton() {
       const host = document.querySelector(hostSelector)
       if (!host) return false
+      const dark = isDarkTheme()
+
+      const buttonPalette = dark
+        ? {
+            border: '1px solid rgba(232, 237, 245, 0.12)',
+            background: 'rgba(26, 35, 50, 0.94)',
+            boxShadow: '0 12px 30px rgba(0, 0, 0, 0.38)',
+            color: 'rgba(232, 237, 245, 0.92)',
+          }
+        : {
+            border: '1px solid var(--border)',
+            background: 'rgba(255, 255, 255, 0.94)',
+            boxShadow: 'var(--shadow)',
+            color: 'var(--nm-primary, #2159d8)',
+          }
 
       let found = false
       ICON_SELECTORS.forEach((sel) => {
@@ -141,13 +166,31 @@ export default function HaryanaMap({ t }) {
             'min-width': '50px',
             'min-height': '50px',
             'border-radius': '50%',
-            border: '1px solid var(--border)',
-            background: 'rgba(255, 255, 255, 0.94)',
-            'box-shadow': 'var(--shadow)',
+            border: buttonPalette.border,
+            background: buttonPalette.background,
+            'box-shadow': buttonPalette.boxShadow,
+            color: buttonPalette.color,
             overflow: 'hidden',
             padding: '0',
           })
 
+          found = true
+        })
+      })
+
+      HOME_BUTTON_SELECTORS.forEach((sel) => {
+        host.querySelectorAll(sel).forEach((btn) => {
+          styleNode(btn, {
+            width: '50px',
+            height: '50px',
+            'min-width': '50px',
+            'min-height': '50px',
+            'border-radius': '50%',
+            border: '1px solid var(--border)',
+            background: 'rgba(255, 255, 255, 0.94)',
+            'box-shadow': 'var(--shadow)',
+            color: 'var(--nm-primary, #2159d8)',
+          })
           found = true
         })
       })
@@ -161,6 +204,10 @@ export default function HaryanaMap({ t }) {
       normalizeBasemapButton()
     })
     mo.observe(document.body, { childList: true, subtree: true })
+    const themeMo = new MutationObserver(() => {
+      normalizeBasemapButton()
+    })
+    themeMo.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] })
 
     function onAnyClick() {
       window.setTimeout(normalizeBasemapButton, 0)
@@ -170,6 +217,7 @@ export default function HaryanaMap({ t }) {
     return () => {
       window.clearTimeout(timer)
       mo.disconnect()
+      themeMo.disconnect()
       document.removeEventListener('click', onAnyClick, true)
     }
   }, [])

@@ -30,19 +30,10 @@ import "./NewMainMap.css";
 
 const THEME_STORAGE_KEY = "nm-main-map-theme";
 
-function readStoredTheme() {
-  try {
-    const v = localStorage.getItem(THEME_STORAGE_KEY);
-    return v === "dark" ? "dark" : "light";
-  } catch {
-    return "light";
-  }
-}
-
 export default function NewMainMap() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [theme, setTheme] = useState(readStoredTheme);
+  const [theme, setTheme] = useState("dark");
   const [search, setSearch] = useState("");
   const [layerSearch, setLayerSearch] = useState("");
   const [draftLayers, setDraftLayers] = useState(buildDefaultSelection);

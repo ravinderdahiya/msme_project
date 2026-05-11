@@ -1399,6 +1399,20 @@
     0 10px 22px rgba(0, 0, 0, 0.2) !important;
 }
 
+/* Dark mode: Parliamentary/Assembly constituency dropdowns + option list */
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel #parliamentaryLokSabhaSelect,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel #parliamentaryAssemblySelect {
+  background: #0f1724 !important;
+  color: #eaf2ff !important;
+  border-color: rgba(232, 237, 245, 0.16) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel #parliamentaryLokSabhaSelect option,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel #parliamentaryAssemblySelect option {
+  background: #0f1724 !important;
+  color: #eaf2ff !important;
+}
+
 /* Buttons: softer, NewMainMap-like */
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel .actions .btn-go {
   background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;

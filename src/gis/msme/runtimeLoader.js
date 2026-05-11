@@ -649,17 +649,42 @@ function patchLegacySource(source) {
     console.warn("[msme runtime patch] proximity no-hit alert patch not applied.");
   }
 
-  // Hide anchor marker graphic on map after point pick (keeps analysis behavior but removes visible white spot).
-  var hideAnchorGraphicPattern =
-    /bufferMarkLayer\.removeAll\(\);\s*var gw = projection\.project\(bufferMarkPoint32643, SR_WEB\);\s*bufferMarkLayer\.add\(new Graphic\(\{ geometry: gw, symbol: symBufferMark \}\)\);/;
-  var hideAnchorGraphicReplacement = [
-    "bufferMarkLayer.removeAll();",
-    "      // Marker intentionally hidden; point is still stored in bufferMarkPoint32643.",
+  // Buffer run should still work when legacy UI controls (bufRoadLayer/bufDist) are hidden.
+  var runBufferUiFallbackPattern =
+    /var roadLayerEl = document\.getElementById\("bufRoadLayer"\);\s*var roadLayerId = parseInt\(roadLayerEl\.value, 10\);\s*var roadSourceText = roadLayerEl && roadLayerEl\.selectedOptions && roadLayerEl\.selectedOptions\[0\]\s*\? String\(roadLayerEl\.selectedOptions\[0\]\.text \|\| ""\)\.trim\(\)\s*:\s*"Road source";\s*var distM = parseFloat\(document\.getElementById\("bufDist"\)\.value\) \|\| 1500;/;
+  var runBufferUiFallbackReplacement = [
+    'var roadLayerEl = document.getElementById("bufRoadLayer");',
+    '  var roadLayerId = roadLayerEl ? parseInt(roadLayerEl.value, 10) : NaN;',
+    '  if (!isFinite(roadLayerId)) roadLayerId = 4;',
+    '  var roadSourceText = roadLayerEl && roadLayerEl.selectedOptions && roadLayerEl.selectedOptions[0]',
+    '    ? String(roadLayerEl.selectedOptions[0].text || "").trim()',
+    '    : "Roads (line)";',
+    '  var distInputEl = document.getElementById("bufDist");',
+    '  var distM = distInputEl ? parseFloat(distInputEl.value) : NaN;',
+    '  if (!isFinite(distM) || distM <= 0) distM = readBufferPickDistanceMetersFromUi();',
+    '  if (!isFinite(distM) || distM <= 0) distM = 1500;',
+    '  setBufferDistanceMeters(distM);',
   ].join("\n");
-  if (hideAnchorGraphicPattern.test(out)) {
-    out = out.replace(hideAnchorGraphicPattern, hideAnchorGraphicReplacement);
+  if (runBufferUiFallbackPattern.test(out)) {
+    out = out.replace(runBufferUiFallbackPattern, runBufferUiFallbackReplacement);
   } else {
-    console.warn("[msme runtime patch] hide anchor marker patch not applied.");
+    console.warn("[msme runtime patch] runBuffer UI fallback patch not applied.");
+  }
+
+  // Ignore plain random map clicks unless identify tools are explicitly active.
+  var mapClickSelectGuardPattern =
+    /if \(!mapSelectionAccumulateMode\) \{\s*identifyLayer\.removeAll\(\);/;
+  var mapClickSelectGuardReplacement = [
+    "if (!selectParcelToolActive && !mapSelectionAccumulateMode) {",
+    "    return;",
+    "  }",
+    "  if (!mapSelectionAccumulateMode) {",
+    "    identifyLayer.removeAll();",
+  ].join("\n");
+  if (mapClickSelectGuardPattern.test(out)) {
+    out = out.replace(mapClickSelectGuardPattern, mapClickSelectGuardReplacement);
+  } else {
+    console.warn("[msme runtime patch] map click select guard patch not applied.");
   }
 
   return out;

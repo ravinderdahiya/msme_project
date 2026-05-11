@@ -11,3 +11,14 @@
   opacity: 0.65;
   cursor: wait;
 }
+
+/* MSME GIS header: keep only HEPC logo visible (disable flip animation). */
+#appHeader.nmhdr-gis .nmhdr-flip-inner--single {
+  animation: none !important;
+  transform: none !important;
+}
+
+#appHeader.nmhdr-gis .nmhdr-flip-face {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border-color: rgba(15, 35, 64, 0.1) !important;
+}
