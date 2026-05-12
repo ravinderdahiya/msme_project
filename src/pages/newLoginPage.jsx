@@ -332,33 +332,61 @@ export default function NewLoginPage() {
                         </div>
                     </div>
 
-                    <div className="mt-8 xl:mt-12 w-full max-w-[550px] relative group">
-                        <div className="absolute inset-0 bg-white/[0.02] border border-white/10 rounded-3xl backdrop-blur-xl shadow-[0_10px_40px_rgba(0,0,0,0.2)] overflow-hidden transition-all duration-500 hover:bg-white/[0.04] hover:border-white/20"></div>
-                        <div className="relative px-5 sm:px-6 xl:px-8 py-5 xl:py-8 flex items-start gap-4 xl:gap-6">
-                            <div className="min-w-[50px] h-[50px] xl:min-w-[68px] xl:h-[68px] rounded-2xl bg-gradient-to-br from-white/10 to-transparent border border-white/10 flex items-center justify-center text-[#4facfe] shadow-[inset_0_0_20px_rgba(255,255,255,0.05)]">
-                                <ShieldCheck className="w-[24px] xl:w-[32px] h-[24px] xl:h-[32px]" />
+                    <div className="mt-8 xl:mt-12 w-full max-w-[600px] relative group">
+                        {/* Premium Card Background */}
+                        <div className="absolute inset-0 bg-gradient-to-br from-white/[0.05] to-transparent border border-white/10 rounded-[32px] backdrop-blur-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] overflow-hidden transition-all duration-500 group-hover:from-white/[0.08] group-hover:border-white/20 group-hover:shadow-[0_25px_60px_rgba(0,0,0,0.4)]">
+                            {/* Continuous Animated Shimmer */}
+                            <div className="absolute inset-0 opacity-20">
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent skew-x-[-25deg] -translate-x-[150%] animate-[shimmer_3s_infinite] transition-all"></div>
+                            </div>
+                        </div>
+
+                        <div className="relative px-6 sm:px-8 xl:px-10 py-6 xl:py-10 flex items-center gap-5 xl:gap-8">
+                            {/* Enhanced Icon Container */}
+                            <div className="relative shrink-0">
+                                <div className="absolute inset-0 bg-[#4facfe] blur-[15px] opacity-20 group-hover:opacity-40 transition-opacity duration-500"></div>
+                                <style>{`
+                                    @keyframes shimmer {
+                                        0% { transform: translateX(-150%) skewX(-25deg); }
+                                        50% { transform: translateX(150%) skewX(-25deg); }
+                                        100% { transform: translateX(150%) skewX(-25deg); }
+                                    }
+                                `}</style>
+                                <div className="relative w-[56px] h-[56px] xl:w-[76px] xl:h-[76px] rounded-2xl bg-gradient-to-br from-white/10 to-white/[0.02] border border-white/20 flex items-center justify-center text-[#4facfe] shadow-2xl transition-transform duration-500 group-hover:scale-110 group-hover:rotate-3">
+                                    <ShieldCheck className="w-[28px] xl:w-[38px] h-[28px] xl:h-[38px] drop-shadow-[0_0_10px_rgba(79,172,254,0.5)]" />
+                                </div>
                             </div>
 
                             <div>
-                                <h3 className="text-white text-[16px] xl:text-[22px] font-[800] tracking-wide">
-                                    {text.trustTitle}
+                                <h3 className="text-[18px] xl:text-[26px] font-[900] tracking-tight text-white leading-tight">
+                                    <span className="bg-clip-text text-transparent bg-gradient-to-r from-white via-white to-[#94a3b8]">
+                                        {text.trustTitle}
+                                    </span>
                                 </h3>
 
-                                <p className="text-[#94a3b8] text-[12px] xl:text-[15px] mt-1.5 xl:mt-2.5 leading-[1.6] font-medium">
+                                <p className="text-[#94a3b8] text-[13px] xl:text-[16px] mt-2 xl:mt-3 leading-relaxed font-medium max-w-[400px]">
                                     {text.trustText}
                                 </p>
+                            </div>
+
+                            {/* Decorative element */}
+                            <div className="hidden sm:block absolute right-6 top-1/2 -translate-y-1/2 opacity-10 group-hover:opacity-20 transition-opacity">
+                                <Globe size={80} className="text-white" />
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="w-full xl:w-[42%] flex items-center justify-center px-4 sm:px-6 py-8 xl:py-0">
-                    {/* Premium Form Container */}
-                    <div className="relative w-full max-w-[570px] rounded-[32px] sm:rounded-[40px] bg-[#030e26]/80 backdrop-blur-[24px] px-6 sm:px-10 lg:px-12 py-10 sm:py-12 shadow-[0_24px_64px_-12px_rgba(0,0,0,0.7)] border border-white/10 ring-1 ring-white/5 overflow-hidden">
-                        {/* Ambient inner glows */}
-                        <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#4facfe] to-transparent opacity-70"></div>
-                        <div className="absolute -top-32 -right-32 w-[300px] h-[300px] bg-[#4facfe] rounded-full mix-blend-screen filter blur-[120px] opacity-20 pointer-events-none"></div>
-                        <div className="absolute -bottom-32 -left-32 w-[300px] h-[300px] bg-[#00f2fe] rounded-full mix-blend-screen filter blur-[120px] opacity-15 pointer-events-none"></div>
+                    {/* Premium Form Container - Dynamic tint based on tab */}
+                    <div className={`relative w-full max-w-[570px] rounded-[32px] sm:rounded-[40px] backdrop-blur-[24px] px-6 sm:px-10 lg:px-12 py-10 sm:py-12 shadow-[0_24px_64px_-12px_rgba(0,0,0,0.7)] border border-white/10 ring-1 ring-white/5 overflow-hidden transition-all duration-700 ${activeTab === "investor" ? "bg-[#030e26]/80" : "bg-[#021c15]/85"
+                        }`}>
+                        {/* Ambient inner glows - Dynamic based on active tab */}
+                        <div className={`absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent ${activeTab === "investor" ? "via-[#4facfe]" : "via-[#10b981]"} to-transparent opacity-70`}></div>
+                        <div className={`absolute -top-32 -right-32 w-[300px] h-[300px] rounded-full mix-blend-screen filter blur-[120px] transition-all duration-700 pointer-events-none ${activeTab === "investor" ? "bg-[#4facfe] opacity-20" : "bg-[#10b981] opacity-20"
+                            }`}></div>
+                        <div className={`absolute -bottom-32 -left-32 w-[300px] h-[300px] rounded-full mix-blend-screen filter blur-[120px] transition-all duration-700 pointer-events-none ${activeTab === "investor" ? "bg-[#00f2fe] opacity-15" : "bg-[#34d399] opacity-15"
+                            }`}></div>
 
                         <div className="relative z-10 flex flex-col h-full">
                             {/* Logo Section */}
@@ -385,11 +413,14 @@ export default function NewLoginPage() {
                             </p>
 
                             {/* Tabs */}
-                            <div className="relative p-1 bg-[#0f172a]/60 backdrop-blur-md rounded-[18px] flex border border-white/5 shadow-inner mt-8">
+                            <div className="relative p-1.5 bg-[#0f172a]/60 backdrop-blur-md rounded-[20px] flex border border-white/5 shadow-inner mt-8">
                                 <div
-                                    className={`absolute top-1 bottom-1 w-[calc(50%-4px)] bg-gradient-to-r from-[#1e3a8a] to-[#3b82f6] rounded-[14px] shadow-[0_4px_12px_rgba(59,130,246,0.3)] transition-transform duration-300 cubic-bezier(0.4, 0, 0.2, 1) ${activeTab === "investor" ? "translate-x-0" : "translate-x-[calc(100%+8px)]"}`}
+                                    className={`absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] rounded-[16px] transition-all duration-500 cubic-bezier(0.4, 0, 0.2, 1) ${activeTab === "investor"
+                                        ? "translate-x-0 bg-gradient-to-r from-[#1e3a8a] to-[#3b82f6] shadow-[0_4px_15px_rgba(59,130,246,0.4)]"
+                                        : "translate-x-[calc(100%+6px)] bg-gradient-to-r from-[#065f46] via-[#10b981] to-[#34d399] shadow-[0_4px_15px_rgba(16,185,129,0.4)]"
+                                        }`}
                                 >
-                                    <div className="absolute inset-0 rounded-[14px] border border-white/10"></div>
+                                    <div className="absolute inset-0 rounded-[16px] border border-white/10"></div>
                                 </div>
 
                                 <button
@@ -577,7 +608,7 @@ export default function NewLoginPage() {
                                             <button
                                                 type="submit"
                                                 disabled={!isValidDepartment}
-                                                className="relative w-full h-[56px] sm:h-[60px] rounded-2xl text-white font-bold text-[15px] sm:text-[17px] bg-gradient-to-r from-[#064e3b] via-[#059669] to-[#10b981] hover:from-[#065f46] hover:via-[#10b981] hover:to-[#34d399] shadow-[0_8px_30px_rgba(16,185,129,0.3)] transition-all duration-300 hover:-translate-y-[2px] hover:shadow-[0_12px_40px_rgba(16,185,129,0.4)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_8px_30px_rgba(16,185,129,0.3)] overflow-hidden group z-10 flex items-center justify-center"
+                                                className="relative w-full h-[56px] sm:h-[60px] rounded-2xl text-white font-bold text-[15px] sm:text-[17px] bg-gradient-to-r from-[#065f46] via-[#10b981] to-[#34d399] hover:from-[#064e3b] hover:via-[#059669] hover:to-[#10b981] shadow-[0_8px_30px_rgba(16,185,129,0.4)] transition-all duration-300 hover:-translate-y-[2px] hover:shadow-[0_12px_40px_rgba(16,185,129,0.5)] disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-[0_8px_30px_rgba(16,185,129,0.4)] overflow-hidden group z-10 flex items-center justify-center"
                                             >
                                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 ease-in-out"></div>
                                                 <span className="relative z-10 flex items-center justify-center gap-2">
@@ -591,10 +622,10 @@ export default function NewLoginPage() {
                             </div>
 
                             {/* Security Badge Footer */}
-                            <div className="mt-8 relative rounded-2xl border border-white/5 bg-gradient-to-r from-white/[0.02] to-white/[0.05] px-5 py-4 flex items-start gap-4 overflow-hidden group">
+                            <div className={`mt-8 relative rounded-2xl border border-white/5 bg-gradient-to-r from-white/[0.02] to-white/[0.05] px-5 py-4 flex items-start gap-4 overflow-hidden group transition-all duration-500`}>
                                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/[0.03] to-transparent translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-1000"></div>
-                                <div className="min-w-[42px] h-[42px] sm:min-w-[48px] sm:h-[48px] rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center text-white border border-white/10 shadow-inner backdrop-blur-sm">
-                                    <ShieldCheck size={22} className="text-[#4facfe]" />
+                                <div className={`min-w-[42px] h-[42px] sm:min-w-[48px] sm:h-[48px] rounded-xl bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center text-white border border-white/10 shadow-inner backdrop-blur-sm transition-all duration-500`}>
+                                    <ShieldCheck size={22} className={activeTab === "investor" ? "text-[#4facfe]" : "text-[#10b981]"} />
                                 </div>
 
                                 <div className="flex-1">
