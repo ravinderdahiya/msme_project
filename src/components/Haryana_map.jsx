@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import LocationButton from './LocationButton.jsx'
 import BufferButton from './BufferButton.jsx'
 import PrintScreenButton from './PrintScreenButton.jsx'
@@ -7,6 +7,35 @@ import HomeButton from './HomeButton.jsx'
 
 export default function HaryanaMap({ t }) {
   const [legendExpanded, setLegendExpanded] = useState(false)
+  /** After first successful map hide, same overlay is used for fetches — show “Loading data”. */
+  const [gisLoaderIsDataPhase, setGisLoaderIsDataPhase] = useState(false)
+  const gisBootLoaderDismissed = useRef(false)
+
+  useEffect(function () {
+    var el = typeof document !== 'undefined' ? document.getElementById('gisLoadingOverlay') : null
+    if (!el) return
+
+    function mapViewLooksReady() {
+      var view = typeof window !== 'undefined' ? window.__msmeGisMapView : null
+      return !!(view && view.destroyed === false)
+    }
+
+    function syncGisLoaderPhase() {
+      var hidden = el.classList.contains('is-hidden')
+      if (hidden) {
+        if (mapViewLooksReady()) gisBootLoaderDismissed.current = true
+        return
+      }
+      setGisLoaderIsDataPhase(gisBootLoaderDismissed.current)
+    }
+
+    var mo = new MutationObserver(syncGisLoaderPhase)
+    mo.observe(el, { attributes: true, attributeFilter: ['class'] })
+    syncGisLoaderPhase()
+    return function () {
+      mo.disconnect()
+    }
+  }, [])
 
   const toggleLegend = useCallback(function () {
     setLegendExpanded(function (prev) {
@@ -52,9 +81,23 @@ export default function HaryanaMap({ t }) {
       <HomeButton t={t} />
       <BasemapButton t={t} />
       <div id="gisLoadingOverlay" className="is-hidden" aria-hidden="true">
-        <div className="gis-loading-chip" role="status" aria-live="polite">
-          <span className="gis-loading-spinner" aria-hidden="true"></span>
-          <span id="gisLoadingText">{(t && t('loading')) || 'Loading data...'}</span>
+        <div className="gis-loading-card" role="status" aria-live="polite">
+          <span className="gis-loading-spinner" aria-hidden="true" />
+          <h2 className="gis-loading-title">
+            {gisLoaderIsDataPhase
+              ? (t && typeof t === 'function' && t('gisLoadingDataTitle')) || 'Loading data'
+              : (t && typeof t === 'function' && t('gisLoadingMapTitle')) || 'Loading Map'}
+          </h2>
+          <p
+            key={gisLoaderIsDataPhase ? 'gis-ld-data' : 'gis-ld-map'}
+            id="gisLoadingText"
+            className="gis-loading-sub"
+          >
+            {gisLoaderIsDataPhase
+              ? (t && typeof t === 'function' && t('gisLoadingDataSubtitle')) || 'Please wait…'
+              : (t && typeof t === 'function' && t('gisLoadingMapSubtitle')) ||
+                'Initialising Haryana land-record map...'}
+          </p>
         </div>
       </div>
       <div id="viewDiv"></div>
