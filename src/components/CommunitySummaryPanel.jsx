@@ -394,6 +394,11 @@ export default function CommunitySummaryPanel() {
     }
   }, [latestReport])
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    window.msmeGisSelectedCommunityCategoryKeys = selectedCategoryKeys.slice()
+  }, [selectedCategoryKeys])
+
   if (!open) return null
   if (!displaySummary && !waitingForCounts) return null
 
@@ -432,6 +437,7 @@ export default function CommunitySummaryPanel() {
 
   function handleDownloadCsv() {
     if (!displaySummary) return
+    if (!selectedCategoryKeys.length) return
     var generatedAt = displaySummary.generatedAt || latestReport?.generatedAt || new Date().toISOString()
     var source = displaySummary.source || latestReport?.reportKind || 'community'
     var radius = radiusM != null ? Number(radiusM) : ''
@@ -451,7 +457,17 @@ export default function CommunitySummaryPanel() {
       ],
     ]
 
-    rows.forEach((row) => {
+    var selectedMap = {}
+    selectedCategoryKeys.forEach((key) => {
+      var k = String(key || '').toLowerCase()
+      if (k) selectedMap[k] = true
+    })
+    var exportRows = rows.filter((row) => {
+      var key = String(row?.key || '').toLowerCase()
+      return !!selectedMap[key]
+    })
+
+    exportRows.forEach((row) => {
       var key = String(row?.key || '')
       var label = String(row?.label || '')
       var count = Number.isFinite(Number(row?.count)) ? Number(row.count) : ''
@@ -720,7 +736,7 @@ export default function CommunitySummaryPanel() {
             type="button"
             className="community-ba-download-btn"
             onClick={handleDownloadCsv}
-            disabled={!displaySummary || waitingForCounts}
+            disabled={!displaySummary || waitingForCounts || selectedCategoryKeys.length === 0}
           >
             Download CSV
           </button>

@@ -343,7 +343,7 @@ export default function GisLegacyPanelsHidden({ t }) {
 
                 <label>{t("aoiVillageBufferDistance")}</label>
                 <div className="aoi-buffer-distance-row">
-                  <input id="aoiVillageBufferValue" type="number" min="0.1" step="0.1" defaultValue="2" disabled />
+                  <input id="aoiVillageBufferValue" type="number" min="0.1" step="0.1" defaultValue="0" disabled />
                   <select id="aoiVillageBufferUnit" defaultValue="km" disabled>
                     <option value="km">Kilometer</option>
                     <option value="m">Meter</option>
@@ -469,7 +469,7 @@ export default function GisLegacyPanelsHidden({ t }) {
 
                 <label>{t("cadRadius")}</label>
                 <div className="aoi-buffer-distance-row">
-                  <input id="cadNearM" type="number" min="0.1" step="0.1" defaultValue="5" />
+                  <input id="cadNearM" type="number" min="0.1" step="0.1" defaultValue="0" />
                   <select id="cadNearUnit" defaultValue="km">
                     <option value="km">Kilometer</option>
                     <option value="m">Meter</option>
