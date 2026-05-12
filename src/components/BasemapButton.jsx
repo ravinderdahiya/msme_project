@@ -278,19 +278,6 @@ export default function BasemapButton({ t }) {
             d="M4.5 4.5h7v7h-7v-7zm8 0h7v7h-7v-7zm-8 8h7v7h-7v-7zm8 0h7v7h-7v-7z"
           />
         </svg>
-        <span className="msme-basemap-fab-chevron" aria-hidden>
-          <svg viewBox="0 0 12 12" width="10" height="10" focusable="false">
-            <path
-              fill="currentColor"
-              d="M1.5 3.25L6 7.75l4.5-4.5"
-              stroke="currentColor"
-              strokeWidth="1.2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              fillOpacity="0"
-            />
-          </svg>
-        </span>
       </button>
 
       {open &&

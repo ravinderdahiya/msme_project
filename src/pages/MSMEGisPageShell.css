@@ -425,12 +425,12 @@
   overflow: hidden;
 }
 
-/* Map init: block whole frame (incl. Esri default UI) so zoom/tools do not show through the loader */
+/* Loader: map stays visible behind; only .gis-loading-chip is opaque */
 #msmeGisRoot.msme-gis-page #gisLoadingOverlay:not(.is-hidden) {
   z-index: 400 !important;
-  background: rgba(255, 255, 255, 0.94);
-  backdrop-filter: blur(12px);
-  pointer-events: auto;
+  background: transparent;
+  backdrop-filter: none;
+  pointer-events: none;
 }
 
 /* Legend FAB — same chrome as Print / Home / Basemap (top-right map tools) */
@@ -834,31 +834,16 @@
 
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .msme-basemap-fab-host .buffer-map-fab {
   display: inline-flex !important;
-  flex-direction: column !important;
+  flex-direction: row !important;
   align-items: center !important;
   justify-content: center !important;
   gap: 0 !important;
-  padding-top: 6px !important;
-  padding-bottom: 4px !important;
+  padding: 0 !important;
 }
 
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .msme-basemap-fab-host .buffer-map-fab-ico {
   width: 18px !important;
   height: 18px !important;
-}
-
-.msme-basemap-fab-chevron {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  line-height: 0;
-  opacity: 0.85;
-  margin-top: -2px;
-  transition: transform 0.18s ease;
-}
-
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .msme-basemap-fab-host .buffer-map-fab.is-open .msme-basemap-fab-chevron {
-  transform: rotate(180deg);
 }
 
 /* Native basemap gallery: not used when custom dropdown applies basemap via API. */
@@ -1871,8 +1856,8 @@
 }
 
 [data-theme='black'] #msmeGisRoot.msme-gis-page #gisLoadingOverlay:not(.is-hidden) {
-  background: rgba(11, 17, 26, 0.94);
-  backdrop-filter: blur(14px);
+  background: transparent;
+  backdrop-filter: none;
 }
 
 /* Dark theme: framed inner boxes should also be dark (not light blue) */
@@ -2022,6 +2007,22 @@
 [data-theme='black'] #msmeGisRoot.msme-gis-page select optgroup {
   background: #0f1724 !important;
   color: #eaf2ff !important;
+}
+
+/* Proximity / Closest popover: light fields (page-wide dark select was turning km/m black) */
+[data-theme='black'] #msmeGisRoot.msme-gis-page .buffer-mini-panel .buffer-mini-panel__num,
+[data-theme='black'] #msmeGisRoot.msme-gis-page .buffer-mini-panel .buffer-mini-panel__unit,
+[data-theme='black'] #msmeGisRoot.msme-gis-page .buffer-mini-panel .buffer-mini-panel__text {
+  background: #ffffff !important;
+  color: #1f2937 !important;
+  border-color: #d5d9e4 !important;
+  color-scheme: light;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page .buffer-mini-panel .buffer-mini-panel__unit option,
+[data-theme='black'] #msmeGisRoot.msme-gis-page .buffer-mini-panel .buffer-mini-panel__unit optgroup {
+  background: #ffffff !important;
+  color: #1f2937 !important;
 }
 
 /* Buttons: softer, NewMainMap-like */
