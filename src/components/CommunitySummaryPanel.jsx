@@ -434,6 +434,9 @@ export default function CommunitySummaryPanel() {
   const allSelected =
     selectableCategoryKeys.length > 0 &&
     selectableCategoryKeys.every((key) => selectedCategoryKeys.includes(key))
+  const selectionHint = waitingForCounts
+    ? 'Preparing actions...'
+    : `${selectedCategoryKeys.length} selected of ${selectableCategoryKeys.length}`
 
   function handleDownloadCsv() {
     if (!displaySummary) return
@@ -521,6 +524,16 @@ export default function CommunitySummaryPanel() {
     a.click()
     document.body.removeChild(a)
     URL.revokeObjectURL(url)
+  }
+
+  function handlePrintPdf() {
+    if (typeof window === 'undefined') return
+    if (typeof window.msmeGisDownloadClosestPdf === 'function') {
+      window.msmeGisDownloadClosestPdf()
+      return
+    }
+    var legacyBtn = document.getElementById('btnClosestPdf')
+    if (legacyBtn && typeof legacyBtn.click === 'function') legacyBtn.click()
   }
 
   function handleShowAllLinesOnMap() {
@@ -713,7 +726,10 @@ export default function CommunitySummaryPanel() {
       </div>
 
       <div className="community-ba-toolbar">
-        <p className="community-ba-toolbar-title">POI</p>
+        <div className="community-ba-toolbar-meta">
+          <p className="community-ba-toolbar-title">POI Actions</p>
+          <p className="community-ba-toolbar-subtitle">{selectionHint}</p>
+        </div>
         <div className="community-ba-toolbar-actions">
           <button
             type="button"
@@ -734,7 +750,15 @@ export default function CommunitySummaryPanel() {
           </button>
           <button
             type="button"
-            className="community-ba-download-btn"
+            className="community-ba-fit-btn community-ba-print-btn"
+            onClick={handlePrintPdf}
+            disabled={!displaySummary || waitingForCounts}
+          >
+            Print
+          </button>
+          <button
+            type="button"
+            className="community-ba-download-btn community-ba-download-btn-main"
             onClick={handleDownloadCsv}
             disabled={!displaySummary || waitingForCounts || selectedCategoryKeys.length === 0}
           >
@@ -749,7 +773,7 @@ export default function CommunitySummaryPanel() {
             o
           </div>
           <div>
-            <h4>Near by  Community</h4>
+            <h4>Nearby Community</h4>
             {/* <p>Places that make your life richer and community better</p> */}
             <div className="community-ba-intro-actions">
               <button
