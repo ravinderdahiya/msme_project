@@ -425,9 +425,74 @@
   overflow: hidden;
 }
 
-#msmeGisRoot.msme-gis-page #legendFab {
+/* Map init: block whole frame (incl. Esri default UI) so zoom/tools do not show through the loader */
+#msmeGisRoot.msme-gis-page #gisLoadingOverlay:not(.is-hidden) {
+  z-index: 400 !important;
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(12px);
+  pointer-events: auto;
+}
+
+/* Legend FAB — same chrome as Print / Home / Basemap (top-right map tools) */
+#msmeGisRoot.msme-gis-page #legendFab.legend-map-fab {
+  position: absolute;
   left: calc(var(--msme-gis-shell-pad) + var(--msme-rail-total-w) + var(--msme-gis-inner-gap) + 14px);
   bottom: calc(var(--msme-gis-shell-pad) + 102px);
+  z-index: 130 !important;
+  width: 50px !important;
+  height: 50px !important;
+  min-width: 50px !important;
+  min-height: 50px !important;
+  border-radius: 50% !important;
+  border: 1px solid var(--border) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  /* Match Proximity / Closest buffer-map-fab icon (07-map-overlays) */
+  color: var(--primary-dark) !important;
+  box-shadow: var(--shadow) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  overflow: visible !important;
+  outline: none !important;
+  backdrop-filter: blur(12px) !important;
+  cursor: pointer !important;
+  box-sizing: border-box !important;
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+
+#msmeGisRoot.msme-gis-page #legendFab.legend-map-fab .buffer-map-fab-ico {
+  width: 18px !important;
+  height: 18px !important;
+  flex-shrink: 0;
+}
+
+#msmeGisRoot.msme-gis-page #legendFab.legend-map-fab:hover,
+#msmeGisRoot.msme-gis-page #legendFab.legend-map-fab:focus,
+#msmeGisRoot.msme-gis-page #legendFab.legend-map-fab:focus-visible,
+#msmeGisRoot.msme-gis-page #legendFab.legend-map-fab:active {
+  outline: none !important;
+  box-shadow: var(--shadow) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #legendFab.legend-map-fab {
+  background: rgba(26, 35, 50, 0.94) !important;
+  border-color: var(--border) !important;
+  /* Same as top-right map tool buttons (Proximity / Closest / Home) */
+  color: rgba(232, 237, 245, 0.92) !important;
+}
+
+/* Label: same blue family as map tool row (see reference UI ~#428bca / nm-primary) */
+#msmeGisRoot.msme-gis-page #legendFab.legend-map-fab[data-map-label]::after {
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--nm-primary, #2159d8) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #legendFab.legend-map-fab[data-map-label]::after {
+  /* Same blue family as dark-theme accents; readable on dark map */
+  color: var(--nm-primary, #6ea0ff) !important;
 }
 
 #msmeGisRoot.msme-gis-page #legendPanel {
@@ -716,6 +781,7 @@
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap .buffer-map-fab,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .basemap-map-fab,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .msme-basemap-fab-host,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .home-map-fab {
   pointer-events: auto !important;
 }
@@ -745,7 +811,8 @@
 }
 
 /* Keep custom Basemap FAB in the same top row after Print. */
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .basemap-map-fab {
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .basemap-map-fab,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .msme-basemap-fab-host {
   position: relative !important;
   inset: auto !important;
   top: auto !important;
@@ -756,6 +823,191 @@
   z-index: 130 !important;
   order: 4 !important;
   pointer-events: auto !important;
+}
+
+/* Basemap FAB: host wraps trigger + dropdown anchor; inner keeps circular control. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .msme-basemap-fab-host {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .msme-basemap-fab-host .buffer-map-fab {
+  display: inline-flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0 !important;
+  padding-top: 6px !important;
+  padding-bottom: 4px !important;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .msme-basemap-fab-host .buffer-map-fab-ico {
+  width: 18px !important;
+  height: 18px !important;
+}
+
+.msme-basemap-fab-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 0;
+  opacity: 0.85;
+  margin-top: -2px;
+  transition: transform 0.18s ease;
+}
+
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .msme-basemap-fab-host .buffer-map-fab.is-open .msme-basemap-fab-chevron {
+  transform: rotate(180deg);
+}
+
+/* Native basemap gallery: not used when custom dropdown applies basemap via API. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand:has(.esri-icon-basemap) .esri-expand__content {
+  display: none !important;
+  visibility: hidden !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+}
+
+/* Custom basemap dropdown (portaled). */
+.msme-basemap-dd {
+  box-sizing: border-box;
+  padding: 8px 0 10px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.98);
+  border: 1px solid var(--border, #d3e1ee);
+  box-shadow: var(--shadow, 0 8px 24px rgba(0, 0, 0, 0.12));
+  color: var(--text, #0f172a);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+[data-theme='black'] .msme-basemap-dd {
+  background: rgba(24, 28, 36, 0.98);
+  border-color: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.msme-basemap-dd-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.8;
+  padding: 2px 14px 10px;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+[data-theme='black'] .msme-basemap-dd-title {
+  border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.msme-basemap-dd-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px 6px 4px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  flex: 1;
+  min-height: 0;
+}
+
+.msme-basemap-dd-item {
+  width: 100%;
+  margin: 0;
+  padding: 8px 10px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+  min-height: 48px;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 12px;
+}
+
+.msme-basemap-dd-loading {
+  padding: 16px 14px 20px;
+  font-size: 0.85rem;
+  opacity: 0.85;
+  text-align: center;
+}
+
+.msme-basemap-dd-thumb-wrap {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.04);
+}
+
+[data-theme='black'] .msme-basemap-dd-thumb-wrap {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.msme-basemap-dd-thumb-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.msme-basemap-dd-busy {
+  position: absolute;
+  inset: 0;
+  background: rgba(255, 255, 255, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+[data-theme='black'] .msme-basemap-dd-busy {
+  background: rgba(0, 0, 0, 0.45);
+}
+
+.msme-basemap-dd-item-text {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.25;
+}
+
+.msme-basemap-dd-item.is-active {
+  background: rgba(33, 89, 216, 0.12);
+}
+
+.msme-basemap-dd-item.is-active .msme-basemap-dd-thumb-wrap {
+  box-shadow:
+    0 0 0 2px #ffffff,
+    0 0 0 3px var(--nm-primary, #2159d8);
+}
+
+.msme-basemap-dd-item:hover:not(:disabled) {
+  background: rgba(33, 89, 216, 0.08);
+}
+
+.msme-basemap-dd-item:focus-visible {
+  outline: 2px solid var(--nm-primary, #2159d8);
+  outline-offset: 1px;
+}
+
+.msme-basemap-dd-item:disabled {
+  opacity: 0.65;
+  cursor: wait;
 }
 
 /* Custom Home FAB — same row/placement pattern as Basemap. */
@@ -813,7 +1065,6 @@
 */
 
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-left.esri-ui-corner .esri-component,
-#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-bottom-right.esri-ui-corner .esri-component,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-bottom-left.esri-ui-corner .esri-component {
   margin: 0 !important;
 }
@@ -1442,7 +1693,6 @@
 }
 
 [data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-left.esri-ui-corner,
-[data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-bottom-right.esri-ui-corner,
 [data-theme='black'] #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-bottom-left.esri-ui-corner {
   background: rgba(18, 26, 38, 0.78);
   border-color: var(--border);
@@ -1518,6 +1768,13 @@
     width: 46px !important;
     height: 46px !important;
     border-radius: 50% !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #legendFab.legend-map-fab {
+    width: 46px !important;
+    height: 46px !important;
+    min-width: 46px !important;
+    min-height: 46px !important;
   }
 
   #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-widget--button,
@@ -1613,8 +1870,9 @@
   border-color: rgba(232, 237, 245, 0.08) !important;
 }
 
-[data-theme='black'] #msmeGisRoot.msme-gis-page #gisLoadingOverlay {
-  background: rgba(10, 15, 24, 0.35);
+[data-theme='black'] #msmeGisRoot.msme-gis-page #gisLoadingOverlay:not(.is-hidden) {
+  background: rgba(11, 17, 26, 0.94);
+  backdrop-filter: blur(14px);
 }
 
 /* Dark theme: framed inner boxes should also be dark (not light blue) */
@@ -1922,7 +2180,7 @@
     bottom: 78px;
   }
 
-  #msmeGisRoot.msme-gis-page #legendFab {
+  #msmeGisRoot.msme-gis-page #legendFab.legend-map-fab {
     left: calc(var(--msme-gis-shell-pad) + 12px);
     bottom: calc(72px + var(--msme-gis-shell-pad) + 66px);
   }

@@ -128,8 +128,8 @@
   cursor: wait;
 }
 
-/* Legend */
-#legendFab {
+/* Legend (legacy pages — not MSME GIS shell; shell uses .legend-map-fab + MSMEGisPageShell.css) */
+#legendFab:not(.legend-map-fab) {
   position: absolute;
   bottom: 102px;
   left: calc(var(--rail-w) + 14px);
@@ -152,7 +152,7 @@
     background 0.16s ease;
 }
 
-#legendFab:hover {
+#legendFab:not(.legend-map-fab):hover {
   transform: translateY(-1px);
   background: #fff;
 }

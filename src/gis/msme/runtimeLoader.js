@@ -687,6 +687,16 @@ function patchLegacySource(source) {
     console.warn("[msme runtime patch] map click select guard patch not applied.");
   }
 
+  // Expose MapView for React UI (custom basemap dropdown) — first UI mount on the main map view.
+  var msmeMapViewBridgePattern = /view\.ui\.add/;
+  var msmeMapViewBridgeReplacement =
+    'try{if(typeof window!=="undefined")window.__msmeGisMapView=view;}catch(_msmeMvBr0){}view.ui.add';
+  if (msmeMapViewBridgePattern.test(out)) {
+    out = out.replace(msmeMapViewBridgePattern, msmeMapViewBridgeReplacement);
+  } else {
+    console.warn("[msme runtime patch] map view bridge (__msmeGisMapView) not applied.");
+  }
+
   return out;
 }
 

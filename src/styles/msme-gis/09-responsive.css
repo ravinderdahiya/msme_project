@@ -275,7 +275,7 @@
     line-height: 1.1;
   }
 
-  #legendFab {
+  #legendFab:not(.legend-map-fab) {
     left: 12px;
     bottom: 138px;
   }

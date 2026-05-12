@@ -31,6 +31,13 @@ const MSMEGISPage = () => {
 
     return () => {
       window.clearTimeout(timer);
+      if (typeof window !== "undefined") {
+        try {
+          window.__msmeGisMapView = null;
+        } catch {
+          /* ignore */
+        }
+      }
       if (
         typeof window !== "undefined" &&
         typeof window.__msmeGisCleanup === "function"
