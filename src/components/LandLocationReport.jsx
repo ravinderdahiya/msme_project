@@ -1,6 +1,170 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useI18n } from '../i18n/useI18n.js'
 
+function parseIsoMs(iso) {
+  if (!iso) return 0
+  const n = Date.parse(iso)
+  return Number.isFinite(n) ? n : 0
+}
+
+function pickLatestCommunitySummary(analysisSnap, mapSnap) {
+  const a = analysisSnap && analysisSnap.communitySummary ? analysisSnap.communitySummary : null
+  const m = mapSnap && mapSnap.communitySummary ? mapSnap.communitySummary : null
+  if (!a && !m) return null
+  if (a && !m) return a
+  if (m && !a) return m
+  return parseIsoMs(a.generatedAt) >= parseIsoMs(m.generatedAt) ? a : m
+}
+
+function readMetersValue(value) {
+  const n = Number(value)
+  return Number.isFinite(n) && n >= 0 ? n : null
+}
+
+function readDistanceMetersFromItem(item) {
+  if (!item || typeof item !== 'object') return null
+  const attrs = item.attributes || {}
+  const props = item.properties || {}
+
+  const directMeters =
+    readMetersValue(item.nearestDistanceM) ??
+    readMetersValue(item.distanceM) ??
+    readMetersValue(item.distance_m) ??
+    readMetersValue(item.dM) ??
+    readMetersValue(attrs.nearestDistanceM) ??
+    readMetersValue(attrs.distanceM) ??
+    readMetersValue(attrs.distance_m) ??
+    readMetersValue(attrs.dM) ??
+    readMetersValue(props.nearestDistanceM) ??
+    readMetersValue(props.distanceM) ??
+    readMetersValue(props.distance_m) ??
+    readMetersValue(props.dM)
+
+  if (directMeters != null) return directMeters
+
+  const directKm =
+    readMetersValue(item.distanceKm) ??
+    readMetersValue(item.distance_km) ??
+    readMetersValue(attrs.distanceKm) ??
+    readMetersValue(attrs.distance_km) ??
+    readMetersValue(props.distanceKm) ??
+    readMetersValue(props.distance_km)
+
+  if (directKm != null) return directKm * 1000
+
+  const label =
+    item.distanceLabel ||
+    item.distance_label ||
+    attrs.distanceLabel ||
+    attrs.distance_label ||
+    props.distanceLabel ||
+    props.distance_label
+
+  if (label != null) {
+    const text = String(label).toLowerCase()
+    const m = text.match(/([\d.]+)/)
+    if (m && m[1]) {
+      const val = Number(m[1])
+      if (Number.isFinite(val) && val >= 0) {
+        if (text.includes('km')) return val * 1000
+        return val
+      }
+    }
+  }
+
+  return null
+}
+
+function getNearestDistanceMeters(row) {
+  const direct =
+    readMetersValue(row?.nearestDistanceM) ??
+    readMetersValue(row?.distanceM) ??
+    readMetersValue(row?.distance_m) ??
+    readMetersValue(row?.dM)
+  if (direct != null) return direct
+
+  const nearest = readDistanceMetersFromItem(row?.nearestItem)
+  if (nearest != null) return nearest
+
+  const items = Array.isArray(row?.items)
+    ? row.items
+    : Array.isArray(row?.features)
+      ? row.features
+      : Array.isArray(row?.list)
+        ? row.list
+        : []
+  if (!items.length) return null
+  return readDistanceMetersFromItem(items[0])
+}
+
+function getNearestName(row) {
+  const item = row?.nearestItem
+  if (!item || typeof item !== 'object') return '—'
+  const attrs = item.attributes || {}
+  const props = item.properties || {}
+  return (
+    item.name ||
+    item.Name ||
+    item.label ||
+    item.title ||
+    attrs.name ||
+    attrs.Name ||
+    attrs.label ||
+    attrs.title ||
+    props.name ||
+    props.Name ||
+    props.label ||
+    props.title ||
+    '—'
+  )
+}
+
+function toKmLabel(meters) {
+  const m = readMetersValue(meters)
+  if (m == null) return '—'
+  return `${(m / 1000).toFixed(2)} km`
+}
+
+function normalizeKey(value) {
+  return String(value || '').trim().toLowerCase()
+}
+
+function pickDistanceRowsFromSummary(summary) {
+  if (!summary || !Array.isArray(summary.categories)) return []
+
+  const rows = summary.categories
+  const targets = [
+    {
+      label: 'School',
+      match: (row) => {
+        const key = normalizeKey(row?.key)
+        const lbl = normalizeKey(row?.label)
+        return key.includes('school') || lbl.includes('school')
+      },
+    },
+    {
+      label: 'ITI',
+      match: (row) => {
+        const key = normalizeKey(row?.key)
+        const lbl = normalizeKey(row?.label)
+        return key === 'iti' || key.includes('iti') || lbl.includes('iti')
+      },
+    },
+  ]
+
+  const picked = []
+  targets.forEach((target) => {
+    const row = rows.find((r) => target.match(r))
+    picked.push({
+      category: target.label,
+      nearestName: getNearestName(row),
+      distanceKm: toKmLabel(getNearestDistanceMeters(row)),
+    })
+  })
+
+  return picked
+}
+
 function aggregateTheme(rows, keyField) {
   const out = {}
   ;(rows || []).forEach((row) => {
@@ -314,6 +478,9 @@ export default function LandLocationReport() {
     }
   }
 
+  const latestCommunitySummary = pickLatestCommunitySummary(analysisSnap, mapSnap)
+  const poiDistanceRows = pickDistanceRowsFromSummary(latestCommunitySummary)
+
   function copyReportText() {
     const root = document.getElementById('landReportPrintRoot')
     if (!root) return
@@ -410,6 +577,31 @@ export default function LandLocationReport() {
 
             <div id="landReportPrintRoot" className="land-report-body">
               {blocks}
+              {poiDistanceRows.length ? (
+                <section className="lr-sec lr-print-page-break">
+                  <h3>Nearest POI Distance (km)</h3>
+                  <div className="lr-table-wrap">
+                    <table className="lr-table">
+                      <thead>
+                        <tr>
+                          <th>Category</th>
+                          <th>Nearest</th>
+                          <th>Distance</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {poiDistanceRows.map((row) => (
+                          <tr key={row.category}>
+                            <td>{row.category}</td>
+                            <td>{row.nearestName || '—'}</td>
+                            <td>{row.distanceKm}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </section>
+              ) : null}
             </div>
           </div>
         </div>

@@ -685,6 +685,10 @@
   margin: 8px 0 4px;
 }
 
+.lr-print-page-break {
+  margin-top: 18px;
+}
+
 .lr-table-wrap {
   width: 100%;
   max-width: 100%;
@@ -715,16 +719,71 @@
 }
 
 @media print {
+  @page {
+    size: A4;
+    margin: 10mm;
+  }
+
   .land-report-overlay {
     position: static;
     background: none;
     padding: 0;
+    inset: auto;
   }
 
   .land-report-panel {
+    width: 100%;
+    max-width: 100%;
     max-height: none;
     box-shadow: none;
     border: none;
+    border-radius: 0;
+    overflow: visible;
+    margin: 0;
+    backdrop-filter: none;
+    background: #fff;
+  }
+
+  .land-report-head,
+  .land-report-tabs {
+    background: #fff;
+  }
+
+  .land-report-body {
+    overflow: visible;
+    max-height: none;
+    height: auto;
+    padding: 0;
+  }
+
+  .lr-sec,
+  .lr-list li {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .lr-table-wrap,
+  .lr-table {
+    overflow: visible;
+  }
+
+  .lr-table tr,
+  .lr-table td,
+  .lr-table th {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  .lr-meta,
+  .lr-count,
+  .lr-list,
+  .lr-table {
+    color: #111;
+  }
+
+  .lr-print-page-break {
+    break-before: page;
+    page-break-before: always;
   }
 
   .land-report-head .ap-close,
