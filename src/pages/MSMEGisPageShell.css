@@ -129,7 +129,7 @@
   background: var(--nm-surface);
   border: 1px solid var(--nm-border);
   border-radius: 24px;
-  box-shadow: var(--nm-shadow);
+  /* box-shadow: var(--nm-shadow); */
   overflow: hidden;
 }
 
@@ -147,7 +147,7 @@
   background: var(--nm-panel-surface);
   border: 1px solid var(--nm-border);
   border-radius: 24px;
-  box-shadow: var(--nm-shadow-strong);
+  /* box-shadow: var(--nm-shadow-strong); */
   overflow: hidden;
 }
 
@@ -2081,124 +2081,96 @@
   color: var(--nm-text) !important;
 }
 
+/**
+ * Responsive shell — align breakpoints and stacking with NewMainMap.css
+ * (1100px stack: header + scrollable sidebar card + map; tool panels as bottom sheet).
+ */
 @media (max-width: 1100px) {
   #msmeGisRoot.msme-gis-page {
     --msme-gis-shell-pad: 18px;
     --msme-gis-inner-gap: 14px;
-  }
-}
-
-@media (max-width: 768px) {
-  #msmeGisRoot.msme-gis-page {
-    --msme-gis-shell-pad: 12px;
-    --msme-gis-inner-gap: 0px;
-    --msme-gis-content-top: calc(var(--header-h) + var(--msme-gis-shell-pad) + 10px);
-    --rail-w: 0px;
+    --msme-rail-total-w: 0px;
+    /* Same cap as .nm-sidebar @max-width:1100 in NewMainMap.css */
+    --msme-gis-rail-chrome-h: min(40vh, 360px);
   }
 
-  /* NewMainMap-style rail: bottom sheet row (full-width map; tools scroll horizontally) */
+  /* Map uses full width; tool chrome is the top strip, not a second column */
+  #msmeGisRoot.msme-gis-page:has(#spatialPanel:not(.collapsed)),
+  #msmeGisRoot.msme-gis-page:has(#aoiPanel:not(.collapsed)),
+  #msmeGisRoot.msme-gis-page:has(#toolsPanel:not(.collapsed)),
+  #msmeGisRoot.msme-gis-page:has(#selectToolsPanel:not(.collapsed)) {
+    --msme-rail-total-w: 0px;
+  }
+
   #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar {
-    top: auto;
-    left: var(--msme-gis-shell-pad);
-    right: var(--msme-gis-shell-pad);
-    bottom: 0;
-    width: auto;
-    min-width: 0;
-    max-width: none;
-    height: auto;
-    max-height: 44vh;
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: stretch;
-    padding: 12px 14px calc(12px + env(safe-area-inset-bottom));
-    border-radius: 18px 18px 0 0;
-    overflow-x: auto;
-    overflow-y: hidden;
-    gap: 12px;
-    z-index: 60;
-  }
-
-  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar .nm-sidebar-left {
-    display: contents;
-  }
-
-  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-brand {
-    flex: 0 0 auto;
-    flex-direction: row;
-    align-items: center;
-    max-width: 100px;
-  }
-
-  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-brand-subtitle {
-    display: none;
-  }
-
-  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-toggle {
-    display: none;
-  }
-
-  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-block {
-    display: flex;
-    flex-direction: column;
-    flex: 0 0 auto;
-    gap: 0;
-  }
-
-  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-heading {
-    display: none;
-  }
-
-  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-list {
-    display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    gap: 10px;
-  }
-
-  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item {
-    min-width: 132px;
-    max-width: 180px;
-    flex: 0 0 auto;
-    grid-template-columns: auto 1fr;
-    padding: 12px 14px;
-  }
-
-  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item small {
-    display: none;
-  }
-
-  #msmeGisRoot.msme-gis-page #appHeader.nmhdr.nmhdr-gis {
-    top: var(--msme-gis-shell-pad);
-    left: var(--msme-gis-shell-pad);
-    right: var(--msme-gis-shell-pad);
-  }
-
-  #msmeGisRoot.msme-gis-page #viewDiv {
-    top: var(--msme-gis-content-top);
-    left: var(--msme-gis-shell-pad);
-    right: var(--msme-gis-shell-pad);
-    bottom: 72px;
-    border-radius: 18px;
-  }
-
-  /* Panels are inside horizontal bottom rail DOM — float as overlay while open */
-  #msmeGisRoot.msme-gis-page #rail .nm-sidebar-gis-panels {
-    flex: none;
     position: fixed;
     top: var(--msme-gis-content-top);
     left: var(--msme-gis-shell-pad);
     right: var(--msme-gis-shell-pad);
-    bottom: calc(72px + env(safe-area-inset-bottom, 0px));
-    z-index: 62;
-    max-height: min(74vh, 640px);
+    bottom: auto;
     width: auto;
+    min-width: 0;
+    max-width: none;
+    height: auto;
+    max-height: var(--msme-gis-rail-chrome-h);
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
+    padding: 0;
+    overflow: hidden;
+    z-index: 60;
+    border-radius: 24px;
+    box-shadow: 0 18px 40px rgba(15, 35, 64, 0.1);
+    border: 1px solid rgba(15, 35, 64, 0.08);
+    background: transparent !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar .nm-sidebar-left {
+    grid-area: unset;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 20px;
+    border-radius: 24px;
+  }
+
+  /* Desktop two-column rail — collapse to single column; panels become overlay */
+  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar:has(#spatialPanel:not(.collapsed)),
+  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar:has(#aoiPanel:not(.collapsed)),
+  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar:has(#toolsPanel:not(.collapsed)),
+  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar:has(#selectToolsPanel:not(.collapsed)) {
+    grid-template-columns: unset;
+    gap: 0;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail .nm-sidebar-gis-panels {
+    flex: none;
+    position: fixed;
+    left: var(--msme-gis-shell-pad);
+    right: var(--msme-gis-shell-pad);
+    top: auto;
+    bottom: 0;
+    width: auto;
+    max-height: min(92vh, 640px);
+    border-radius: 24px 24px 0 0;
+    z-index: 62;
+    padding: 16px 16px max(20px, env(safe-area-inset-bottom, 0px));
+    overflow-y: auto;
+    overflow-x: hidden;
+    box-shadow: 0 -12px 40px rgba(15, 35, 64, 0.18);
+    pointer-events: none;
     display: none;
     flex-direction: column;
     gap: 10px;
-    overflow-y: auto;
-    overflow-x: hidden;
-    pointer-events: none;
+    animation: msme-gis-panel-sheet-in 0.28s ease-out;
   }
 
   #msmeGisRoot.msme-gis-page #rail .nm-sidebar-gis-panels:has(aside:not(.collapsed)) {
@@ -2213,36 +2185,115 @@
     max-height: min(68vh, 600px);
   }
 
+  #msmeGisRoot.msme-gis-page #viewDiv {
+    top: calc(var(--msme-gis-content-top) + var(--msme-gis-rail-chrome-h) + var(--msme-gis-inner-gap));
+    left: var(--msme-gis-shell-pad);
+    right: var(--msme-gis-shell-pad);
+    bottom: var(--msme-gis-shell-pad);
+    border-radius: 20px;
+  }
+
   #msmeGisRoot.msme-gis-page #gisLoadingOverlay {
-    top: calc(var(--msme-gis-content-top) + 6px);
-    left: calc(var(--msme-gis-shell-pad) + 6px);
-    right: calc(var(--msme-gis-shell-pad) + 6px);
-    bottom: 78px;
+    top: calc(var(--msme-gis-content-top) + var(--msme-gis-rail-chrome-h) + var(--msme-gis-inner-gap) + 8px);
+    left: calc(var(--msme-gis-shell-pad) + 8px);
+    right: calc(var(--msme-gis-shell-pad) + 8px);
+    bottom: calc(var(--msme-gis-shell-pad) + 8px);
   }
 
   #msmeGisRoot.msme-gis-page #legendFab.legend-map-fab {
-    position: fixed !important;
-    left: calc(var(--msme-gis-shell-pad) + 12px) !important;
-    bottom: calc(72px + var(--msme-gis-shell-pad) + 66px) !important;
+    left: calc(var(--msme-gis-shell-pad) + 14px);
+    bottom: calc(var(--msme-gis-shell-pad) + 102px);
     top: auto !important;
     right: auto !important;
-    z-index: 130 !important;
   }
 
   #msmeGisRoot.msme-gis-page #legendPanel {
-    position: fixed !important;
-    left: var(--msme-gis-shell-pad) !important;
-    right: var(--msme-gis-shell-pad) !important;
-    bottom: calc(72px + var(--msme-gis-shell-pad) + 64px) !important;
+    left: calc(var(--msme-gis-shell-pad) + 68px);
+    right: var(--msme-gis-shell-pad);
+    bottom: calc(var(--msme-gis-shell-pad) + 100px);
     top: auto !important;
     width: auto !important;
-    max-height: none !important;
   }
 
   #msmeGisRoot.msme-gis-page #coordBar {
     left: var(--msme-gis-shell-pad);
     right: var(--msme-gis-shell-pad);
-    bottom: calc(72px + var(--msme-gis-shell-pad) + 8px);
+    bottom: calc(var(--msme-gis-shell-pad) + 24px);
+  }
+
+  #msmeGisRoot.msme-gis-page .select-tool-dock--icons {
+    top: calc(var(--msme-gis-content-top) + var(--msme-gis-rail-chrome-h) + var(--msme-gis-inner-gap) + 10px) !important;
+  }
+
+  /*
+   * Proximity / Closest / Print / Home / Basemap live under #viewDiv (or move into .esri-ui-top-right).
+   * Fixed + viewport "content-top" placed them above the visible map after the stacked menu rail — clipped or hidden.
+   * Anchor the ArcGIS top-right host to the map frame (same pattern ArcGIS uses internally).
+   */
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner {
+    position: absolute !important;
+    top: 10px !important;
+    right: 10px !important;
+    left: auto !important;
+    bottom: auto !important;
+    max-width: calc(100% - 20px) !important;
+    flex-wrap: wrap !important;
+    justify-content: flex-end !important;
+    row-gap: 8px !important;
+    column-gap: 10px !important;
+    z-index: 120 !important;
+  }
+}
+
+@media (max-width: 900px) {
+  #msmeGisRoot.msme-gis-page #rail .nm-sidebar-gis-panels {
+    max-height: min(92vh, 640px);
+    padding-bottom: max(20px, env(safe-area-inset-bottom, 0px));
+  }
+}
+
+@media (max-width: 768px) {
+  #msmeGisRoot.msme-gis-page {
+    --msme-gis-shell-pad: 12px;
+    --msme-gis-inner-gap: 10px;
+    --msme-gis-content-top: calc(var(--header-h) + var(--msme-gis-shell-pad) + 10px);
+    --rail-w: 0px;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar .nm-sidebar-left {
+    padding: 18px;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item {
+    padding: 14px 14px;
+  }
+
+  #msmeGisRoot.msme-gis-page #appHeader.nmhdr.nmhdr-gis {
+    top: var(--msme-gis-shell-pad);
+    left: var(--msme-gis-shell-pad);
+    right: var(--msme-gis-shell-pad);
+  }
+}
+
+@media (max-width: 640px) {
+  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-brand {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-toggle {
+    align-self: flex-end;
+  }
+}
+
+@keyframes msme-gis-panel-sheet-in {
+  from {
+    transform: translateY(100%);
+    opacity: 0.6;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
   }
 }
 

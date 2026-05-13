@@ -50,7 +50,7 @@ export default function HaryanaMap({ t }) {
 
   return (
     <>
-      <button
+      {/* <button
         type="button"
         id="legendFab"
         className="buffer-map-fab legend-map-fab esri-component esri-widget--button"
@@ -67,7 +67,7 @@ export default function HaryanaMap({ t }) {
             d="M4 5h16v4H4V5zm0 6h10v4H4v-4zm0 6h16v4H4v-4z"
           />
         </svg>
-      </button>
+      </button> */}
 
       <div id="legendPanel" aria-label={t('legendPanelLabel')}>
         <div id="legendInner"></div>

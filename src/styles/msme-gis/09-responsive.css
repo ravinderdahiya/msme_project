@@ -217,14 +217,15 @@
     justify-self: start;
   }
 
-  #viewDiv {
+  /* Legacy GIS layout only — MSME map page uses #msmeGisRoot + MSMEGisPageShell.css */
+  html:not(:has(#msmeGisRoot.msme-gis-page)) #viewDiv {
     left: 0;
   }
 
-  #spatialPanel,
-  #selectToolsPanel,
-  #toolsPanel,
-  #aoiPanel {
+  html:not(:has(#msmeGisRoot.msme-gis-page)) #spatialPanel,
+  html:not(:has(#msmeGisRoot.msme-gis-page)) #selectToolsPanel,
+  html:not(:has(#msmeGisRoot.msme-gis-page)) #toolsPanel,
+  html:not(:has(#msmeGisRoot.msme-gis-page)) #aoiPanel {
     left: 0;
     width: var(--panel-w);
     bottom: 68px;
@@ -234,7 +235,7 @@
     border-right: 0;
   }
 
-  #rail {
+  html:not(:has(#msmeGisRoot.msme-gis-page)) #rail {
     position: fixed;
     top: auto;
     left: 0;
@@ -253,11 +254,11 @@
     border-right: 0;
   }
 
-  #rail .rail-tip {
+  html:not(:has(#msmeGisRoot.msme-gis-page)) #rail .rail-tip {
     display: none;
   }
 
-  #rail button.rail-btn {
+  html:not(:has(#msmeGisRoot.msme-gis-page)) #rail button.rail-btn {
     width: 64px;
     min-width: 64px;
     min-height: 62px;
@@ -265,12 +266,12 @@
     gap: 3px;
   }
 
-  #rail button.rail-btn .rail-ico-wrap {
+  html:not(:has(#msmeGisRoot.msme-gis-page)) #rail button.rail-btn .rail-ico-wrap {
     width: 34px;
     height: 34px;
   }
 
-  #rail .rail-lbl {
+  html:not(:has(#msmeGisRoot.msme-gis-page)) #rail .rail-lbl {
     font-size: 10px;
     line-height: 1.1;
   }

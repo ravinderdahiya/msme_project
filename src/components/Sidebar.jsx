@@ -26,7 +26,7 @@ export default function Sidebar({ t }) {
     <>
       <aside id="rail" className="nm-sidebar rail-nm" aria-label="Map tools">
         <div className="nm-sidebar-left">
-          <div className="nm-sidebar-brand">
+          {/* <div className="nm-sidebar-brand">
             <div>
               <span className="nm-sidebar-brand-title">MENU</span>
               <p className="nm-sidebar-brand-subtitle">Map tools for land selection</p>
@@ -34,7 +34,7 @@ export default function Sidebar({ t }) {
             <button type="button" className="nm-sidebar-toggle" aria-label="Open menu">
               <Menu size={18} />
             </button>
-          </div>
+          </div> */}
 
           <div className="nm-sidebar-block">
             <div className="nm-sidebar-heading">MAP TOOLS</div>
@@ -81,7 +81,7 @@ export default function Sidebar({ t }) {
                   <small>{t('railTitleLayers')}</small>
                 </span>
               </button>
-              
+
             </div>
           </div>
 
@@ -89,7 +89,7 @@ export default function Sidebar({ t }) {
             <div className="nm-sidebar-list">
               <button
                 type="button"
-              className="nm-sidebar-item"
+                className="nm-sidebar-item"
                 id="btnClosestPointRail"
                 title={t('railTitleClosestPoint')}
                 onClick={openClosestPanelAndStart}
@@ -109,7 +109,7 @@ export default function Sidebar({ t }) {
               </button>
               <button
                 type="button"
-              className="nm-sidebar-item"
+                className="nm-sidebar-item"
                 id="btnSelectTool"
                 title={t('railTitleSelect')}
                 aria-pressed="false"
