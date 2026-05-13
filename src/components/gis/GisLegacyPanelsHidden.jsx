@@ -142,6 +142,9 @@ export default function GisLegacyPanelsHidden({ t }) {
                   <button type="button" className="btn-ghost" id="btnBufferClearMark">
                     {t("bufferClearMark")}
                   </button>
+                  <button type="button" className="btn-secondary" id="btnTrackPickPoint">
+                    Track Select (500m)
+                  </button>
                 </div>
                 <div className="row">
                   <span className="lbl">{t("bufferQueryRadius")}</span>

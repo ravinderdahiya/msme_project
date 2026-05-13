@@ -337,6 +337,10 @@
     top: auto;
   }
 
+  .buffer-fab-wrap .track-map-fab {
+    top: auto;
+  }
+
   .buffer-mini-panel {
     left: 0;
     right: auto;

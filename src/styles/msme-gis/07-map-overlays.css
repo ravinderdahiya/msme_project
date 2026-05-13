@@ -389,6 +389,19 @@
   order: 2;
 }
 
+.buffer-fab-wrap .track-map-fab {
+  position: relative;
+  top: auto;
+  right: auto;
+  order: 3;
+  border-color: #9ac3e8;
+  background: linear-gradient(180deg, #f6fbff 0%, #ebf4fe 100%);
+}
+
+.buffer-fab-wrap .track-map-fab:hover {
+  border-color: #4b8fcc;
+}
+
 .buffer-mini-panel {
   position: absolute;
   left: 0;
