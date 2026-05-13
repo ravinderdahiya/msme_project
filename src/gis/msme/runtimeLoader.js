@@ -907,6 +907,45 @@ function patchLegacySource(source) {
     console.warn("[msme runtime patch] proximity no-hit alert patch not applied.");
   }
 
+  // Expose a bridge so external tools (e.g. track buffer) can trigger community summary
+  // using any computed polygon geometry instead of center-only fallback.
+  var communitySummaryBridgePattern =
+    /window\.msmeGisDownloadClosestPdf = function \(\) \{\s*buildClosestScreenPdfReport\(\);\s*\};/;
+  var communitySummaryBridgeReplacement = [
+    "window.msmeGisDownloadClosestPdf = function () {",
+    "  buildClosestScreenPdfReport();",
+    "};",
+    "",
+    "window.msmeGisRunCommunitySummaryForGeometry = function (geomInput, opts) {",
+    "  opts = opts || {};",
+    "  return projection.load().then(function () {",
+    "    var gIn = geomInput || null;",
+    "    if (!gIn) return false;",
+    "    var g326 = toEngineSR(ensureSR32643(gIn));",
+    "    if (!g326 || !geometryIsUsable(g326)) return false;",
+    "    var radNum = Number(opts.radiusM);",
+    "    var rad = isFinite(radNum) && radNum > 0 ? Math.max(1, Math.round(radNum)) : null;",
+    "    var summaryMsg = opts.summary ? String(opts.summary) : \"Buffer area selected.\";",
+    "    var base = publishAnalysisToolResult(\"buffer\", summaryMsg, {",
+    "      selectionSource: opts.selectionSource ? String(opts.selectionSource) : \"external-geometry\",",
+    "      radiusM: rad,",
+    "      distanceM: rad,",
+    "      roadSource: opts.roadSource ? String(opts.roadSource) : \"geometry-bridge\"",
+    "    });",
+    "    publishBufferCommunitySummaryInBackground(base, g326, null);",
+    "    return true;",
+    "  }).catch(function (e0) {",
+    "    console.warn(\"[community summary bridge] failed\", e0);",
+    "    return false;",
+    "  });",
+    "};",
+  ].join("\n");
+  if (communitySummaryBridgePattern.test(out)) {
+    out = out.replace(communitySummaryBridgePattern, communitySummaryBridgeReplacement);
+  } else {
+    console.warn("[msme runtime patch] community summary bridge patch not applied.");
+  }
+
   // Buffer run should still work when legacy UI controls (bufRoadLayer/bufDist) are hidden.
   var runBufferUiFallbackPattern =
     /var roadLayerEl = document\.getElementById\("bufRoadLayer"\);\s*var roadLayerId = parseInt\(roadLayerEl\.value, 10\);\s*var roadSourceText = roadLayerEl && roadLayerEl\.selectedOptions && roadLayerEl\.selectedOptions\[0\]\s*\? String\(roadLayerEl\.selectedOptions\[0\]\.text \|\| ""\)\.trim\(\)\s*:\s*"Road source";\s*var distM = parseFloat\(document\.getElementById\("bufDist"\)\.value\) \|\| 1500;/;
@@ -927,6 +966,58 @@ function patchLegacySource(source) {
     out = out.replace(runBufferUiFallbackPattern, runBufferUiFallbackReplacement);
   } else {
     console.warn("[msme runtime patch] runBuffer UI fallback patch not applied.");
+  }
+
+  // For sketch area tools (polygon/rectangle/circle), use inward buffer geometry for intersection.
+  var sketchInwardAnchorPattern = /var anchor32643 = g326\.type === "point" \? g326 : getGeometryCentroid\(g326\);/;
+  var sketchInwardAnchorReplacement = [
+    "var sketchAnalysisGeom32643 = g326;",
+    "      var sketchInwardMeters = readBufferPickDistanceMetersFromUi();",
+    "      if (!isFinite(sketchInwardMeters) || sketchInwardMeters <= 0) sketchInwardMeters = 500;",
+    "      if (String(g326.type || \"\").toLowerCase() === \"polygon\") {",
+    "        var inwardGeom32643 = null;",
+    "        try {",
+    "          inwardGeom32643 = geometryEngine.buffer(g326, -Math.abs(sketchInwardMeters), \"meters\", true);",
+    "        } catch (eIn0) {",
+    "          inwardGeom32643 = null;",
+    "        }",
+    "        if (Array.isArray(inwardGeom32643)) {",
+    "          var inwardParts = inwardGeom32643.filter(function (gPart) {",
+    "            return !!(gPart && geometryIsUsable(gPart));",
+    "          });",
+    "          inwardGeom32643 = inwardParts.length ? inwardParts[0] : null;",
+    "        }",
+    "        if (inwardGeom32643 && geometryIsUsable(inwardGeom32643)) {",
+    "          sketchAnalysisGeom32643 = inwardGeom32643;",
+    "          var inwardWeb = projection.project(inwardGeom32643, SR_WEB);",
+    "          if (inwardWeb) {",
+    "            resultsLayer.add(new Graphic({",
+    "              geometry: inwardWeb,",
+    "              symbol: new SimpleFillSymbol({",
+    "                color: [16, 185, 129, 0.16],",
+    "                outline: new SimpleLineSymbol({ color: [5, 150, 105, 0.95], width: 1.8 })",
+    "              }),",
+    "              attributes: { type: \"sketch-inward-buffer\", inwardM: sketchInwardMeters }",
+    "            }));",
+    "          }",
+    "          setStatus(\"Sketch inward buffer applied: \" + sketchInwardMeters + \" m inside polygon.\");",
+    "        }",
+    "      }",
+    "      var anchor32643 = sketchAnalysisGeom32643.type === \"point\" ? sketchAnalysisGeom32643 : getGeometryCentroid(sketchAnalysisGeom32643);",
+  ].join("\n");
+  if (sketchInwardAnchorPattern.test(out)) {
+    out = out.replace(sketchInwardAnchorPattern, sketchInwardAnchorReplacement);
+  } else {
+    console.warn("[msme runtime patch] sketch inward buffer anchor patch not applied.");
+  }
+
+  var sketchInwardQueryPattern = /return querySketchIntersection\(g326\)\.then\(function \(flat\) \{/;
+  var sketchInwardQueryReplacement =
+    "var querySketchGeom32643 = sketchAnalysisGeom32643 || g326;\n      return querySketchIntersection(querySketchGeom32643).then(function (flat) {";
+  if (sketchInwardQueryPattern.test(out)) {
+    out = out.replace(sketchInwardQueryPattern, sketchInwardQueryReplacement);
+  } else {
+    console.warn("[msme runtime patch] sketch inward buffer query patch not applied.");
   }
 
   // Ignore plain random map clicks unless identify tools are explicitly active.
@@ -965,3 +1056,732 @@ const __legacyExports = eval("(() => {\n" + __legacySource + "\nreturn { initMsm
 
 export const initMsmeWebGis = __legacyExports.initMsmeWebGis;
 export { applyMsmeGisUiStrings };
+
+const TRACK_TOOL_BUTTON_ID = "btnTrackPickPoint";
+const TRACK_TOOL_LAYER_ID = 2; // Transportation_Infrastructure -> Rail Network
+const TRACK_TOOL_BUFFER_METERS = 500;
+const TRACK_TOOL_PICK_SNAP_METERS = 1500;
+
+function installRailTrackBufferTool() {
+  if (typeof window === "undefined") return;
+  if (window.__msmeRailTrackToolInstalled) return;
+  window.__msmeRailTrackToolInstalled = true;
+
+  var state = {
+    buttonEl: null,
+    clickHandle: null,
+    pickMode: false,
+    running: false,
+    graphicsLayer: null,
+    viewRef: null,
+    prevCursor: "",
+  };
+
+  function setButtonLabel() {
+    if (!state.buttonEl) return;
+    state.buttonEl.textContent = "Track Buffer (All, 500m)";
+    state.buttonEl.setAttribute("aria-pressed", "false");
+    state.buttonEl.title = "Create 500m both-side buffer for all railway tracks";
+  }
+
+  function setStatus(msg) {
+    var statusEl = document.getElementById("status");
+    if (statusEl) statusEl.textContent = String(msg || "");
+  }
+
+  function normalizeTrackBufferMeters(distanceM) {
+    var n = Number(distanceM);
+    if (!isFinite(n) || n <= 0) return TRACK_TOOL_BUFFER_METERS;
+    return Math.round(n);
+  }
+
+  function trackWidthToSideBufferMeters(widthM) {
+    var side = normalizeTrackBufferMeters(widthM);
+    if (!isFinite(side) || side <= 0) side = TRACK_TOOL_BUFFER_METERS;
+    return side;
+  }
+
+  function clearLegacyTrackConflicts() {
+    try {
+      window.dispatchEvent(new CustomEvent("msme-gis-clear-community-graphics"));
+    } catch (e0) {}
+  }
+
+  function ensureGraphicsLayer(view) {
+    if (!view || !view.map) return null;
+    if (state.graphicsLayer && !state.graphicsLayer.destroyed) {
+      if (view.map.layers && view.map.layers.includes(state.graphicsLayer)) return state.graphicsLayer;
+      try {
+        view.map.add(state.graphicsLayer);
+      } catch (e0) {}
+      return state.graphicsLayer;
+    }
+    state.graphicsLayer = new GraphicsLayer({
+      id: "__msmeRailTrackBufferLayer",
+      title: "Track buffer results",
+      listMode: "hide",
+    });
+    view.map.add(state.graphicsLayer);
+    return state.graphicsLayer;
+  }
+
+  function clearClickHandle() {
+    if (!state.clickHandle) return;
+    try {
+      state.clickHandle.remove();
+    } catch (e0) {}
+    state.clickHandle = null;
+  }
+
+  function setPickCursor(view) {
+    if (!view || !view.container) return;
+    try {
+      state.prevCursor = String(view.container.style.cursor || "");
+      view.container.style.cursor = "crosshair";
+    } catch (e0) {}
+  }
+
+  function resetPickCursor(view) {
+    if (!view || !view.container) return;
+    try {
+      view.container.style.cursor = state.prevCursor || "";
+    } catch (e0) {}
+    state.prevCursor = "";
+  }
+
+  function stopPickMode() {
+    var view = state.viewRef || window.__msmeGisMapView;
+    state.pickMode = false;
+    clearClickHandle();
+    resetPickCursor(view);
+    setButtonLabel();
+  }
+
+  function featureGeometryToEngine(geomJson) {
+    if (!geomJson) return null;
+    try {
+      var geom = geomFromJSON(geomJson);
+      if (!geom) return null;
+      return toEngineSR(ensureSR32643(geom));
+    } catch (e0) {
+      return null;
+    }
+  }
+
+  function polylineVertexCount(g) {
+    if (!g || String(g.type || "").toLowerCase() !== "polyline") return 0;
+    var paths = Array.isArray(g.paths) ? g.paths : [];
+    var count = 0;
+    for (var i = 0; i < paths.length; i++) {
+      var path = Array.isArray(paths[i]) ? paths[i] : [];
+      count += path.length;
+    }
+    return count;
+  }
+
+  function isUsableRailPolyline(g) {
+    if (!g || !geometryIsUsable(g)) return false;
+    if (String(g.type || "").toLowerCase() !== "polyline") return false;
+    return polylineVertexCount(g) >= 2;
+  }
+
+  function collectUsableRailPolylinesFromFeatures(features) {
+    var out = [];
+    (features || []).forEach(function (f) {
+      var g32643 = featureGeometryToEngine(f && f.geometry);
+      if (!isUsableRailPolyline(g32643)) return;
+      out.push(g32643);
+    });
+    return out;
+  }
+
+  function railLinesLikelyConnected(lineA, lineB, toleranceM) {
+    if (!isUsableRailPolyline(lineA) || !isUsableRailPolyline(lineB)) return false;
+    try {
+      if (geometryEngine.intersects(lineA, lineB)) return true;
+    } catch (e0) {}
+    try {
+      if (geometryEngine.touches(lineA, lineB)) return true;
+    } catch (e1) {}
+    var dM = NaN;
+    try {
+      dM = geometryEngine.distance(lineA, lineB, "meters");
+    } catch (e2) {
+      dM = NaN;
+    }
+    return isFinite(dM) && dM <= toleranceM;
+  }
+
+  function buildConnectedRailLinesForBuffer(seedRailLine32643, candidateFeatures, sideBufferMeters) {
+    var seed = isUsableRailPolyline(seedRailLine32643) ? seedRailLine32643 : null;
+    if (!seed) return [];
+    var lines = collectUsableRailPolylinesFromFeatures(candidateFeatures);
+    if (lines.length > 260) {
+      var maxKeep = 260;
+      var nearSeed = lines
+        .map(function (ln) {
+          var dM = Infinity;
+          try {
+            dM = geometryEngine.distance(seed, ln, "meters");
+          } catch (e0) {
+            dM = Infinity;
+          }
+          return { g: ln, d: isFinite(dM) ? dM : Infinity };
+        })
+        .sort(function (a, b) {
+          return a.d - b.d;
+        })
+        .slice(0, maxKeep)
+        .map(function (it) {
+          return it.g;
+        });
+      lines = nearSeed.length ? nearSeed : lines.slice(0, maxKeep);
+    }
+    var all = [seed];
+    lines.forEach(function (ln) {
+      if (!ln) return;
+      all.push(ln);
+    });
+    if (all.length <= 1) return [seed];
+
+    var tolM = Math.max(12, Math.min(140, Math.round(Number(sideBufferMeters || 0) * 0.35) || 24));
+    var visited = {};
+    var queue = [0];
+    visited[0] = true;
+
+    while (queue.length) {
+      var cur = queue.shift();
+      var base = all[cur];
+      for (var i = 1; i < all.length; i++) {
+        if (visited[i]) continue;
+        if (!railLinesLikelyConnected(base, all[i], tolM)) continue;
+        visited[i] = true;
+        queue.push(i);
+      }
+    }
+
+    var result = [];
+    Object.keys(visited).forEach(function (k) {
+      var idx = parseInt(k, 10);
+      if (!isFinite(idx) || idx < 0 || idx >= all.length) return;
+      var g = all[idx];
+      if (isUsableRailPolyline(g)) result.push(g);
+    });
+    return result.length ? result : [seed];
+  }
+
+  function resolveRailLineForBuffer(anchor32643, railLine32643, bufferMeters) {
+    if (!isUsableRailPolyline(railLine32643)) return railLine32643;
+    return railLine32643;
+  }
+
+  function buildRailBufferFromLines(lineInputs, bufferMeters) {
+    var lines = [];
+    if (Array.isArray(lineInputs)) {
+      lineInputs.forEach(function (g) {
+        if (isUsableRailPolyline(g)) lines.push(g);
+      });
+    } else if (isUsableRailPolyline(lineInputs)) {
+      lines.push(lineInputs);
+    }
+    if (!lines.length) return null;
+
+    var bufferGeom = null;
+    try {
+      bufferGeom = geometryEngine.buffer(lines, bufferMeters, "meters", true);
+    } catch (e0) {
+      bufferGeom = null;
+    }
+    if (Array.isArray(bufferGeom)) {
+      var valid = bufferGeom.filter(function (g) {
+        return !!(g && geometryIsUsable(g));
+      });
+      if (valid.length === 1) bufferGeom = valid[0];
+      else if (valid.length > 1) bufferGeom = geometryEngine.union(valid);
+      else bufferGeom = null;
+    }
+    if (!bufferGeom || !geometryIsUsable(bufferGeom)) {
+      try {
+        bufferGeom = geometryEngine.buffer(lines, bufferMeters, "meters", false);
+      } catch (e1) {
+        bufferGeom = null;
+      }
+      if (Array.isArray(bufferGeom)) {
+        var valid2 = bufferGeom.filter(function (g2) {
+          return !!(g2 && geometryIsUsable(g2));
+        });
+        if (valid2.length === 1) bufferGeom = valid2[0];
+        else if (valid2.length > 1) bufferGeom = geometryEngine.union(valid2);
+        else bufferGeom = null;
+      }
+    }
+    return bufferGeom && geometryIsUsable(bufferGeom) ? bufferGeom : null;
+  }
+
+  function pickNearestRailFeature(anchor32643, railFeatures) {
+    var best = null;
+    var bestDist = Infinity;
+    (railFeatures || []).forEach(function (f) {
+      var g32643 = featureGeometryToEngine(f && f.geometry);
+      if (!isUsableRailPolyline(g32643)) return;
+      var dM = distanceFromPointToGeometry(anchor32643, g32643);
+      if (!isFinite(dM) || dM < 0) return;
+      if (dM < bestDist) {
+        bestDist = dM;
+        best = {
+          feature: f,
+          geometry: g32643,
+          snapDistanceM: dM,
+        };
+      }
+    });
+    return best;
+  }
+
+  function addTrackResultGraphics(
+    view,
+    anchor32643,
+    lineBuffer32643,
+    selectedRailInput32643,
+    snapDistanceM,
+    bufferWidthMeters,
+    sideBufferMeters,
+  ) {
+    var layer = ensureGraphicsLayer(view);
+    if (!layer) return;
+
+    layer.removeAll();
+
+    var bufferWeb = projection.project(lineBuffer32643, SR_WEB) || lineBuffer32643 || null;
+    var selectedRailWebList = [];
+    if (Array.isArray(selectedRailInput32643)) {
+      selectedRailInput32643.forEach(function (g0) {
+        if (!isUsableRailPolyline(g0)) return;
+        var gw0 = projection.project(g0, SR_WEB) || g0 || null;
+        if (gw0) selectedRailWebList.push(gw0);
+      });
+    } else if (isUsableRailPolyline(selectedRailInput32643)) {
+      var gw1 = projection.project(selectedRailInput32643, SR_WEB) || selectedRailInput32643 || null;
+      if (gw1) selectedRailWebList.push(gw1);
+    }
+    var anchorWeb = projection.project(anchor32643, SR_WEB) || anchor32643 || null;
+    if (bufferWeb) {
+      layer.add(
+        new Graphic({
+          geometry: bufferWeb,
+          symbol: new SimpleFillSymbol({
+            color: [56, 189, 248, 0.2],
+            outline: new SimpleLineSymbol({ color: [2, 132, 199, 0.95], width: 1.5 }),
+          }),
+          attributes: { type: "track-buffer", radiusM: sideBufferMeters, widthM: bufferWidthMeters },
+        }),
+      );
+    }
+    selectedRailWebList.forEach(function (selectedRailWeb) {
+      layer.add(
+        new Graphic({
+          geometry: selectedRailWeb,
+          symbol: new SimpleLineSymbol({
+            color: [190, 24, 93, 1],
+            width: 4,
+            style: "solid",
+          }),
+          attributes: { type: "rail-track-selected" },
+        }),
+      );
+    });
+    if (anchorWeb) {
+      layer.add(
+        new Graphic({
+          geometry: anchorWeb,
+          symbol: new SimpleMarkerSymbol({
+            style: "circle",
+            size: 10,
+            color: [22, 163, 74, 0.96],
+            outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 1.2 }),
+          }),
+          attributes: { type: "track-anchor" },
+        }),
+      );
+    }
+
+    var extentSrc = bufferWeb && bufferWeb.extent ? bufferWeb : anchorWeb;
+    if (view && extentSrc && extentSrc.extent) {
+      view
+        .goTo({ target: extentSrc.extent.expand(1.35), padding: { top: 80, right: 40, bottom: 60, left: 40 } })
+        .catch(function () {
+          return null;
+        });
+    }
+
+    var snapText = isFinite(snapDistanceM) ? " (snap: " + Math.round(snapDistanceM) + " m)" : "";
+    var totalWidthMeters = Math.max(1, Math.round(sideBufferMeters * 2));
+    setStatus(
+      "Track buffer ready: selected railway track, " +
+        sideBufferMeters +
+        " m parallel each side on full selected line (total " +
+        totalWidthMeters +
+        " m)." +
+        snapText,
+    );
+  }
+
+  function runTrackNetworkBufferForAll(view, distanceM) {
+    if (state.running) {
+      setStatus("Track: buffer generation already in progress...");
+      return Promise.resolve(false);
+    }
+    var bufferMeters = normalizeTrackBufferMeters(distanceM);
+    state.running = true;
+    return projection
+      .load()
+      .then(function () {
+        if (!view || view.destroyed) return null;
+        clearLegacyTrackConflicts();
+        setStatus("Track: loading railway network...");
+        return queryLayer(TRANS_MS, TRACK_TOOL_LAYER_ID, {
+          where: "1=1",
+          outFields: "objectid",
+          returnGeometry: true,
+          resultRecordCount: 2000,
+        })
+          .then(function (data) {
+            var features = data && Array.isArray(data.features) ? data.features : [];
+            var lineGeoms = [];
+            features.forEach(function (f) {
+              var g32643 = featureGeometryToEngine(f && f.geometry);
+              if (!g32643 || !geometryIsUsable(g32643)) return;
+              if (String(g32643.type || "").toLowerCase() !== "polyline") return;
+              lineGeoms.push(g32643);
+            });
+            if (!lineGeoms.length) {
+              setStatus("Track: railway line data not available for buffer.");
+              return null;
+            }
+            var fullBuffer32643 = null;
+            try {
+              fullBuffer32643 = geometryEngine.buffer(lineGeoms, bufferMeters, "meters", true);
+            } catch (eBuf0) {
+              fullBuffer32643 = null;
+            }
+            if (Array.isArray(fullBuffer32643)) {
+              var unionInput0 = fullBuffer32643.filter(function (g) {
+                return !!(g && geometryIsUsable(g));
+              });
+              if (unionInput0.length === 1) fullBuffer32643 = unionInput0[0];
+              else if (unionInput0.length > 1) fullBuffer32643 = geometryEngine.union(unionInput0);
+              else fullBuffer32643 = null;
+            }
+            if (!fullBuffer32643 || !geometryIsUsable(fullBuffer32643)) {
+              var pieces = null;
+              try {
+                pieces = geometryEngine.buffer(lineGeoms, bufferMeters, "meters", false);
+              } catch (eBuf1) {
+                pieces = null;
+              }
+              if (Array.isArray(pieces) && pieces.length) {
+                var unionInput1 = pieces.filter(function (g2) {
+                  return !!(g2 && geometryIsUsable(g2));
+                });
+                if (unionInput1.length === 1) fullBuffer32643 = unionInput1[0];
+                else if (unionInput1.length > 1) fullBuffer32643 = geometryEngine.union(unionInput1);
+              }
+            }
+            if (!fullBuffer32643 || !geometryIsUsable(fullBuffer32643)) {
+              setStatus("Track: railway network buffer create nahi hua.");
+              return null;
+            }
+
+            var layer = ensureGraphicsLayer(view);
+            if (!layer) return null;
+            layer.removeAll();
+
+            var bufferWeb = projection.project(fullBuffer32643, SR_WEB) || fullBuffer32643 || null;
+            if (bufferWeb) {
+              layer.add(
+                new Graphic({
+                  geometry: bufferWeb,
+                  symbol: new SimpleFillSymbol({
+                    color: [56, 189, 248, 0.2],
+                    outline: new SimpleLineSymbol({ color: [2, 132, 199, 0.95], width: 1.6 }),
+                  }),
+                  attributes: { type: "track-network-buffer", radiusM: bufferMeters },
+                }),
+              );
+            }
+
+            var maxLinesToDraw = Math.min(lineGeoms.length, 250);
+            for (var i = 0; i < maxLinesToDraw; i++) {
+              var lw = projection.project(lineGeoms[i], SR_WEB) || null;
+              if (!lw) continue;
+              layer.add(
+                new Graphic({
+                  geometry: lw,
+                  symbol: new SimpleLineSymbol({
+                    color: [190, 24, 93, 0.9],
+                    width: 2.5,
+                    style: "solid",
+                  }),
+                  attributes: { type: "rail-track-network-line" },
+                }),
+              );
+            }
+
+            if (view && bufferWeb && bufferWeb.extent) {
+              view
+                .goTo({ target: bufferWeb.extent.expand(1.12), padding: { top: 80, right: 40, bottom: 60, left: 40 } })
+                .catch(function () {
+                  return null;
+                });
+            }
+
+            setStatus(
+              "Track network buffer ready: " +
+                lineGeoms.length +
+                " railway segment(s), both side " +
+                bufferMeters +
+                " m buffer.",
+            );
+            try {
+              if (typeof window !== "undefined" && typeof window.msmeGisRunCommunitySummaryForGeometry === "function") {
+                window.msmeGisRunCommunitySummaryForGeometry(fullBuffer32643, {
+                  radiusM: bufferMeters,
+                  selectionSource: "track-network",
+                  roadSource: "railway-network",
+                  summary:
+                    "Track network buffer ready: " +
+                    lineGeoms.length +
+                    " railway segment(s), both side " +
+                    bufferMeters +
+                    " m buffer.",
+                });
+              }
+            } catch (eSummary0) {}
+            return true;
+          })
+          .catch(function (err) {
+            console.warn("[track network buffer] railway query failed", err);
+            setStatus("Track: railway network query failed.");
+            return null;
+          });
+      })
+      .catch(function (err0) {
+        console.warn("[track network buffer] projection failed", err0);
+        setStatus("Track: map projection unavailable.");
+        return null;
+      })
+      .finally(function () {
+        state.running = false;
+      });
+  }
+
+  function runTrackBufferForPoint(view, mapPoint, distanceM) {
+    var bufferWidthMeters = normalizeTrackBufferMeters(distanceM);
+    var sideBufferMeters = trackWidthToSideBufferMeters(bufferWidthMeters);
+    return projection
+      .load()
+      .then(function () {
+        if (!view || view.destroyed || !mapPoint) return null;
+        var anchor32643 = projection.project(mapPoint, SR_METER) || null;
+        if (!anchor32643) {
+          setStatus("Track: selected point is invalid.");
+          return null;
+        }
+        var pickZone32643 = geometryEngine.buffer(anchor32643, TRACK_TOOL_PICK_SNAP_METERS, "meters");
+        if (!pickZone32643) {
+          setStatus("Track: could not create track selection zone.");
+          return null;
+        }
+        function queryByRadius(radiusM) {
+          var zone = geometryEngine.buffer(anchor32643, radiusM, "meters");
+          if (!zone) return Promise.resolve([]);
+          var q = Object.assign(
+            {
+              where: "1=1",
+              outFields: "*",
+              returnGeometry: true,
+              resultRecordCount: 2000,
+            },
+            geometryToQueryParams(zone),
+          );
+          return queryLayer(TRANS_MS, TRACK_TOOL_LAYER_ID, q)
+            .then(function (data) {
+              return data && Array.isArray(data.features) ? data.features : [];
+            })
+            .catch(function () {
+              return [];
+            });
+        }
+
+        var narrowRadiusM = Math.max(50, Math.min(300, Math.round(sideBufferMeters * 0.5)));
+        return queryByRadius(narrowRadiusM)
+          .then(function (nearFeatures) {
+            if (nearFeatures && nearFeatures.length) return nearFeatures;
+            return queryByRadius(TRACK_TOOL_PICK_SNAP_METERS);
+          })
+          .then(function (features) {
+            var nearest = pickNearestRailFeature(anchor32643, features || []);
+            if (nearest && nearest.geometry) return { nearest: nearest, candidateFeatures: features || [] };
+            return queryLayer(TRANS_MS, TRACK_TOOL_LAYER_ID, {
+              where: "1=1",
+              outFields: "objectid",
+              returnGeometry: true,
+              resultRecordCount: 2000,
+            })
+              .then(function (allData) {
+                var allFeatures = allData && Array.isArray(allData.features) ? allData.features : [];
+                return {
+                  nearest: pickNearestRailFeature(anchor32643, allFeatures),
+                  candidateFeatures: allFeatures,
+                };
+              })
+              .catch(function () {
+                return null;
+              });
+          })
+          .then(function (resolvedPack) {
+            var nearestResolved = resolvedPack && resolvedPack.nearest ? resolvedPack.nearest : null;
+            var candidateFeatures = resolvedPack && Array.isArray(resolvedPack.candidateFeatures)
+              ? resolvedPack.candidateFeatures
+              : [];
+            if (!nearestResolved || !nearestResolved.geometry) {
+              setStatus("Track: nearest railway trace nahi mila. Track ke paas click karein.");
+              return null;
+            }
+            var sourceRailLine32643 = resolveRailLineForBuffer(anchor32643, nearestResolved.geometry, sideBufferMeters);
+            if (!isUsableRailPolyline(sourceRailLine32643)) {
+              setStatus("Track: selected railway trace par valid line segment nahi mila.");
+              return null;
+            }
+            var selectedRailLines32643 = buildConnectedRailLinesForBuffer(
+              sourceRailLine32643,
+              candidateFeatures,
+              sideBufferMeters,
+            );
+            if (!selectedRailLines32643.length) selectedRailLines32643 = [sourceRailLine32643];
+            var lineBuffer32643 = buildRailBufferFromLines(selectedRailLines32643, sideBufferMeters);
+            if (!lineBuffer32643 || !geometryIsUsable(lineBuffer32643)) {
+              setStatus("Track: selected railway trace par buffer create nahi hua.");
+              return null;
+            }
+            addTrackResultGraphics(
+              view,
+              anchor32643,
+              lineBuffer32643,
+              selectedRailLines32643,
+              nearestResolved.snapDistanceM,
+              bufferWidthMeters,
+              sideBufferMeters,
+            );
+            try {
+              if (typeof window !== "undefined" && typeof window.msmeGisRunCommunitySummaryForGeometry === "function") {
+                window.msmeGisRunCommunitySummaryForGeometry(lineBuffer32643, {
+                  radiusM: sideBufferMeters,
+                  selectionSource: "track-pick",
+                  roadSource: "railway-track",
+                  summary:
+                    "Track buffer ready: selected railway track, " +
+                    sideBufferMeters +
+                    " m each side.",
+                });
+              }
+            } catch (eSummary1) {}
+            return true;
+          })
+          .catch(function (err) {
+            console.warn("[track buffer] railway query failed", err);
+            setStatus("Track: railway query failed.");
+          });
+      })
+      .catch(function (err0) {
+        console.warn("[track buffer] projection failed", err0);
+        setStatus("Track: map projection unavailable.");
+      });
+  }
+
+  function startPickMode(view, distanceM) {
+    var bufferWidthMeters = normalizeTrackBufferMeters(distanceM);
+    if (!view || view.destroyed) return;
+    clearLegacyTrackConflicts();
+    stopPickMode();
+    state.pickMode = true;
+    if (state.buttonEl) {
+      state.buttonEl.textContent = "Track: Select on map";
+      state.buttonEl.setAttribute("aria-pressed", "true");
+      state.buttonEl.title = "Click on map near railway track";
+    }
+    setPickCursor(view);
+    setStatus(
+      "Track mode on: click selected railway track to create " +
+        bufferWidthMeters +
+        " m width parallel buffer.",
+    );
+    state.clickHandle = view.on("click", function (event) {
+      if (!state.pickMode) return;
+      stopPickMode();
+      var mapPoint = event && event.mapPoint ? event.mapPoint : null;
+      runTrackBufferForPoint(view, mapPoint, bufferWidthMeters);
+    });
+  }
+
+  function wireButton() {
+    var btn = document.getElementById(TRACK_TOOL_BUTTON_ID);
+    if (!btn || btn === state.buttonEl) return;
+    state.buttonEl = btn;
+    state.buttonEl.textContent = "Track Buffer (All, 500m)";
+    state.buttonEl.title = "Create 500m both-side buffer for all railway tracks";
+    state.buttonEl.setAttribute("aria-pressed", "false");
+    btn.addEventListener("click", function () {
+      var view = window.__msmeGisMapView;
+      if (!view || view.destroyed) {
+        setStatus("Track tool unavailable: map not ready.");
+        return;
+      }
+      stopPickMode();
+      runTrackNetworkBufferForAll(view, TRACK_TOOL_BUFFER_METERS);
+    });
+  }
+
+  function syncViewRef() {
+    var view = window.__msmeGisMapView;
+    if (state.viewRef === view) return;
+    state.viewRef = view || null;
+    stopPickMode();
+    if (state.graphicsLayer && view && view.map && !view.map.layers.includes(state.graphicsLayer)) {
+      try {
+        view.map.add(state.graphicsLayer);
+      } catch (e0) {}
+    }
+  }
+
+  window.msmeGisRunTrackNetworkBuffer500 = function () {
+    return window.msmeGisRunTrackNetworkBuffer(TRACK_TOOL_BUFFER_METERS);
+  };
+
+  window.msmeGisRunTrackNetworkBuffer = function (distanceM) {
+    var view = window.__msmeGisMapView;
+    if (!view || view.destroyed) {
+      setStatus("Track tool unavailable: map not ready.");
+      return Promise.resolve(false);
+    }
+    stopPickMode();
+    return runTrackNetworkBufferForAll(view, distanceM);
+  };
+
+  window.msmeGisStartTrackPickWithDistance = function (distanceM) {
+    var view = window.__msmeGisMapView;
+    if (!view || view.destroyed) {
+      setStatus("Track tool unavailable: map not ready.");
+      return false;
+    }
+    startPickMode(view, distanceM);
+    return true;
+  };
+
+  window.setInterval(function () {
+    wireButton();
+    syncViewRef();
+  }, 800);
+}
+
+installRailTrackBufferTool();

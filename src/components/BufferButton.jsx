@@ -23,7 +23,7 @@ function parseLatLon(raw) {
 
 export default function BufferButton({ t }) {
   var label = t && typeof t === "function" ? t("spatialTabBuffer") : "Buffer";
-  var [panelMode, setPanelMode] = useState(null); // "proximity" | "closest" | null
+  var [panelMode, setPanelMode] = useState(null); // "proximity" | "closest" | "track" | null
   var [distanceValue, setDistanceValue] = useState(5);
   var [unit, setUnit] = useState("km");
   var [locationText, setLocationText] = useState("");
@@ -115,6 +115,20 @@ export default function BufferButton({ t }) {
       return;
     }
 
+    if (panelMode === "track") {
+      if (window.msmeGisStartTrackPickWithDistance) {
+        window.msmeGisStartTrackPickWithDistance(meters);
+        setPanelMode(null);
+        return;
+      }
+      var legacyTrackBtn = document.getElementById("btnTrackPickPoint");
+      if (legacyTrackBtn && typeof legacyTrackBtn.click === "function") {
+        legacyTrackBtn.click();
+      }
+      setPanelMode(null);
+      return;
+    }
+
     if (panelMode === "proximity") {
       var proxDistEl = document.getElementById("proxDist");
       var proxDistValEl = document.getElementById("proxDistVal");
@@ -196,6 +210,40 @@ export default function BufferButton({ t }) {
     });
   }
 
+  function runTrackNetworkBufferFromIcon() {
+    var defaultTrackMeters = 500;
+    setDistanceValue(defaultTrackMeters);
+    setUnit("m");
+    setPanelMode(function (cur) {
+      return cur === "track" ? null : "track";
+    });
+  }
+
+  function runTrackAllFromPanel() {
+    var meters = distanceMeters();
+    if (window.msmeGisRunTrackNetworkBuffer) {
+      window.msmeGisRunTrackNetworkBuffer(meters);
+      setPanelMode(null);
+      return;
+    }
+    if (window.msmeGisRunTrackNetworkBuffer500) {
+      window.msmeGisRunTrackNetworkBuffer500();
+      setPanelMode(null);
+      return;
+    }
+    var legacyBtn = document.getElementById("btnTrackPickPoint");
+    if (legacyBtn && typeof legacyBtn.click === "function") {
+      legacyBtn.click();
+    }
+    setPanelMode(null);
+  }
+
+  function panelTitle() {
+    if (panelMode === "closest") return "Closest Point";
+    if (panelMode === "track") return "Track Buffer";
+    return "Near By Proximity";
+  }
+
   return (
     <div className="buffer-fab-wrap esri-component" ref={rootRef}>
       <button
@@ -273,14 +321,48 @@ export default function BufferButton({ t }) {
         </svg>
       </button>
 
+      <button
+        type="button"
+        id="trackMapFab"
+        className="buffer-map-fab track-map-fab esri-widget--button"
+        data-map-label="Track"
+        title="Track buffer"
+        aria-label="Track buffer"
+        aria-pressed={panelMode === "track" ? "true" : "false"}
+        onClick={runTrackNetworkBufferFromIcon}
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className="buffer-map-fab-ico"
+          aria-hidden="true"
+          focusable="false"
+        >
+          <path
+            d="M4 4l16 16M9.5 3.5l11 11M3.5 9.5l11 11"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            opacity="0.75"
+          />
+          <path
+            d="M6 7.5l2.2-2.2M9.5 11l2.2-2.2M13 14.5l2.2-2.2M16.5 18l2.2-2.2"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+
       {panelMode ? (
         <div
           className="buffer-mini-panel"
           role="dialog"
-          aria-label={panelMode === "closest" ? "Closest Point" : "Near By Proximity"}
+          aria-label={panelTitle()}
         >
           <div className="buffer-mini-panel__head">
-            <strong>{panelMode === "closest" ? "Closest Point" : "Near By Proximity"}</strong>
+            <strong>{panelTitle()}</strong>
             <button
               type="button"
               className="buffer-mini-panel__close"
@@ -291,7 +373,7 @@ export default function BufferButton({ t }) {
             </button>
           </div>
           <div className="buffer-mini-panel__body">
-            <label className="buffer-mini-panel__label">Location</label>
+            <label className="buffer-mini-panel__label">{panelMode === "track" ? "Buffer distance" : "Location"}</label>
             <div className="buffer-mini-panel__icons" aria-hidden="true"></div>
             <div className="buffer-mini-panel__row">
               <input
@@ -337,6 +419,10 @@ export default function BufferButton({ t }) {
                   disabled={!parseLatLon(locationText)}
                 >
                   Run
+                </button>
+              ) : panelMode === "track" ? (
+                <button type="button" className="buffer-mini-panel__btn is-primary" onClick={runTrackAllFromPanel}>
+                  Run all tracks
                 </button>
               ) : (
                 <button type="button" className="buffer-mini-panel__btn is-primary" onClick={startPickMode}>

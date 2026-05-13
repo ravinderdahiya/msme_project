@@ -4,6 +4,7 @@ import BufferButton from './BufferButton.jsx'
 import PrintScreenButton from './PrintScreenButton.jsx'
 import BasemapButton from './BasemapButton.jsx'
 import HomeButton from './HomeButton.jsx'
+import ShapeSketchButton from './ShapeSketchButton.jsx'
 
 export default function HaryanaMap({ t }) {
   const [legendExpanded, setLegendExpanded] = useState(false)
@@ -77,6 +78,7 @@ export default function HaryanaMap({ t }) {
 
       {/* <LocationButton t={t} /> */}
       <BufferButton t={t} />
+      <ShapeSketchButton />
       <PrintScreenButton t={t} />
       <HomeButton t={t} />
       <BasemapButton t={t} />

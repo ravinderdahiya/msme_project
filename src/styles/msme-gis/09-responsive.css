@@ -334,7 +334,18 @@
     bottom: auto;
   }
 
+  .shape-fab-wrap {
+    left: 10%;
+    right: auto;
+    top: calc(var(--header-h) + 152px);
+    bottom: auto;
+  }
+
   .buffer-fab-wrap .closest-map-fab {
+    top: auto;
+  }
+
+  .buffer-fab-wrap .track-map-fab {
     top: auto;
   }
 
@@ -344,6 +355,13 @@
     top: calc(100% + 10px);
     bottom: auto;
     width: min(320px, calc(100vw - 24px));
+  }
+
+  .shape-mini-panel {
+    left: 0;
+    right: auto;
+    top: calc(100% + 10px);
+    width: min(250px, calc(100vw - 24px));
   }
 
   .land-report-fab {
