@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { initMsmeWebGis, applyMsmeGisUiStrings } from "../gis/msmeWebGis.js";
-import { useI18n } from "../i18n/useI18n.js";
+import { useIn } from "../in/useIn.js";
 import Sidebar from "../components/Sidebar.jsx";
 import HaryanaMap from "../components/Haryana_map.jsx";
 import HeaderGis from "../components/Header_gis.jsx";
@@ -9,7 +9,7 @@ import "../msme-webgis.css";
 import "./MSMEGisPageShell.css";
 
 const MSMEGISPage = () => {
-  const { t, lang, setLang, languages } = useI18n();
+  const { t, lang, setLang, languages } = useIn();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchBusy, setSearchBusy] = useState(false);
   const [theme, setTheme] = useState("black");

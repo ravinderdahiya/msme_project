@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import JSZip from 'jszip'
-import { useI18n } from '../i18n/useI18n.js'
+import { useIn } from '../in/useIn.js'
 
 const FLYOUT_W = 400
 const FLYOUT_TOP = 96
@@ -140,7 +140,7 @@ function stripCoordinateFieldsDeep(value) {
 }
 
 export default function ResultsFlyout() {
-  const { t } = useI18n()
+  const { t } = useIn()
   const [open, setOpen] = useState(false)
   const [minimized, setMinimized] = useState(false)
   const [maximized, setMaximized] = useState(false)

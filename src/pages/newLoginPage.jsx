@@ -20,7 +20,7 @@ import { useNavigate } from "react-router-dom";
 import bgImage from "../assets/images/full-bg.png";
 import hepcLogo from "../assets/images/hepc-logo.png";
 import govtLogo from "../assets/images/govtlogo.png";
-import { useI18n } from "../i18n/useI18n";
+import { useIn } from "../in/useIn";
 import { sendOtpApi, verifyOtpApi } from "../services/authService";
 
 const LOGIN_TEXT = {
@@ -139,7 +139,7 @@ function getText(lang) {
 }
 
 export default function NewLoginPage() {
-    const { lang, setLang, languages } = useI18n();
+    const { lang, setLang, languages } = useIn();
     const text = getText(lang);
     const [activeTab, setActiveTab] = useState("investor");
     const [mobileNumber, setMobileNumber] = useState("");

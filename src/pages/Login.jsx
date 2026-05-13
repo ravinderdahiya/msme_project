@@ -5,7 +5,7 @@ import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/auth/AuthLayout";
 import govtLogo from "../assets/images/govtlogo.png";
 import hepcLogo from "../assets/images/hepc-logo.png";
-import { useI18n } from "../i18n/useI18n";
+import { useIn } from "../in/useIn";
 import { sendOtpApi, verifyOtpApi } from "../services/authService";
 
 const LOGIN_TEXT = {
@@ -99,7 +99,7 @@ function getLoginText(lang) {
 }
 
 export default function Login() {
-  const { lang, setLang, languages } = useI18n();
+  const { lang, setLang, languages } = useIn();
   const text = getLoginText(lang);
   const [mobileNumber, setMobileNumber] = useState("");
   const [otp, setOtp] = useState("");

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useI18n } from '../i18n/useI18n.js'
+import { useIn } from '../in/useIn.js'
 
 function parseIsoMs(iso) {
   if (!iso) return 0
@@ -255,7 +255,7 @@ function buildThemeSections(snap, t, keyPrefix = 'k') {
 }
 
 export default function LandLocationReport() {
-  const { t } = useI18n()
+  const { t } = useIn()
   const [open, setOpen] = useState(false)
   const [tab, setTab] = useState('aoi')
 

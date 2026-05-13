@@ -1037,6 +1037,40 @@ function patchLegacySource(source) {
   }
 
   // Expose MapView for React UI (custom basemap dropdown) — first UI mount on the main map view.
+  // Some ArcGIS services expose a world-sized fullExtent; keep Haryana fallback on startup in that case.
+  var initialExtentGuardPattern = /function getInitialMapExtent\(\) \{[\s\S]*?return projection\.project\(defaultStudyExtent32643, SR_WEB\);\r?\n\}/;
+  var initialExtentGuardReplacement = [
+    "function getInitialMapExtent() {",
+    "  var fallbackWeb = projection.project(defaultStudyExtent32643, SR_WEB);",
+    "  var adminExtent = adminLayer && adminLayer.fullExtent ? adminLayer.fullExtent : null;",
+    "  if (!adminExtent) return fallbackWeb;",
+    "  try {",
+    "    var adminWeb = projection.project(adminExtent, SR_WEB) || adminExtent;",
+    "    if (!adminWeb) return fallbackWeb;",
+    "    var xmin = Number(adminWeb.xmin);",
+    "    var ymin = Number(adminWeb.ymin);",
+    "    var xmax = Number(adminWeb.xmax);",
+    "    var ymax = Number(adminWeb.ymax);",
+    "    if (!isFinite(xmin) || !isFinite(ymin) || !isFinite(xmax) || !isFinite(ymax)) return fallbackWeb;",
+    "    var width = Math.abs(xmax - xmin);",
+    "    var height = Math.abs(ymax - ymin);",
+    "    if (width > 20000000 || height > 20000000) {",
+    "      console.warn(\"[extent] admin full extent too broad; using Haryana fallback extent.\");",
+    "      return fallbackWeb;",
+    "    }",
+    "    return adminWeb;",
+    "  } catch (e0) {",
+    "    console.warn(\"[extent] admin full extent projection failed\", e0);",
+    "  }",
+    "  return fallbackWeb;",
+    "}",
+  ].join("\n");
+  if (initialExtentGuardPattern.test(out)) {
+    out = out.replace(initialExtentGuardPattern, initialExtentGuardReplacement);
+  } else {
+    console.warn("[msme runtime patch] initial extent guard patch not applied.");
+  }
+
   var msmeMapViewBridgePattern = /view\.ui\.add/;
   var msmeMapViewBridgeReplacement =
     'try{if(typeof window!=="undefined")window.__msmeGisMapView=view;}catch(_msmeMvBr0){}view.ui.add';

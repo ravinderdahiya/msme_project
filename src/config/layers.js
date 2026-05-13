@@ -54,7 +54,7 @@ export const createMapLayers = () => {
   });
 
   const envLayer = new MapImageLayer({
-    url: "https://hsacggm.in/server/rest/services/MSME/Environmental_Constraints/MapServer",
+  v      url: "https://hsacggm.in/server/rest/services/MSME/Environmental_Constraints/MapServer",
     title: "Environmental Constraints",
     visible: true,
   });
