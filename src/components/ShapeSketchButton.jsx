@@ -99,8 +99,8 @@ export default function ShapeSketchButton() {
   }
 
   return (
-    <div className="shape-fab-wrap esri-component" ref={rootRef}>
-      <button
+    <div className="buffer-fab-wrap esri-component" ref={rootRef}>
+      {/* <button
         type="button"
         id="shapeMapFab"
         className="buffer-map-fab shape-map-fab esri-widget--button"
@@ -112,6 +112,27 @@ export default function ShapeSketchButton() {
         onClick={() => setOpen((prev) => !prev)}
       >
         <svg viewBox="0 0 24 24" className="buffer-map-fab-ico" aria-hidden="true" focusable="false">
+          <path
+            d="M5 4h7v7H5zM14.5 5.2l4.3 2.5v5l-4.3 2.5-4.3-2.5v-5l4.3-2.5zM6.8 14.5h4.4l2.2 3.8-2.2 3.8H6.8l-2.2-3.8 2.2-3.8z"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button> */}
+      <button
+        type="button"
+        id="trackMapFab"
+        className="buffer-map-fab track-map-fab esri-widget--button"
+        data-map-label="Shape"
+        title="Shape draw"
+        aria-label="Shape draw"
+        aria-expanded={open ? 'true' : 'false'}
+        aria-haspopup="dialog"
+        onClick={() => setOpen((prev) => !prev)}
+      >
+         <svg viewBox="0 0 24 24" className="buffer-map-fab-ico" aria-hidden="true" focusable="false">
           <path
             d="M5 4h7v7H5zM14.5 5.2l4.3 2.5v5l-4.3 2.5-4.3-2.5v-5l4.3-2.5zM6.8 14.5h4.4l2.2 3.8-2.2 3.8H6.8l-2.2-3.8 2.2-3.8z"
             fill="none"
