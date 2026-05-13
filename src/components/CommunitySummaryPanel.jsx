@@ -139,6 +139,202 @@ function getCategoryDescription(row) {
   return 'Nearby places and infrastructure relevant to your selected location'
 }
 
+/** Normalise API / config spelling variants for icon lookup. */
+function normalizeCommunityCategoryKey(raw) {
+  var k = String(raw || '').toLowerCase()
+  if (k === 'aayushbharatfacilites') return 'aayushbharatfacilities'
+  return k
+}
+
+/**
+ * Category icons are chosen locally by `row.key` — community summary payloads
+ * do not currently include per-row icons. Optional `row.iconUrl` is supported.
+ */
+function CommunityCategoryCardIcon(props) {
+  var row = props.row
+  var categoryKey = props.categoryKey
+  var url = row && typeof row.iconUrl === 'string' ? String(row.iconUrl).trim() : ''
+  if (url) {
+    return (
+      <img
+        className="community-ba-card__icon-img"
+        src={url}
+        alt=""
+        loading="lazy"
+        decoding="async"
+      />
+    )
+  }
+
+  var k = normalizeCommunityCategoryKey(
+    categoryKey != null ? categoryKey : row && row.key ? row.key : '',
+  )
+
+  var s = {
+    stroke: 'white',
+    strokeWidth: 2,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    fill: 'none',
+  }
+
+  switch (k) {
+    case 'schools':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M2 9l10-5 10 5v2l-10 5-10-5V9z" {...s} />
+          <path d="M12 13v8" {...s} />
+          <path d="M7 11.5L12 14l5-2.5" {...s} />
+        </svg>
+      )
+    case 'iti':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M2 4h8a4 4 0 014 0h8v16H10a4 4 0 01-4-4V4z" {...s} />
+          <path d="M12 4v16" {...s} />
+        </svg>
+      )
+    case 'hospitals':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <circle cx="12" cy="12" r="9" {...s} />
+          <path d="M12 8v8M8 12h8" {...s} />
+        </svg>
+      )
+    case 'governmenthospitals':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M3 21h18" {...s} />
+          <path d="M5 21V11h14v10" {...s} />
+          <path d="M5 11l7-5 7 5" {...s} />
+          <path d="M9 21v-4h6v4" {...s} />
+        </svg>
+      )
+    case 'phcchc':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <rect x="7" y="7" width="10" height="10" rx="1" {...s} />
+          <path d="M12 9v6M9 12h6" {...s} />
+        </svg>
+      )
+    case 'aayushbharatfacilities':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+          <path
+            d="M12 21s-7-4.35-7-10a4 4 0 017-2 4 4 0 017 2c0 5.65-7 10-7 10z"
+            fill="white"
+            stroke="none"
+          />
+        </svg>
+      )
+    case 'privatehospitals':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M3 21h18" {...s} />
+          <path d="M5 21V10l7-4 7 4v11" {...s} />
+          <path d="M9 14h2v5H9zM13 14h2v5h-2z" {...s} />
+        </svg>
+      )
+    case 'electricpoles':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M13 2L3 14h8l-2 8 10-12h-7l1-8z" {...s} />
+        </svg>
+      )
+    case 'electricstations':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M6 21V9l2-1 2 1v12" {...s} />
+          <path d="M14 21V6l2-1 2 1v15" {...s} />
+          <path d="M4 21h16" {...s} />
+        </svg>
+      )
+    case 'secugelectriclinesegments':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M3 12h18" {...s} />
+          <path d="M6 8v8M12 8v8M18 8v8" strokeDasharray="2 2" {...s} />
+        </svg>
+      )
+    case 'roads':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M6 3L4 21M18 3l2 18" {...s} />
+          <path d="M8 10h8M7 14h10" {...s} />
+        </svg>
+      )
+    case 'airports':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M21 15v-2l-7-3V7a1 1 0 00-2 0v3l-7 3v2l7-1v3l-2 1v1l3-1 3 1v-1l-2-1v-3l7 1z" {...s} />
+        </svg>
+      )
+    case 'mobiletowers':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M12 2v20" {...s} />
+          <path d="M8 6c0 2 8 2 8 0" {...s} />
+          <path d="M7 12h10M6 18h12" {...s} />
+        </svg>
+      )
+    case 'policestations':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" {...s} />
+        </svg>
+      )
+    case 'industrialsites':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M4 22h16" {...s} />
+          <path d="M6 22V10l4 2V8h8v14" {...s} />
+          <path d="M10 14h1M14 14h1M10 18h1M14 18h1" {...s} />
+        </svg>
+      )
+    case 'proposedmetrostations':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <rect x="5" y="5" width="14" height="13" rx="2" {...s} />
+          <path d="M8 18h8" {...s} />
+          <circle cx="9" cy="10" r="1" fill="white" stroke="none" />
+          <circle cx="15" cy="10" r="1" fill="white" stroke="none" />
+        </svg>
+      )
+    case 'canals':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M2 12c2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2 2.5 2 5 2" {...s} />
+          <path d="M2 16c2.5 0 2.5-2 5-2s2.5 2 5 2" {...s} />
+        </svg>
+      )
+    case 'hsvpplots':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z" {...s} />
+        </svg>
+      )
+    case 'hsvpsectorboundary':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <rect x="5" y="5" width="14" height="14" rx="2" strokeDasharray="3 2" {...s} />
+        </svg>
+      )
+    case 'entertainment':
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M4 6h16M4 10h16M8 6v8M16 6v8" {...s} />
+        </svg>
+      )
+    default:
+      return (
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" aria-hidden="true">
+          <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" {...s} />
+          <path d="M9 22V12h6v10" {...s} />
+        </svg>
+      )
+  }
+}
+
 function getLocationLabel(summary, report) {
   if (summary && summary.locationName) return String(summary.locationName)
   if (summary && summary.locationLabel) return String(summary.locationLabel)
@@ -703,7 +899,16 @@ export default function CommunitySummaryPanel() {
       aria-label="Community counts"
     >
       <div className="community-ba-head">
-        <h3>MSME REPORT </h3>
+        <div className="community-ba-head-brand">
+          <span className="community-ba-head-logo" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+              <path d="M4 19V5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M4 19h16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              <path d="M8 15V9l3 4 3-6 3 8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </span>
+          <h3>MSME REPORT</h3>
+        </div>
 
         <div className="community-ba-head-actions">
           <button
@@ -712,7 +917,16 @@ export default function CommunitySummaryPanel() {
             aria-label="Collapse panel"
             onClick={() => setOpen(false)}
           >
-            ^
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path
+                d="M6 15l6-6 6 6"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
           </button>
           <button
             type="button"
@@ -720,61 +934,121 @@ export default function CommunitySummaryPanel() {
             aria-label="Close summary"
             onClick={() => setOpen(false)}
           >
-            x
+            <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+              <path
+                d="M18 6L6 18M6 6l12 12"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
           </button>
         </div>
       </div>
 
       <div className="community-ba-toolbar">
         <div className="community-ba-toolbar-meta">
-          <p className="community-ba-toolbar-title">POI Actions</p>
-          <p className="community-ba-toolbar-subtitle">{selectionHint}</p>
+          <span className="community-ba-toolbar-list-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
+              <path
+                d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          </span>
+          <div className="community-ba-toolbar-meta-text">
+            <p className="community-ba-toolbar-title">POI Actions</p>
+            <p className="community-ba-toolbar-subtitle">{selectionHint}</p>
+          </div>
         </div>
         <div className="community-ba-toolbar-actions">
           <button
             type="button"
-            className="community-ba-fit-btn"
+            className="community-ba-fit-btn community-ba-tool-btn community-ba-tool-btn--show"
             onClick={handleShowAllLinesOnMap}
             disabled={
               !displaySummary || waitingForCounts || selectedCategoryKeys.length === 0
             }
           >
-            Show all POI 
+            <span className="community-ba-tool-btn__ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+                <path
+                  d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+                <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
+              </svg>
+            </span>
+            <span className="community-ba-tool-btn__lbl">Show all POI</span>
           </button>
           <button
             type="button"
-            className="community-ba-fit-btn community-ba-clear-btn"
+            className="community-ba-fit-btn community-ba-clear-btn community-ba-tool-btn community-ba-tool-btn--clear"
             onClick={handleClearMapGraphics}
           >
-            Clear map
+            <span className="community-ba-tool-btn__ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+                <path
+                  d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2m3 0v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6h14zM10 11v6M14 11v6"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span className="community-ba-tool-btn__lbl">Clear map</span>
           </button>
           <button
             type="button"
-            className="community-ba-fit-btn community-ba-print-btn"
+            className="community-ba-fit-btn community-ba-print-btn community-ba-tool-btn community-ba-tool-btn--print"
             onClick={handlePrintPdf}
             disabled={!displaySummary || waitingForCounts}
           >
-            Print
+            <span className="community-ba-tool-btn__ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+                <path
+                  d="M6 9V2h12v7M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2M6 14h12v8H6z"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span className="community-ba-tool-btn__lbl">Print</span>
           </button>
           <button
             type="button"
-            className="community-ba-download-btn community-ba-download-btn-main"
+            className="community-ba-download-btn community-ba-download-btn-main community-ba-tool-btn community-ba-tool-btn--download"
             onClick={handleDownloadCsv}
             disabled={!displaySummary || waitingForCounts || selectedCategoryKeys.length === 0}
           >
-            Download CSV
+            <span className="community-ba-tool-btn__ico" aria-hidden="true">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+                <path
+                  d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M7 10l5 5 5-5M12 15V3"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
+              </svg>
+            </span>
+            <span className="community-ba-tool-btn__lbl">Download CSV</span>
           </button>
         </div>
       </div>
 
       <div className="community-summary-body">
         <div className="community-ba-intro-card">
-          <div className="community-ba-intro-icon" aria-hidden="true">
-            o
-          </div>
-          <div>
+          <div className="community-ba-intro-icon" aria-hidden="true" />
+          <div className="community-ba-intro-body">
             <h4>Nearby Community</h4>
-            {/* <p>Places that make your life richer and community better</p> */}
             <div className="community-ba-intro-actions">
               <button
                 type="button"
@@ -825,41 +1099,45 @@ export default function CommunitySummaryPanel() {
 
             return (
               <section key={key} className="community-ba-card">
-                <div className="community-ba-band community-ba-theme">
-                  <div className="community-ba-theme-head">
-                    <h4 style={{ color }}>{label}</h4>
-                    <label className="community-ba-select-check">
-                      <input
-                        type="checkbox"
-                        checked={selectedCategoryKeys.includes(keyLower)}
-                        onChange={(event) => {
-                          event.stopPropagation()
-                          toggleCategorySelection(keyLower)
-                        }}
-                      />
-                    </label>
-                  </div>
+                <div className="community-ba-card__top">
+                  <span
+                    className="community-ba-card__icon"
+                    style={{ background: color }}
+                    aria-hidden="true"
+                  >
+                    <CommunityCategoryCardIcon row={row} categoryKey={keyLower} />
+                  </span>
+                  <label className="community-ba-select-check">
+                    <input
+                      type="checkbox"
+                      checked={selectedCategoryKeys.includes(keyLower)}
+                      onChange={(event) => {
+                        event.stopPropagation()
+                        toggleCategorySelection(keyLower)
+                      }}
+                    />
+                  </label>
                 </div>
-                <div className="community-ba-band community-ba-desc">
-                  {getCategoryDescription(row)}
-                </div>
+                <h4 className="community-ba-card__title">{label}</h4>
+                <p className="community-ba-desc">{getCategoryDescription(row)}</p>
 
                 <button
                   type="button"
-                  className={`community-ba-band community-ba-count-band${
-                    canFocusCategory || canExpandList ? ' is-clickable' : ''
-                  }`}
+                  className={`community-ba-card__stat${canFocusCategory || canExpandList ? ' is-clickable' : ''}`}
                   onClick={() => handleCategoryClick(row)}
                   disabled={!canFocusCategory && !canExpandList}
                 >
-                  <strong style={{ color }}>
-                    {showLoadingBadge ? '...' : count}
-                  </strong>
+                  <strong style={{ color }}>{showLoadingBadge ? '...' : count}</strong>
                   <span style={{ color }}>{label}</span>
                   {canExpandList ? (
-                    <small>{isExpanded ? 'Hide list ^' : 'View list v'}</small>
+                    <span className="community-ba-card__view-pill">
+                      {isExpanded ? 'Hide list' : 'View list'}
+                      <span className="community-ba-card__view-chev" aria-hidden>
+                        ›
+                      </span>
+                    </span>
                   ) : canFocusCategory ? (
-                    <small>Show line</small>
+                    <span className="community-ba-card__view-pill">Show line</span>
                   ) : null}
                 </button>
 
@@ -907,9 +1185,14 @@ export default function CommunitySummaryPanel() {
         </div>
 
         <p className="community-ba-footer-meta">
-          Updated: {formatUpdatedAt(updatedAt)}
-          {radiusM ? ` | Radius: ${radiusM} m` : ''}
-          {` | Total: ${totalCount}`}
+          <span className="community-ba-footer-meta__icon" aria-hidden="true">
+            i
+          </span>
+          <span className="community-ba-footer-meta__text">
+            Updated: {formatUpdatedAt(updatedAt)}
+            {radiusM ? ` | Radius: ${radiusM} m` : ''}
+            {` | Total: ${totalCount}`}
+          </span>
         </p>
 
         {hasUnavailable ? (

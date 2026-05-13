@@ -32,28 +32,51 @@
   visibility: hidden;
 }
 
-.gis-loading-chip {
-  display: inline-flex;
+/* Centered “Loading Map” card (GIS shell can add a dim scrim over #viewDiv) */
+.gis-loading-card {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.95);
-  color: var(--primary-dark);
-  box-shadow: var(--shadow);
-  font-size: 13px;
-  font-weight: 700;
-  backdrop-filter: blur(10px);
+  text-align: center;
+  gap: 18px;
+  width: min(420px, calc(100vw - 48px));
+  padding: 44px 36px 40px;
+  border-radius: 24px;
+  border: 1px solid rgba(15, 35, 64, 0.08);
+  background: #ffffff;
+  color: #0a3d2e;
+  box-shadow:
+    0 28px 64px rgba(15, 23, 42, 0.14),
+    0 10px 24px rgba(15, 23, 42, 0.08);
+}
+
+.gis-loading-title {
+  margin: 0;
+  font-size: clamp(1.25rem, 2.6vw, 1.6rem);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  color: #0d5c45;
+}
+
+.gis-loading-sub {
+  margin: 0;
+  max-width: 34ch;
+  font-size: 0.95rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: #6b7280;
 }
 
 .gis-loading-spinner {
-  width: 18px;
-  height: 18px;
+  box-sizing: border-box;
+  width: 76px;
+  height: 76px;
+  flex-shrink: 0;
   border-radius: 50%;
-  border: 2px solid rgba(20, 104, 170, 0.22);
-  border-top-color: var(--primary);
-  animation: gisSpinnerSpin 0.8s linear infinite;
+  border: 5px solid #e5e7eb;
+  border-top-color: #0d5c45;
+  animation: gisSpinnerSpin 0.85s linear infinite;
 }
 
 @keyframes gisSpinnerSpin {

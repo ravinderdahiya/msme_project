@@ -425,11 +425,11 @@
   overflow: hidden;
 }
 
-/* Loader: map stays visible behind; only .gis-loading-chip is opaque */
+/* Loader: dark scrim over map; large light card stays readable on dark theme */
 #msmeGisRoot.msme-gis-page #gisLoadingOverlay:not(.is-hidden) {
   z-index: 400 !important;
-  background: transparent;
-  backdrop-filter: none;
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(4px);
   pointer-events: none;
 }
 
@@ -1856,8 +1856,33 @@
 }
 
 [data-theme='black'] #msmeGisRoot.msme-gis-page #gisLoadingOverlay:not(.is-hidden) {
-  background: transparent;
-  backdrop-filter: none;
+  background: rgba(4, 8, 14, 0.78);
+  backdrop-filter: blur(8px);
+}
+
+#msmeGisRoot.msme-gis-page .gis-loading-card {
+  width: min(440px, calc(100% - 32px));
+  padding: 48px 40px 44px;
+  gap: 22px;
+  border-radius: 28px;
+  box-shadow:
+    0 32px 72px rgba(0, 0, 0, 0.22),
+    0 12px 28px rgba(0, 0, 0, 0.12);
+}
+
+#msmeGisRoot.msme-gis-page .gis-loading-spinner {
+  width: 88px;
+  height: 88px;
+  border-width: 6px;
+}
+
+#msmeGisRoot.msme-gis-page .gis-loading-title {
+  font-size: clamp(1.35rem, 2.8vw, 1.75rem);
+}
+
+#msmeGisRoot.msme-gis-page .gis-loading-sub {
+  font-size: 1rem;
+  max-width: 36ch;
 }
 
 /* Dark theme: framed inner boxes should also be dark (not light blue) */
@@ -2196,14 +2221,22 @@
   }
 
   #msmeGisRoot.msme-gis-page #legendFab.legend-map-fab {
-    left: calc(var(--msme-gis-shell-pad) + 12px);
-    bottom: calc(72px + var(--msme-gis-shell-pad) + 66px);
+    position: fixed !important;
+    left: calc(var(--msme-gis-shell-pad) + 12px) !important;
+    bottom: calc(72px + var(--msme-gis-shell-pad) + 66px) !important;
+    top: auto !important;
+    right: auto !important;
+    z-index: 130 !important;
   }
 
   #msmeGisRoot.msme-gis-page #legendPanel {
-    left: var(--msme-gis-shell-pad);
-    right: var(--msme-gis-shell-pad);
-    bottom: calc(72px + var(--msme-gis-shell-pad) + 64px);
+    position: fixed !important;
+    left: var(--msme-gis-shell-pad) !important;
+    right: var(--msme-gis-shell-pad) !important;
+    bottom: calc(72px + var(--msme-gis-shell-pad) + 64px) !important;
+    top: auto !important;
+    width: auto !important;
+    max-height: none !important;
   }
 
   #msmeGisRoot.msme-gis-page #coordBar {
