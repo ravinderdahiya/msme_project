@@ -1,6 +1,5 @@
 import { useCallback, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { History, LogIn, Moon, Search, Sparkles, Sun } from "lucide-react";
+import { History, LogIn, Moon, Search, Sun } from "lucide-react";
 import "./NewMainMapHeader.css";
 
 const SEARCH_PLACEHOLDER =
@@ -13,7 +12,6 @@ export default function NewMainMapHeader({
   theme = "light",
   onToggleTheme = () => {},
 }) {
-  const navigate = useNavigate();
   const [langEn, setLangEn] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(false);
 

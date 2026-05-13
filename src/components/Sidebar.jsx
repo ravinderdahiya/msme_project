@@ -81,11 +81,88 @@ export default function Sidebar({ t }) {
                   <small>{t('railTitleLayers')}</small>
                 </span>
               </button>
+              <button
+                type="button"
+                className="nm-sidebar-item"
+                id="btnClosestPointRail"
+                title={t('railTitleClosestPoint')}
+                onClick={openClosestPanelAndStart}
+              >
+                <span className="nm-sidebar-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" width={18} height={18} focusable="false">
+                    <circle cx="12" cy="12" r="2" fill="currentColor" />
+                    <circle cx="12" cy="12" r="5.2" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                    <circle cx="12" cy="12" r="8.2" fill="none" stroke="currentColor" strokeWidth="1.5" opacity="0.55" />
+                    <path fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" d="M12 2.8v2.2M12 19v2.2M2.8 12H5M19 12h2.2" />
+                  </svg>
+                </span>
+                <span>
+                  <strong>{t('railClosestPoint')}</strong>
+                  <small>{t('railTitleClosestPoint')}</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="nm-sidebar-item"
+                id="btnSelectTool"
+                title={t('railTitleSelect')}
+                aria-pressed="false"
+              >
+                <span className="nm-sidebar-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" width={18} height={18} focusable="false">
+                    <path fill="currentColor" d="M4 2l2 18 3.5-7 7-3.5L4 2z" />
+                    <circle cx="18" cy="18" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
+                  </svg>
+                </span>
+                <span>
+                  <strong>{t('railSelect')}</strong>
+                  <small>{t('railTitleSelect')}</small>
+                </span>
+              </button>
+              <button
+                type="button"
+                className="nm-sidebar-item"
+                id="btnMapMultiSelect"
+                title={t('railTitleMultiSelect')}
+                aria-pressed="false"
+              >
+                <span className="nm-sidebar-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" width={18} height={18} focusable="false">
+                    <rect x="4" y="4" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                    <rect x="4" y="13" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                    <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M16 8h4M18 6v4" />
+                    <rect x="13" y="13" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
+                  </svg>
+                </span>
+                <span>
+                  <strong>{t('railMultiSelect')}</strong>
+                  <small>{t('railTitleMultiSelect')}</small>
+                </span>
+              </button>
+              <a
+                className="nm-sidebar-item"
+                id="btnMapSelToAnalysis"
+                title={t('railTitleMapSelAnalysis')}
+                href="https://investhry.harsac.in/portal/apps/dashboards/42d358b30b5f4311aeec6d9d61b313da"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="nm-sidebar-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" width={18} height={18} focusable="false">
+                    <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" d="M12 3l1.2 2.5 2.7.4-1.9 1.9.5 2.7-2.5-1.3-2.5 1.3.5-2.7L8.1 5.9l2.7-.4L12 3z" />
+                    <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M4 19h10M4 15h14M4 11h8" />
+                  </svg>
+                </span>
+                <span>
+                  <strong>Veiw Assembly</strong>
+                
+                </span>
+              </a>
 
             </div>
           </div>
 
-          <div className="nm-sidebar-block">
+          {/* <div className="nm-sidebar-block">
             <div className="nm-sidebar-list">
               <button
                 type="button"
@@ -163,11 +240,11 @@ export default function Sidebar({ t }) {
                 </span>
                 <span>
                   <strong>Veiw Assembly</strong>
-                  {/* <small>{t('railTitleMapSelAnalysis')}</small> */}
+                
                 </span>
               </a>
             </div>
-          </div>
+          </div> */}
         </div>
 
         <GisLegacyPanelsHidden t={t} />

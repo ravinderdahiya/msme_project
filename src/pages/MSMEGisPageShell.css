@@ -57,6 +57,24 @@
   background: linear-gradient(180deg, #f8fbff 0%, #edf4fb 100%);
 }
 
+/*
+ * Light theme — colours only (uses existing layout rules via CSS variables).
+ */
+[data-theme='white'] #msmeGisRoot.msme-gis-page {
+  --nm-surface: #f8f9fa;
+  --nm-panel-surface: #ffffff;
+  --nm-primary: #007bff;
+  --nm-accent: #007bff;
+  --nm-text: #0f172a;
+  --nm-muted: #64748b;
+  --nm-border: rgba(15, 23, 42, 0.08);
+  --nm-sidebar-tile-bg: #ffffff;
+  --nm-sidebar-icon-wrap: #ffffff;
+  --nm-sidebar-secondary: #ffffff;
+  --nm-elev-muted: #eef2f7;
+  --nm-shadow: 0 18px 44px rgba(15, 23, 42, 0.07);
+}
+
 /* When any rail panel opens, expand the total left chrome width for map offsets */
 #msmeGisRoot.msme-gis-page:has(#spatialPanel:not(.collapsed)),
 #msmeGisRoot.msme-gis-page:has(#aoiPanel:not(.collapsed)),
@@ -2283,6 +2301,204 @@
 
   #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-toggle {
     align-self: flex-end;
+  }
+}
+
+/* Mobile GIS tool sheets — forms, tabs, scroll (inside bottom sheet / drawer) */
+@media (max-width: 768px) {
+  #msmeGisRoot.msme-gis-page #rail .nm-sidebar-gis-panels {
+    overscroll-behavior: contain;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialPanel:not(.collapsed),
+  #msmeGisRoot.msme-gis-page #rail #selectToolsPanel:not(.collapsed),
+  #msmeGisRoot.msme-gis-page #rail #toolsPanel:not(.collapsed),
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel:not(.collapsed) {
+    max-height: min(78vh, 680px) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs {
+    flex-wrap: nowrap !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    -webkit-overflow-scrolling: touch !important;
+    gap: 6px !important;
+    padding-bottom: 8px !important;
+    scrollbar-width: thin;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab {
+    flex: 0 0 auto !important;
+    font-size: 11px !important;
+    padding: 9px 10px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialToolbar .buffer-mark-row,
+  #msmeGisRoot.msme-gis-page #rail #spatialToolbar .row {
+    display: flex !important;
+    flex-wrap: wrap !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialToolbar .buffer-mark-row .btn-secondary,
+  #msmeGisRoot.msme-gis-page #rail #spatialToolbar .buffer-mark-row .btn-ghost,
+  #msmeGisRoot.msme-gis-page #rail #spatialToolbar .buffer-mark-row .closest-dist-num,
+  #msmeGisRoot.msme-gis-page #rail #spatialToolbar .buffer-mark-row select.sm {
+    flex: 1 1 calc(50% - 6px) !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialToolbar .buffer-mark-row .closest-dist-num {
+    flex: 1 1 100px !important;
+    min-height: 40px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialToolbar input[type="range"] {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialPanel .sp-head,
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel .ap-head,
+  #msmeGisRoot.msme-gis-page #rail #toolsPanel .tp-head,
+  #msmeGisRoot.msme-gis-page #rail #selectToolsPanel .stools-head {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    padding: 12px 12px 8px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel .modal-tabs {
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel .modal-tabs > button {
+    width: 100% !important;
+    margin: 0 !important;
+    min-height: 44px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel select,
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel input[type="text"],
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel input[type="search"],
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel input[type="number"] {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #toolsPanel .tp-scroll calcite-panel,
+  #msmeGisRoot.msme-gis-page #rail #toolsPanel #layerListContainer {
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #toolsPanel.gis-tools-layer-panel {
+    padding: 10px !important;
+    gap: 8px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #selectToolsPanel .stools-body {
+    padding: 10px 12px 14px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar,
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel .ap-scroll,
+  #msmeGisRoot.msme-gis-page #rail #toolsPanel .tp-scroll {
+    padding: 10px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-panels {
+    padding-top: 8px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail .ap-head-row h2,
+  #msmeGisRoot.msme-gis-page #rail .sp-head h2 {
+    font-size: 1rem !important;
+    line-height: 1.25 !important;
+    word-break: break-word;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail .ap-close {
+    min-width: 44px !important;
+    min-height: 44px !important;
+    font-size: 1.35rem !important;
+    display: grid !important;
+    place-items: center !important;
+  }
+}
+
+/*
+ * Mobile map: Proximity / Closest / Print / Home / Basemap FAB row — one horizontal line (scroll if narrow).
+ * Overrides max-width:1100px flex-wrap:wrap on .esri-ui-top-right.
+ */
+@media (max-width: 768px) {
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner {
+    /* Google-Maps-like pill under header */
+    position: fixed !important;
+    top: calc(var(--msme-gis-content-top) + 8px) !important;
+    left: 50% !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: translateX(-50%) !important;
+    width: auto !important;
+    max-width: calc(100vw - (var(--msme-gis-shell-pad) * 2) - 6px) !important;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    column-gap: 12px !important;
+    row-gap: 0 !important;
+    padding: 10px 12px !important;
+    /* border-radius: 999px !important; */
+    /* border: 1px solid rgba(232, 237, 245, 0.12) !important; */
+    /* background: rgba(18, 26, 38, 0.68) !important; */
+    /* backdrop-filter: blur(12px) !important; */
+    /* -webkit-backdrop-filter: blur(12px) !important; */
+    /* box-shadow: 0 14px 34px rgba(0, 0, 0, 0.36) !important; */
+    /* overflow: hidden !important; */
+    /* z-index: 160 !important; */
+  }
+
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap {
+    flex-wrap: nowrap !important;
+    gap: 12px !important;
+    flex: 0 0 auto !important;
+    min-width: min-content !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap .buffer-map-fab,
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap .closest-map-fab,
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab,
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .basemap-map-fab,
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .msme-basemap-fab-host,
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .home-map-fab {
+    flex: 0 0 auto !important;
+    width: 44px !important;
+    height: 44px !important;
+    min-width: 44px !important;
+    min-height: 44px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-map-fab-ico,
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab svg,
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .basemap-map-fab svg {
+    width: 18px !important;
+    height: 18px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner > .esri-expand {
+    flex: 0 0 auto !important;
+    flex-shrink: 0 !important;
   }
 }
 

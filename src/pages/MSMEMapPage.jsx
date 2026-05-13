@@ -4,6 +4,7 @@ import { useI18n } from "../i18n/useI18n.js";
 import Sidebar from "../components/Sidebar.jsx";
 import HaryanaMap from "../components/Haryana_map.jsx";
 import HeaderGis from "../components/Header_gis.jsx";
+import GisMobilePanelCloseBehaviour from "../components/gis/GisMobilePanelCloseBehaviour.jsx";
 import "../msme-webgis.css";
 import "./MSMEGisPageShell.css";
 
@@ -173,6 +174,7 @@ const MSMEGISPage = () => {
         languages={languages}
       />
       <Sidebar t={t} />
+      <GisMobilePanelCloseBehaviour />
       <HaryanaMap t={t} />
     </div>
   );
