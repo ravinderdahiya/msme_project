@@ -907,6 +907,45 @@ function patchLegacySource(source) {
     console.warn("[msme runtime patch] proximity no-hit alert patch not applied.");
   }
 
+  // Expose a bridge so external tools (e.g. track buffer) can trigger community summary
+  // using any computed polygon geometry instead of center-only fallback.
+  var communitySummaryBridgePattern =
+    /window\.msmeGisDownloadClosestPdf = function \(\) \{\s*buildClosestScreenPdfReport\(\);\s*\};/;
+  var communitySummaryBridgeReplacement = [
+    "window.msmeGisDownloadClosestPdf = function () {",
+    "  buildClosestScreenPdfReport();",
+    "};",
+    "",
+    "window.msmeGisRunCommunitySummaryForGeometry = function (geomInput, opts) {",
+    "  opts = opts || {};",
+    "  return projection.load().then(function () {",
+    "    var gIn = geomInput || null;",
+    "    if (!gIn) return false;",
+    "    var g326 = toEngineSR(ensureSR32643(gIn));",
+    "    if (!g326 || !geometryIsUsable(g326)) return false;",
+    "    var radNum = Number(opts.radiusM);",
+    "    var rad = isFinite(radNum) && radNum > 0 ? Math.max(1, Math.round(radNum)) : null;",
+    "    var summaryMsg = opts.summary ? String(opts.summary) : \"Buffer area selected.\";",
+    "    var base = publishAnalysisToolResult(\"buffer\", summaryMsg, {",
+    "      selectionSource: opts.selectionSource ? String(opts.selectionSource) : \"external-geometry\",",
+    "      radiusM: rad,",
+    "      distanceM: rad,",
+    "      roadSource: opts.roadSource ? String(opts.roadSource) : \"geometry-bridge\"",
+    "    });",
+    "    publishBufferCommunitySummaryInBackground(base, g326, null);",
+    "    return true;",
+    "  }).catch(function (e0) {",
+    "    console.warn(\"[community summary bridge] failed\", e0);",
+    "    return false;",
+    "  });",
+    "};",
+  ].join("\n");
+  if (communitySummaryBridgePattern.test(out)) {
+    out = out.replace(communitySummaryBridgePattern, communitySummaryBridgeReplacement);
+  } else {
+    console.warn("[msme runtime patch] community summary bridge patch not applied.");
+  }
+
   // Buffer run should still work when legacy UI controls (bufRoadLayer/bufDist) are hidden.
   var runBufferUiFallbackPattern =
     /var roadLayerEl = document\.getElementById\("bufRoadLayer"\);\s*var roadLayerId = parseInt\(roadLayerEl\.value, 10\);\s*var roadSourceText = roadLayerEl && roadLayerEl\.selectedOptions && roadLayerEl\.selectedOptions\[0\]\s*\? String\(roadLayerEl\.selectedOptions\[0\]\.text \|\| ""\)\.trim\(\)\s*:\s*"Road source";\s*var distM = parseFloat\(document\.getElementById\("bufDist"\)\.value\) \|\| 1500;/;
@@ -927,6 +966,58 @@ function patchLegacySource(source) {
     out = out.replace(runBufferUiFallbackPattern, runBufferUiFallbackReplacement);
   } else {
     console.warn("[msme runtime patch] runBuffer UI fallback patch not applied.");
+  }
+
+  // For sketch area tools (polygon/rectangle/circle), use inward buffer geometry for intersection.
+  var sketchInwardAnchorPattern = /var anchor32643 = g326\.type === "point" \? g326 : getGeometryCentroid\(g326\);/;
+  var sketchInwardAnchorReplacement = [
+    "var sketchAnalysisGeom32643 = g326;",
+    "      var sketchInwardMeters = readBufferPickDistanceMetersFromUi();",
+    "      if (!isFinite(sketchInwardMeters) || sketchInwardMeters <= 0) sketchInwardMeters = 500;",
+    "      if (String(g326.type || \"\").toLowerCase() === \"polygon\") {",
+    "        var inwardGeom32643 = null;",
+    "        try {",
+    "          inwardGeom32643 = geometryEngine.buffer(g326, -Math.abs(sketchInwardMeters), \"meters\", true);",
+    "        } catch (eIn0) {",
+    "          inwardGeom32643 = null;",
+    "        }",
+    "        if (Array.isArray(inwardGeom32643)) {",
+    "          var inwardParts = inwardGeom32643.filter(function (gPart) {",
+    "            return !!(gPart && geometryIsUsable(gPart));",
+    "          });",
+    "          inwardGeom32643 = inwardParts.length ? inwardParts[0] : null;",
+    "        }",
+    "        if (inwardGeom32643 && geometryIsUsable(inwardGeom32643)) {",
+    "          sketchAnalysisGeom32643 = inwardGeom32643;",
+    "          var inwardWeb = projection.project(inwardGeom32643, SR_WEB);",
+    "          if (inwardWeb) {",
+    "            resultsLayer.add(new Graphic({",
+    "              geometry: inwardWeb,",
+    "              symbol: new SimpleFillSymbol({",
+    "                color: [16, 185, 129, 0.16],",
+    "                outline: new SimpleLineSymbol({ color: [5, 150, 105, 0.95], width: 1.8 })",
+    "              }),",
+    "              attributes: { type: \"sketch-inward-buffer\", inwardM: sketchInwardMeters }",
+    "            }));",
+    "          }",
+    "          setStatus(\"Sketch inward buffer applied: \" + sketchInwardMeters + \" m inside polygon.\");",
+    "        }",
+    "      }",
+    "      var anchor32643 = sketchAnalysisGeom32643.type === \"point\" ? sketchAnalysisGeom32643 : getGeometryCentroid(sketchAnalysisGeom32643);",
+  ].join("\n");
+  if (sketchInwardAnchorPattern.test(out)) {
+    out = out.replace(sketchInwardAnchorPattern, sketchInwardAnchorReplacement);
+  } else {
+    console.warn("[msme runtime patch] sketch inward buffer anchor patch not applied.");
+  }
+
+  var sketchInwardQueryPattern = /return querySketchIntersection\(g326\)\.then\(function \(flat\) \{/;
+  var sketchInwardQueryReplacement =
+    "var querySketchGeom32643 = sketchAnalysisGeom32643 || g326;\n      return querySketchIntersection(querySketchGeom32643).then(function (flat) {";
+  if (sketchInwardQueryPattern.test(out)) {
+    out = out.replace(sketchInwardQueryPattern, sketchInwardQueryReplacement);
+  } else {
+    console.warn("[msme runtime patch] sketch inward buffer query patch not applied.");
   }
 
   // Ignore plain random map clicks unless identify tools are explicitly active.
@@ -1005,9 +1096,8 @@ function installRailTrackBufferTool() {
   }
 
   function trackWidthToSideBufferMeters(widthM) {
-    var width = normalizeTrackBufferMeters(widthM);
-    var side = Math.round(width / 2);
-    if (!isFinite(side) || side <= 0) side = Math.max(1, Math.round(TRACK_TOOL_BUFFER_METERS / 2));
+    var side = normalizeTrackBufferMeters(widthM);
+    if (!isFinite(side) || side <= 0) side = TRACK_TOOL_BUFFER_METERS;
     return side;
   }
 
@@ -1095,31 +1185,93 @@ function installRailTrackBufferTool() {
     return polylineVertexCount(g) >= 2;
   }
 
+  function collectUsableRailPolylinesFromFeatures(features) {
+    var out = [];
+    (features || []).forEach(function (f) {
+      var g32643 = featureGeometryToEngine(f && f.geometry);
+      if (!isUsableRailPolyline(g32643)) return;
+      out.push(g32643);
+    });
+    return out;
+  }
+
+  function railLinesLikelyConnected(lineA, lineB, toleranceM) {
+    if (!isUsableRailPolyline(lineA) || !isUsableRailPolyline(lineB)) return false;
+    try {
+      if (geometryEngine.intersects(lineA, lineB)) return true;
+    } catch (e0) {}
+    try {
+      if (geometryEngine.touches(lineA, lineB)) return true;
+    } catch (e1) {}
+    var dM = NaN;
+    try {
+      dM = geometryEngine.distance(lineA, lineB, "meters");
+    } catch (e2) {
+      dM = NaN;
+    }
+    return isFinite(dM) && dM <= toleranceM;
+  }
+
+  function buildConnectedRailLinesForBuffer(seedRailLine32643, candidateFeatures, sideBufferMeters) {
+    var seed = isUsableRailPolyline(seedRailLine32643) ? seedRailLine32643 : null;
+    if (!seed) return [];
+    var lines = collectUsableRailPolylinesFromFeatures(candidateFeatures);
+    if (lines.length > 260) {
+      var maxKeep = 260;
+      var nearSeed = lines
+        .map(function (ln) {
+          var dM = Infinity;
+          try {
+            dM = geometryEngine.distance(seed, ln, "meters");
+          } catch (e0) {
+            dM = Infinity;
+          }
+          return { g: ln, d: isFinite(dM) ? dM : Infinity };
+        })
+        .sort(function (a, b) {
+          return a.d - b.d;
+        })
+        .slice(0, maxKeep)
+        .map(function (it) {
+          return it.g;
+        });
+      lines = nearSeed.length ? nearSeed : lines.slice(0, maxKeep);
+    }
+    var all = [seed];
+    lines.forEach(function (ln) {
+      if (!ln) return;
+      all.push(ln);
+    });
+    if (all.length <= 1) return [seed];
+
+    var tolM = Math.max(12, Math.min(140, Math.round(Number(sideBufferMeters || 0) * 0.35) || 24));
+    var visited = {};
+    var queue = [0];
+    visited[0] = true;
+
+    while (queue.length) {
+      var cur = queue.shift();
+      var base = all[cur];
+      for (var i = 1; i < all.length; i++) {
+        if (visited[i]) continue;
+        if (!railLinesLikelyConnected(base, all[i], tolM)) continue;
+        visited[i] = true;
+        queue.push(i);
+      }
+    }
+
+    var result = [];
+    Object.keys(visited).forEach(function (k) {
+      var idx = parseInt(k, 10);
+      if (!isFinite(idx) || idx < 0 || idx >= all.length) return;
+      var g = all[idx];
+      if (isUsableRailPolyline(g)) result.push(g);
+    });
+    return result.length ? result : [seed];
+  }
+
   function resolveRailLineForBuffer(anchor32643, railLine32643, bufferMeters) {
     if (!isUsableRailPolyline(railLine32643)) return railLine32643;
-    if (!anchor32643 || anchor32643.type !== "point") return railLine32643;
-
-    var clipRadiusM = Math.max(TRACK_TOOL_PICK_SNAP_METERS, Math.round(Number(bufferMeters || 0) * 6));
-    if (!isFinite(clipRadiusM) || clipRadiusM <= 0) clipRadiusM = TRACK_TOOL_PICK_SNAP_METERS;
-    var clipZone = null;
-    try {
-      clipZone = geometryEngine.buffer(anchor32643, clipRadiusM, "meters");
-    } catch (e0) {
-      clipZone = null;
-    }
-    if (!clipZone) return railLine32643;
-
-    try {
-      var clipped = geometryEngine.intersect(railLine32643, clipZone);
-      if (!clipped) return railLine32643;
-      if (Array.isArray(clipped)) {
-        for (var i = 0; i < clipped.length; i++) {
-          if (isUsableRailPolyline(clipped[i])) return clipped[i];
-        }
-        return railLine32643;
-      }
-      if (isUsableRailPolyline(clipped)) return clipped;
-    } catch (e1) {}
     return railLine32643;
   }
 
@@ -1190,7 +1342,7 @@ function installRailTrackBufferTool() {
     view,
     anchor32643,
     lineBuffer32643,
-    selectedRail32643,
+    selectedRailInput32643,
     snapDistanceM,
     bufferWidthMeters,
     sideBufferMeters,
@@ -1201,7 +1353,17 @@ function installRailTrackBufferTool() {
     layer.removeAll();
 
     var bufferWeb = projection.project(lineBuffer32643, SR_WEB) || lineBuffer32643 || null;
-    var selectedRailWeb = projection.project(selectedRail32643, SR_WEB) || selectedRail32643 || null;
+    var selectedRailWebList = [];
+    if (Array.isArray(selectedRailInput32643)) {
+      selectedRailInput32643.forEach(function (g0) {
+        if (!isUsableRailPolyline(g0)) return;
+        var gw0 = projection.project(g0, SR_WEB) || g0 || null;
+        if (gw0) selectedRailWebList.push(gw0);
+      });
+    } else if (isUsableRailPolyline(selectedRailInput32643)) {
+      var gw1 = projection.project(selectedRailInput32643, SR_WEB) || selectedRailInput32643 || null;
+      if (gw1) selectedRailWebList.push(gw1);
+    }
     var anchorWeb = projection.project(anchor32643, SR_WEB) || anchor32643 || null;
     if (bufferWeb) {
       layer.add(
@@ -1215,7 +1377,7 @@ function installRailTrackBufferTool() {
         }),
       );
     }
-    if (selectedRailWeb) {
+    selectedRailWebList.forEach(function (selectedRailWeb) {
       layer.add(
         new Graphic({
           geometry: selectedRailWeb,
@@ -1227,7 +1389,7 @@ function installRailTrackBufferTool() {
           attributes: { type: "rail-track-selected" },
         }),
       );
-    }
+    });
     if (anchorWeb) {
       layer.add(
         new Graphic({
@@ -1253,12 +1415,13 @@ function installRailTrackBufferTool() {
     }
 
     var snapText = isFinite(snapDistanceM) ? " (snap: " + Math.round(snapDistanceM) + " m)" : "";
+    var totalWidthMeters = Math.max(1, Math.round(sideBufferMeters * 2));
     setStatus(
       "Track buffer ready: selected railway track, " +
-        bufferWidthMeters +
-        " m width (" +
         sideBufferMeters +
-        " m each side)." +
+        " m parallel each side on full selected line (total " +
+        totalWidthMeters +
+        " m)." +
         snapText,
     );
   }
@@ -1379,6 +1542,21 @@ function installRailTrackBufferTool() {
                 bufferMeters +
                 " m buffer.",
             );
+            try {
+              if (typeof window !== "undefined" && typeof window.msmeGisRunCommunitySummaryForGeometry === "function") {
+                window.msmeGisRunCommunitySummaryForGeometry(fullBuffer32643, {
+                  radiusM: bufferMeters,
+                  selectionSource: "track-network",
+                  roadSource: "railway-network",
+                  summary:
+                    "Track network buffer ready: " +
+                    lineGeoms.length +
+                    " railway segment(s), both side " +
+                    bufferMeters +
+                    " m buffer.",
+                });
+              }
+            } catch (eSummary0) {}
             return true;
           })
           .catch(function (err) {
@@ -1443,7 +1621,7 @@ function installRailTrackBufferTool() {
           })
           .then(function (features) {
             var nearest = pickNearestRailFeature(anchor32643, features || []);
-            if (nearest && nearest.geometry) return nearest;
+            if (nearest && nearest.geometry) return { nearest: nearest, candidateFeatures: features || [] };
             return queryLayer(TRANS_MS, TRACK_TOOL_LAYER_ID, {
               where: "1=1",
               outFields: "objectid",
@@ -1452,13 +1630,20 @@ function installRailTrackBufferTool() {
             })
               .then(function (allData) {
                 var allFeatures = allData && Array.isArray(allData.features) ? allData.features : [];
-                return pickNearestRailFeature(anchor32643, allFeatures);
+                return {
+                  nearest: pickNearestRailFeature(anchor32643, allFeatures),
+                  candidateFeatures: allFeatures,
+                };
               })
               .catch(function () {
                 return null;
               });
           })
-          .then(function (nearestResolved) {
+          .then(function (resolvedPack) {
+            var nearestResolved = resolvedPack && resolvedPack.nearest ? resolvedPack.nearest : null;
+            var candidateFeatures = resolvedPack && Array.isArray(resolvedPack.candidateFeatures)
+              ? resolvedPack.candidateFeatures
+              : [];
             if (!nearestResolved || !nearestResolved.geometry) {
               setStatus("Track: nearest railway trace nahi mila. Track ke paas click karein.");
               return null;
@@ -1468,7 +1653,13 @@ function installRailTrackBufferTool() {
               setStatus("Track: selected railway trace par valid line segment nahi mila.");
               return null;
             }
-            var lineBuffer32643 = buildRailBufferFromLines([sourceRailLine32643], sideBufferMeters);
+            var selectedRailLines32643 = buildConnectedRailLinesForBuffer(
+              sourceRailLine32643,
+              candidateFeatures,
+              sideBufferMeters,
+            );
+            if (!selectedRailLines32643.length) selectedRailLines32643 = [sourceRailLine32643];
+            var lineBuffer32643 = buildRailBufferFromLines(selectedRailLines32643, sideBufferMeters);
             if (!lineBuffer32643 || !geometryIsUsable(lineBuffer32643)) {
               setStatus("Track: selected railway trace par buffer create nahi hua.");
               return null;
@@ -1477,11 +1668,24 @@ function installRailTrackBufferTool() {
               view,
               anchor32643,
               lineBuffer32643,
-              sourceRailLine32643,
+              selectedRailLines32643,
               nearestResolved.snapDistanceM,
               bufferWidthMeters,
               sideBufferMeters,
             );
+            try {
+              if (typeof window !== "undefined" && typeof window.msmeGisRunCommunitySummaryForGeometry === "function") {
+                window.msmeGisRunCommunitySummaryForGeometry(lineBuffer32643, {
+                  radiusM: sideBufferMeters,
+                  selectionSource: "track-pick",
+                  roadSource: "railway-track",
+                  summary:
+                    "Track buffer ready: selected railway track, " +
+                    sideBufferMeters +
+                    " m each side.",
+                });
+              }
+            } catch (eSummary1) {}
             return true;
           })
           .catch(function (err) {

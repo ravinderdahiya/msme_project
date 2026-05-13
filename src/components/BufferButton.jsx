@@ -211,18 +211,11 @@ export default function BufferButton({ t }) {
   }
 
   function runTrackNetworkBufferFromIcon() {
-    var meters = distanceMeters();
+    var defaultTrackMeters = 500;
+    setDistanceValue(defaultTrackMeters);
+    setUnit("m");
     setPanelMode(function (cur) {
-      var next = cur === "track" ? null : "track";
-      if (next === "track") {
-        if (window.msmeGisStartTrackPickWithDistance) {
-          window.msmeGisStartTrackPickWithDistance(meters);
-        } else {
-          var legacyBtn = document.getElementById("btnTrackPickPoint");
-          if (legacyBtn && typeof legacyBtn.click === "function") legacyBtn.click();
-        }
-      }
-      return next;
+      return cur === "track" ? null : "track";
     });
   }
 
@@ -380,7 +373,7 @@ export default function BufferButton({ t }) {
             </button>
           </div>
           <div className="buffer-mini-panel__body">
-            <label className="buffer-mini-panel__label">{panelMode === "track" ? "Buffer length" : "Location"}</label>
+            <label className="buffer-mini-panel__label">{panelMode === "track" ? "Buffer distance" : "Location"}</label>
             <div className="buffer-mini-panel__icons" aria-hidden="true"></div>
             <div className="buffer-mini-panel__row">
               <input
