@@ -321,7 +321,7 @@ export default function BufferButton({ t }) {
         </svg>
       </button>
 
-      <button
+      {/* <button
         type="button"
         id="trackMapFab"
         className="buffer-map-fab track-map-fab esri-widget--button"
@@ -353,7 +353,7 @@ export default function BufferButton({ t }) {
             strokeLinecap="round"
           />
         </svg>
-      </button>
+      </button> */}
 
       {panelMode ? (
         <div
