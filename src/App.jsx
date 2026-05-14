@@ -16,7 +16,6 @@ import ContactPage from "./pages/ContactPage";
 import AboutPage from "./pages/AboutPage";
 import NewAdmin from "./newadmin/NewAdmin.jsx";
 
-import NewLoginPage from "./pages/newLoginPage.jsx";
 import NewAdminPage from "./pages/NewAdminPage.jsx";
 
 import "./App.css";
@@ -64,7 +63,6 @@ function App() {
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                     <Route path="/login" element={<Login />} />
-                    <Route path="/newLogin"element={<NewLoginPage/>} />
                     <Route path="/newAdmin" element={<NewAdminPage />} />
                     <Route path="/Admin" element={<Admin />} />
                     <Route path="/newadmin/*" element={<NewAdmin />} />
