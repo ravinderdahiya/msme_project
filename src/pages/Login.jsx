@@ -354,7 +354,7 @@ export default function Login() {
                         <div className="relative z-10 space-y-4">
                             <div className="flex justify-center">
                                 <div className="w-[50px] h-[50px] sm:w-[65px] sm:h-[65px] rounded-xl sm:rounded-2xl bg-white flex items-center justify-center shadow-2xl rotate-3 transition-transform duration-500 hover:rotate-0 p-1">
-                                    <img src={hepcLogo} alt="HEPC Logo" className="w-[55%] object-contain" />
+                                    <img src={hepcLogo} alt="HEPC Logo" className="w-[70%] object-contain" />
                                 </div>
                             </div>
 
