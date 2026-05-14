@@ -229,7 +229,7 @@ export default function NewLoginPage() {
             localStorage.setItem("token", res.token);
             setMessageKey("loginSuccess");
             setMessageType("success");
-            navigate("/dashboard");
+            navigate("/msme-gis-map");
         } catch (err) {
             console.log(err.message);
             setMessageKey("verifyFailed");
@@ -252,6 +252,7 @@ export default function NewLoginPage() {
         navigate("/newadmin");
     }
 
+    
     function resetOtpFlow() {
         setOtpSent(false);
         setOtp("");
