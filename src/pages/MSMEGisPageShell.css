@@ -262,7 +262,8 @@
   transition:
     transform 0.2s ease,
     box-shadow 0.2s ease,
-    border-color 0.2s ease;
+    border-color 0.2s ease,
+    background 0.2s ease;
 }
 
 #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item:hover,
@@ -270,6 +271,37 @@
   transform: translateY(-1px);
   border-color: rgba(33, 89, 216, 0.18);
   box-shadow: 0 16px 32px rgba(33, 89, 216, 0.08);
+}
+
+/* GIS rail (non-dark): hover/active — light blue card + blue border + soft glow (light reference) */
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #rail.nm-sidebar
+  .nm-sidebar-item:hover,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #rail.nm-sidebar
+  .nm-sidebar-item.active {
+  background: rgba(59, 130, 246, 0.08);
+  border-color: rgba(59, 130, 246, 0.5);
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.1),
+    0 10px 28px rgba(59, 130, 246, 0.18);
+}
+
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #rail.nm-sidebar
+  .nm-sidebar-item:hover
+  .nm-sidebar-icon,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #rail.nm-sidebar
+  .nm-sidebar-item.active
+  .nm-sidebar-icon {
+  background: rgba(219, 234, 254, 0.95);
+  color: #2563eb;
+  box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.22);
 }
 
 #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-icon {
@@ -281,6 +313,10 @@
   background: var(--nm-sidebar-icon-wrap);
   color: var(--nm-primary);
   box-shadow: inset 0 0 0 1px rgba(33, 89, 216, 0.08);
+  transition:
+    background 0.2s ease,
+    color 0.2s ease,
+    box-shadow 0.2s ease;
 }
 
 #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item strong {
@@ -1579,6 +1615,104 @@
     0 10px 22px rgba(15, 35, 64, 0.12);
 }
 
+/* Map top tool row — circular FABs hover = same palette as GIS sidebar hover */
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .buffer-fab-wrap
+  .buffer-map-fab:hover,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .buffer-fab-wrap
+  .closest-map-fab:hover,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .closest-print-fab:hover,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .basemap-map-fab:hover,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .home-map-fab:hover,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right
+  .esri-expand
+  .esri-expand__toggle.esri-widget--button:hover,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right
+  .esri-home.esri-widget--button:hover,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right
+  .esri-home
+  calcite-button.esri-widget--button:hover {
+  background: rgba(219, 234, 254, 0.92) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  box-shadow:
+    inset 0 0 0 1px rgba(37, 99, 235, 0.22),
+    0 0 0 1px rgba(59, 130, 246, 0.1),
+    0 10px 28px rgba(59, 130, 246, 0.18) !important;
+  transform: translateY(-1px) !important;
+  color: #2563eb !important;
+}
+
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .buffer-map-fab:hover
+  .buffer-map-fab-ico,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .closest-map-fab:hover
+  .buffer-map-fab-ico,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .closest-print-fab:hover
+  svg,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .basemap-map-fab:hover
+  .buffer-map-fab-ico,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .home-map-fab:hover
+  .buffer-map-fab-ico {
+  color: #2563eb !important;
+}
+
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right
+  .esri-home
+  calcite-button.esri-widget--button:hover {
+  --calcite-icon-color: #2563eb !important;
+  --calcite-ui-icon-color: #2563eb !important;
+}
+
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand:hover,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand:focus-within,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-expand__toggle:hover,
@@ -1707,6 +1841,107 @@
   background: rgba(26, 35, 50, 0.94) !important;
   border-color: var(--border) !important;
   color: rgba(232, 237, 245, 0.92) !important;
+}
+
+/* Dark: map top circular FABs — hover matches GIS sidebar (blue glow) */
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .buffer-fab-wrap
+  .buffer-map-fab:hover,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .buffer-fab-wrap
+  .closest-map-fab:hover,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .closest-print-fab:hover,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .basemap-map-fab:hover,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .home-map-fab:hover,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right
+  .esri-expand
+  .esri-expand__toggle.esri-widget--button:hover,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right
+  .esri-home.esri-widget--button:hover,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right
+  .esri-home
+  calcite-button.esri-widget--button:hover {
+  background:
+    radial-gradient(ellipse 120% 75% at 50% -5%, rgba(59, 130, 246, 0.2), transparent 52%),
+    linear-gradient(180deg, rgba(52, 68, 92, 0.72), rgba(34, 48, 68, 0.72)) !important;
+  border-color: rgba(96, 165, 250, 0.75) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(59, 130, 246, 0.2),
+    0 0 22px rgba(59, 130, 246, 0.38),
+    0 18px 34px rgba(0, 0, 0, 0.32) !important;
+  transform: translateY(-1px) !important;
+  color: #93c5fd !important;
+}
+
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .buffer-map-fab:hover
+  .buffer-map-fab-ico,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .closest-map-fab:hover
+  .buffer-map-fab-ico,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .closest-print-fab:hover
+  svg,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .basemap-map-fab:hover
+  .buffer-map-fab-ico,
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right.esri-ui-corner
+  .home-map-fab:hover
+  .buffer-map-fab-ico {
+  color: #93c5fd !important;
+}
+
+[data-theme='black']
+  #msmeGisRoot.msme-gis-page
+  #viewDiv
+  .esri-ui-top-right
+  .esri-home
+  calcite-button.esri-widget--button:hover {
+  --calcite-icon-color: #93c5fd !important;
+  --calcite-ui-icon-color: #93c5fd !important;
 }
 
 /* Make Proximity/Closest + Home/Layers look alike and align in one row (desktop). */
@@ -1842,10 +2077,24 @@
 
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item:hover,
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item.active {
-  border-color: rgba(110, 160, 255, 0.3);
+  background:
+    radial-gradient(ellipse 120% 75% at 50% -5%, rgba(59, 130, 246, 0.2), transparent 52%),
+    linear-gradient(180deg, rgba(52, 68, 92, 0.72), rgba(34, 48, 68, 0.72));
+  border-color: rgba(96, 165, 250, 0.75);
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.08),
-    0 18px 34px rgba(0, 0, 0, 0.3);
+    0 0 0 1px rgba(59, 130, 246, 0.2),
+    0 0 22px rgba(59, 130, 246, 0.38),
+    0 18px 34px rgba(0, 0, 0, 0.32);
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item:hover .nm-sidebar-icon,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item.active .nm-sidebar-icon {
+  color: #93c5fd;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.09),
+    inset 0 0 0 1px rgba(96, 165, 250, 0.45),
+    0 0 14px rgba(59, 130, 246, 0.32);
 }
 
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail.nm-sidebar .nm-sidebar-item:active {
@@ -1915,16 +2164,62 @@
     0 10px 26px rgba(0, 0, 0, 0.25) !important;
 }
 
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+  border-color: rgba(15, 23, 42, 0.1) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.95),
+    0 10px 28px rgba(15, 23, 42, 0.08) !important;
+}
+
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs {
-  background: transparent !important;
-  border-bottom-color: rgba(232, 237, 245, 0.14) !important;
-  box-shadow: none !important;
-  padding: 0 0 10px !important;
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  margin: 0 0 14px !important;
+  background: #0a0e14 !important;
+  border: 1px solid rgba(59, 130, 246, 0.14) !important;
+  border-bottom: 1px solid rgba(59, 130, 246, 0.12) !important;
+  border-radius: 10px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+  overflow: hidden !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 12px 10px !important;
   border-radius: 0 !important;
+  border: none !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+  background: transparent !important;
+  color: #f1f5fd !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab:last-child {
+  border-right: none !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab:hover {
+  color: #bfdbfe !important;
+  background: rgba(59, 130, 246, 0.1) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab.active {
+  color: #3b82f6 !important;
+  background: rgba(15, 23, 42, 0.75) !important;
+  box-shadow: inset 0 -3px 0 #2563eb !important;
 }
 
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-panels {
-  padding: 12px 0 0 !important;
+  padding: 0 !important;
 }
 
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .panel {
@@ -1934,8 +2229,266 @@
   padding: 0 !important;
 }
 
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .buffer-mark-row {
+  margin-bottom: 12px !important;
+  padding: 10px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #111820 !important;
+  gap: 10px !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .row {
+  margin-bottom: 12px !important;
+  padding: 10px 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #111820 !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-secondary {
+  background: linear-gradient(180deg, #1a2332 0%, #141c28 100%) !important;
+  color: #f1f5fd !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-secondary:hover {
+  border-color: rgba(59, 130, 246, 0.45) !important;
+  background: rgba(59, 130, 246, 0.12) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-ghost {
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border: 1px dashed rgba(148, 163, 184, 0.45) !important;
+  border-radius: 8px !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-ghost:hover {
+  color: #cbd5e1 !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  background: rgba(59, 130, 246, 0.08) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-run {
+  width: 100% !important;
+  margin-top: 4px !important;
+  padding: 12px 16px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 52%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 8px 22px rgba(37, 99, 235, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-run:hover {
+  filter: brightness(1.05) !important;
+  transform: translateY(-1px) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar select.sm,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar input.closest-dist-num {
+  border-radius: 8px !important;
+  background: #0f141c !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #f8fafc !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar input[type='range']::-webkit-slider-thumb {
+  background: #60a5fa !important;
+  border: 2px solid #e0f2fe !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar input[type='range']::-moz-range-thumb {
+  background: #60a5fa !important;
+  border: 2px solid #e0f2fe !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.35) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar input[type='range']::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.35) 0%, rgba(59, 130, 246, 0.12) 100%) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar input[type='range']::-moz-range-track {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.35) 0%, rgba(59, 130, 246, 0.12) 100%) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .val {
+  color: #f8fafc !important;
+  font-weight: 800 !important;
+}
+
+/* White theme: spatial buffer panel — same layout / accents as dark, light surfaces */
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 0 !important;
+  padding: 0 !important;
+  margin: 0 0 14px !important;
+  background: #f8fafc !important;
+  border: 1px solid rgba(59, 130, 246, 0.2) !important;
+  border-bottom: 1px solid rgba(15, 23, 42, 0.08) !important;
+  border-radius: 10px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.95) !important;
+  overflow: hidden !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab {
+  flex: 1 1 0 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 12px 10px !important;
+  border-radius: 0 !important;
+  border: none !important;
+  border-right: 1px solid rgba(15, 23, 42, 0.08) !important;
+  background: transparent !important;
+  color: #334155 !important;
+  font-weight: 700 !important;
+  font-size: 12px !important;
+  letter-spacing: 0.02em !important;
+  box-shadow: none !important;
+  cursor: pointer !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab:last-child {
+  border-right: none !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab:hover {
+  color: #1d4ed8 !important;
+  background: rgba(59, 130, 246, 0.1) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab.active {
+  color: #2563eb !important;
+  background: rgba(255, 255, 255, 0.95) !important;
+  box-shadow: inset 0 -3px 0 #2563eb !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-panels {
+  padding: 0 !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .panel {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .buffer-mark-row {
+  margin-bottom: 12px !important;
+  padding: 10px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  background: #ffffff !important;
+  gap: 10px !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .row {
+  margin-bottom: 12px !important;
+  padding: 10px 12px !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(15, 23, 42, 0.1) !important;
+  background: #ffffff !important;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-secondary {
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%) !important;
+  color: #0f172a !important;
+  border: 1px solid rgba(15, 23, 42, 0.14) !important;
+  border-radius: 8px !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-secondary:hover {
+  border-color: rgba(37, 99, 235, 0.45) !important;
+  background: rgba(219, 234, 254, 0.65) !important;
+  color: #1e40af !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-ghost {
+  background: transparent !important;
+  color: #64748b !important;
+  border: 1px dashed rgba(100, 116, 139, 0.55) !important;
+  border-radius: 8px !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-ghost:hover {
+  color: #334155 !important;
+  border-color: rgba(37, 99, 235, 0.45) !important;
+  background: rgba(59, 130, 246, 0.08) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-run {
+  width: 100% !important;
+  margin-top: 4px !important;
+  padding: 12px 16px !important;
+  font-size: 13px !important;
+  font-weight: 700 !important;
+  border-radius: 8px !important;
+  border: none !important;
+  background: linear-gradient(180deg, #3b82f6 0%, #2563eb 52%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
+  box-shadow:
+    0 8px 22px rgba(37, 99, 235, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.22) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .btn-run:hover {
+  filter: brightness(1.04) !important;
+  transform: translateY(-1px) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar select.sm,
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar input.closest-dist-num {
+  border-radius: 8px !important;
+  background: #ffffff !important;
+  border: 1px solid rgba(15, 23, 42, 0.14) !important;
+  color: #0f172a !important;
+  box-shadow: inset 0 1px 2px rgba(15, 23, 42, 0.04) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar input[type='range']::-webkit-slider-thumb {
+  background: #2563eb !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar input[type='range']::-moz-range-thumb {
+  background: #2563eb !important;
+  border: 2px solid #ffffff !important;
+  box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.25) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar input[type='range']::-webkit-slider-runnable-track {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.35) 0%, rgba(59, 130, 246, 0.12) 100%) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar input[type='range']::-moz-range-track {
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.35) 0%, rgba(59, 130, 246, 0.12) 100%) !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .val {
+  color: #0f172a !important;
+  font-weight: 800 !important;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar label.lbl,
+[data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .lbl {
+  color: #1e293b !important;
+}
+
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel .modal-tabs > button,
-[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab,
 [data-theme='black'] #msmeGisRoot.msme-gis-page #rail #selectToolsPanel .stools-btn {
   background: rgba(30, 41, 55, 0.92) !important;
   border-color: rgba(232, 237, 245, 0.12) !important;
@@ -1958,6 +2511,124 @@
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.05),
     0 10px 22px rgba(0, 0, 0, 0.22) !important;
+  border: 1px solid rgba(232, 237, 245, 0.18) !important;
+  transition:
+    transform 0.3s ease,
+    box-shadow 0.3s ease,
+    border-color 0.3s ease,
+    background 0.3s ease,
+    color 0.3s ease;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel .modal-tabs > button:hover,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel .modal-tabs > button:focus-visible,
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel .modal-tabs > button.active {
+  transform: translateY(-1px);
+  color: #ffffff !important;
+  background:
+    radial-gradient(ellipse 120% 75% at 50% -5%, rgba(59, 130, 246, 0.2), transparent 52%),
+    linear-gradient(180deg, rgba(52, 68, 92, 0.72), rgba(34, 48, 68, 0.72)) !important;
+  border-color: rgba(96, 165, 250, 0.75) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(59, 130, 246, 0.2),
+    0 0 22px rgba(59, 130, 246, 0.38),
+    0 18px 34px rgba(0, 0, 0, 0.32) !important;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel .modal-tabs > button:focus-visible {
+  outline: 2px solid rgba(59, 130, 246, 0.55);
+  outline-offset: 2px;
+}
+
+[data-theme='black'] #msmeGisRoot.msme-gis-page #rail #aoiPanel .modal-tabs > button:active {
+  transform: translateY(0px);
+  filter: brightness(1.02);
+}
+
+/* Light / white AOI: stacked distinct cards (match dark layout; light palette) */
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #rail
+  #aoiPanel
+  .modal-tabs {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 12px !important;
+  padding: 14px !important;
+  background: linear-gradient(180deg, rgba(248, 250, 252, 0.98), rgba(234, 242, 250, 0.94)) !important;
+  border: 1px solid rgba(15, 35, 64, 0.1) !important;
+  border-radius: 18px !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.92),
+    0 10px 26px rgba(15, 35, 64, 0.07) !important;
+}
+
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #rail
+  #aoiPanel
+  .modal-tabs
+  > button {
+  width: 100% !important;
+  margin: 0 !important;
+  flex: 0 0 auto !important;
+  text-align: left !important;
+  padding: 14px 16px !important;
+  border-radius: 16px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em !important;
+  color: #1e293b !important;
+  border: 1px solid rgba(15, 35, 64, 0.12) !important;
+  background: linear-gradient(180deg, #ffffff 0%, rgba(245, 249, 253, 0.98) 100%) !important;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 1),
+    0 8px 20px rgba(15, 35, 64, 0.08) !important;
+  cursor: pointer !important;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease,
+    border-color 0.2s ease,
+    background 0.2s ease,
+    color 0.2s ease;
+}
+
+/* Hover / active / focus — same values as #rail.nm-sidebar .nm-sidebar-item (light rail) */
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #rail
+  #aoiPanel
+  .modal-tabs
+  > button:hover,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #rail
+  #aoiPanel
+  .modal-tabs
+  > button:focus-visible,
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #rail
+  #aoiPanel
+  .modal-tabs
+  > button.active {
+  transform: translateY(-1px) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  background: rgba(59, 130, 246, 0.08) !important;
+  color: #0f172a !important;
+  box-shadow:
+    0 0 0 1px rgba(59, 130, 246, 0.1),
+    0 10px 28px rgba(59, 130, 246, 0.18) !important;
+}
+
+html:not([data-theme='black'])
+  #msmeGisRoot.msme-gis-page
+  #rail
+  #aoiPanel
+  .modal-tabs
+  > button:focus-visible {
+  outline: 2px solid rgba(37, 99, 235, 0.35);
+  outline-offset: 2px;
 }
 
 /* Inline tab panel body */
@@ -2328,6 +2999,18 @@
     gap: 6px !important;
     padding-bottom: 8px !important;
     scrollbar-width: thin;
+  }
+
+  [data-theme='black'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs {
+    gap: 0 !important;
+    padding: 0 !important;
+    padding-bottom: 0 !important;
+  }
+
+  [data-theme='white'] #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs {
+    gap: 0 !important;
+    padding: 0 !important;
+    padding-bottom: 0 !important;
   }
 
   #msmeGisRoot.msme-gis-page #rail #spatialPanel #spatialToolbar .st-tabs .tab {
