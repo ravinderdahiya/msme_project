@@ -143,7 +143,7 @@ export default function GisLegacyPanelsHidden({ t }) {
                     {t("bufferClearMark")}
                   </button>
                   <button type="button" className="btn-secondary" id="btnTrackPickPoint">
-                    Track Select (500m)
+                    NH-44 Select (500m)
                   </button>
                 </div>
                 <div className="row">

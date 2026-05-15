@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { I18nContext } from './I18nContext.js'
+import { InContext } from './InContext.js'
 import { LANGUAGES, t as translate } from './strings.js'
 
-export function I18nProvider({ children }) {
+export function InProvider({ children }) {
   const [lang, setLang] = useState(() => {
     try {
       return localStorage.getItem('msme-lang') || 'en'
@@ -32,5 +32,5 @@ export function I18nProvider({ children }) {
     [lang, t],
   )
 
-  return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>
+  return <InContext.Provider value={value}>{children}</InContext.Provider>
 }

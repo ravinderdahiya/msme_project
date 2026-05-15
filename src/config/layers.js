@@ -41,6 +41,8 @@ const applyPopupToSublayers = (layer) => {
  * Create layers ONE BY ONE (manual but scalable)
  */
 export const createMapLayers = () => {
+  const TRANSPORT_ROAD_SUBLAYER_IDS = new Set([3, 4, 5]);
+
   const adminLayer = new MapImageLayer({
     url: "https://hsacggm.in/server/rest/services/MSME/Administrative_Boundaries/MapServer",
     title: "Administrative Boundaries",
@@ -75,6 +77,16 @@ export const createMapLayers = () => {
     url: "https://hsacggm.in/server/rest/services/MSME/Transportation_Infrastructure/MapServer",
     title: "Transportation Infrastructure",
     visible: true,
+  });
+  transportLayer.when(() => {
+    transportLayer.allSublayers.forEach((sublayer) => {
+      const isRoads = TRANSPORT_ROAD_SUBLAYER_IDS.has(sublayer.id);
+      sublayer.visible = isRoads;
+      if (isRoads) {
+        sublayer.minScale = 0;
+        sublayer.maxScale = 0;
+      }
+    });
   });
 
   const utilitiesLayer = new MapImageLayer({

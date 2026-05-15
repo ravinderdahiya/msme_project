@@ -4,7 +4,7 @@ import App from "./App";
 import "./index.css";
 
 // ✅ add this import
-import { I18nProvider } from "./i18n/I18nProvider.jsx";
+import { InProvider } from "./in/InProvider.jsx";
 
 // ✅ ArcGIS CSS (important)
 import "@arcgis/core/assets/esri/themes/light/main.css";
@@ -20,8 +20,8 @@ const root = ReactDOM.createRoot(rootElement);
 
 root.render(
   <React.StrictMode>
-    <I18nProvider>
+    <InProvider>
       <App />
-    </I18nProvider>
+    </InProvider>
   </React.StrictMode>
 );
