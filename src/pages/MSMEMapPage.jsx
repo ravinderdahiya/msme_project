@@ -57,6 +57,62 @@ const MSMEGISPage = () => {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    var cancelled = false;
+    var retryTimer = null;
+    var attempts = 0;
+    var HARYANA_CENTER = [76.2, 29.2];
+    var HARYANA_ZOOM = 8;
+
+    function shouldRecenterToHaryana(view) {
+      if (!view || view.destroyed) return false;
+      var center = view.center;
+      var lon = Number(center && center.longitude);
+      var lat = Number(center && center.latitude);
+      var scale = Number(view.scale);
+      var veryWideWorldView = Number.isFinite(scale) && scale > 8000000;
+      var farFromHaryana =
+        Number.isFinite(lon) && Number.isFinite(lat)
+          ? Math.abs(lon - HARYANA_CENTER[0]) > 12 || Math.abs(lat - HARYANA_CENTER[1]) > 10
+          : true;
+      return veryWideWorldView || farFromHaryana;
+    }
+
+    function waitAndFixInitialView() {
+      if (cancelled) return;
+      attempts += 1;
+      var view = window.__msmeGisMapView;
+
+      if (!view || view.destroyed) {
+        if (attempts < 80) {
+          retryTimer = window.setTimeout(waitAndFixInitialView, 250);
+        }
+        return;
+      }
+
+      Promise.resolve(typeof view.when === "function" ? view.when() : null)
+        .then(function () {
+          if (cancelled || !view || view.destroyed) return;
+          if (!shouldRecenterToHaryana(view)) return;
+          return view
+            .goTo({ center: HARYANA_CENTER, zoom: HARYANA_ZOOM }, { animate: false })
+            .catch(function () {
+              return null;
+            });
+        })
+        .finally(function () {
+          cancelled = true;
+        });
+    }
+
+    retryTimer = window.setTimeout(waitAndFixInitialView, 300);
+    return () => {
+      cancelled = true;
+      if (retryTimer) window.clearTimeout(retryTimer);
+    };
+  }, []);
+
+  useEffect(() => {
     applyMsmeGisUiStrings({
       district: t("placeholderDistrict"),
       tehsil: t("placeholderTehsil"),

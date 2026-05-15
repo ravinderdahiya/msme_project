@@ -1109,33 +1109,53 @@ function patchLegacySource(source) {
   var initialExtentGuardReplacement = [
     "function getInitialMapExtent() {",
     "  var fallbackWeb = projection.project(defaultStudyExtent32643, SR_WEB);",
+    "  var haryanaFocusWeb = fallbackWeb && typeof fallbackWeb.expand === \"function\" ? fallbackWeb.expand(0.92) : fallbackWeb;",
     "  var adminExtent = adminLayer && adminLayer.fullExtent ? adminLayer.fullExtent : null;",
-    "  if (!adminExtent) return fallbackWeb;",
+    "  if (!adminExtent) return haryanaFocusWeb;",
     "  try {",
     "    var adminWeb = projection.project(adminExtent, SR_WEB) || adminExtent;",
-    "    if (!adminWeb) return fallbackWeb;",
+    "    if (!adminWeb) return haryanaFocusWeb;",
     "    var xmin = Number(adminWeb.xmin);",
     "    var ymin = Number(adminWeb.ymin);",
     "    var xmax = Number(adminWeb.xmax);",
     "    var ymax = Number(adminWeb.ymax);",
-    "    if (!isFinite(xmin) || !isFinite(ymin) || !isFinite(xmax) || !isFinite(ymax)) return fallbackWeb;",
+    "    if (!isFinite(xmin) || !isFinite(ymin) || !isFinite(xmax) || !isFinite(ymax)) return haryanaFocusWeb;",
     "    var width = Math.abs(xmax - xmin);",
     "    var height = Math.abs(ymax - ymin);",
     "    if (width > 20000000 || height > 20000000) {",
     "      console.warn(\"[extent] admin full extent too broad; using Haryana fallback extent.\");",
-    "      return fallbackWeb;",
+    "      return haryanaFocusWeb;",
     "    }",
     "    return adminWeb;",
     "  } catch (e0) {",
     "    console.warn(\"[extent] admin full extent projection failed\", e0);",
     "  }",
-    "  return fallbackWeb;",
+    "  return haryanaFocusWeb;",
     "}",
   ].join("\n");
   if (initialExtentGuardPattern.test(out)) {
     out = out.replace(initialExtentGuardPattern, initialExtentGuardReplacement);
   } else {
     console.warn("[msme runtime patch] initial extent guard patch not applied.");
+  }
+
+  // If startup chain fails (e.g. APIs unreachable), still park map on Haryana fallback extent.
+  var initCatchFallbackPattern = /console\.error\(e\);\s*if \(isGateway502Error\(e\)\) \{/;
+  var initCatchFallbackReplacement = [
+    "console.error(e);",
+    "  projection.load().then(function () {",
+    "    var fallbackWeb = projection.project(defaultStudyExtent32643, SR_WEB);",
+    "    var haryanaFocusWeb = fallbackWeb && typeof fallbackWeb.expand === \"function\" ? fallbackWeb.expand(0.92) : fallbackWeb;",
+    "    if (view && haryanaFocusWeb) {",
+    "      view.goTo(haryanaFocusWeb, { animate: false }).catch(function () { return null; });",
+    "    }",
+    "  }).catch(function () { return null; });",
+    "  if (isGateway502Error(e)) {",
+  ].join("\n");
+  if (initCatchFallbackPattern.test(out)) {
+    out = out.replace(initCatchFallbackPattern, initCatchFallbackReplacement);
+  } else {
+    console.warn("[msme runtime patch] init catch Haryana fallback patch not applied.");
   }
 
   var msmeMapViewBridgePattern = /view\.ui\.add/;

@@ -19,12 +19,8 @@ import { useNavigate } from "react-router-dom";
 
 import bgImage from "../assets/images/full-bg.png";
 import hepcLogo from "../assets/images/hepc-logo.png";
-<<<<<<< HEAD
-import { useIn } from "../in/useIn";
-=======
 import govtLogo from "../assets/images/govtlogo.png";
-import { useI18n } from "../i18n/useI18n";
->>>>>>> 919203749d883cca49bb885d74f32fce7f0962b0
+import { useIn } from "../in/useIn";
 import { sendOtpApi, verifyOtpApi } from "../services/authService";
 
 const LOGIN_TEXT = {
@@ -143,19 +139,7 @@ function getText(lang) {
 }
 
 export default function Login() {
-<<<<<<< HEAD
-  const { lang, setLang, languages } = useIn();
-  const text = getLoginText(lang);
-  const [mobileNumber, setMobileNumber] = useState("");
-  const [otp, setOtp] = useState("");
-  const [otpSent, setOtpSent] = useState(false);
-  const [messageKey, setMessageKey] = useState("");
-  const [messageType, setMessageType] = useState("");
-  const [showHepc, setShowHepc] = useState(true);
-  const [loading, setLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
-=======
-    const { lang, setLang, languages } = useI18n();
+    const { lang, setLang, languages } = useIn();
     const text = getText(lang);
     const [activeTab, setActiveTab] = useState("investor");
     const [mobileNumber, setMobileNumber] = useState("");
@@ -169,7 +153,6 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(0);
     const navigate = useNavigate();
->>>>>>> 919203749d883cca49bb885d74f32fce7f0962b0
 
     const enCode =
         (languages || []).find((language) => /^en/i.test(String(language.code)))?.code ?? "en";
