@@ -16,6 +16,7 @@ import {
 import { Link, useNavigate } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import "./HaryanaDemoMap.css";
+import { clearAuthSession } from "../utils/authStorage";
 
 const haryanaCenter = [29.0, 76.0];
 const haryanaZoom = 7;
@@ -377,8 +378,7 @@ function HaryanaDemoMap() {
   }, [districtLocations, selectedId, showDistrictLabels]);
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
+    clearAuthSession();
     navigate("/login");
   };
 

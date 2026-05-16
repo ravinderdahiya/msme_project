@@ -1,4 +1,5 @@
 import esriRequest from '@arcgis/core/request.js'
+import { getToken } from "../../utils/authStorage.js"
 
 let arcgisRequestsInFlight = 0
 
@@ -57,9 +58,17 @@ function shouldRetry(error) {
 export function requestArcGisJson(url, options) {
   const maxAttempts = options && options.maxAttempts ? options.maxAttempts : 3
   const delays = [350, 1000]
+  const token = getToken()
+  const requestOptions = {
+    ...(options || {}),
+    headers: {
+      ...((options && options.headers) || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  }
 
   function run(attempt) {
-    return esriRequest(url, options).catch((error) => {
+    return esriRequest(url, requestOptions).catch((error) => {
       if (attempt >= maxAttempts - 1 || !shouldRetry(error)) {
         throw error
       }

@@ -63,6 +63,7 @@ import {
   approxModeFromAdminLayerId,
 } from "./serviceUrlsAndLayers.js";
 import { queryLayer, requestArcGisJson } from "./queryClient.js";
+import { getToken } from "../../utils/authStorage.js";
 import {
   geomFromJSON,
   wkidValue,
@@ -1175,8 +1176,34 @@ const __legacySource = patchLegacySource([c1, c2, c3].join("").replace(/import\.
 
 const __legacyExports = eval("(() => {\n" + __legacySource + "\nreturn { initMsmeWebGis, applyMsmeGisUiStrings };\n})()");
 
-export const initMsmeWebGis = __legacyExports.initMsmeWebGis;
+const __legacyInitMsmeWebGis = __legacyExports.initMsmeWebGis;
 export { applyMsmeGisUiStrings };
+
+function ensureArcGisProxyAuthInterceptor() {
+  if (typeof window === "undefined") return;
+  if (window.__msmeArcGisProxyAuthInstalled) return;
+  if (!esriConfig?.request?.interceptors) return;
+
+  esriConfig.request.interceptors.push({
+    urls: /\/mapserver\/service\//i,
+    before(params) {
+      const token = getToken();
+      if (!token) return;
+      params.requestOptions = params.requestOptions || {};
+      params.requestOptions.headers = {
+        ...(params.requestOptions.headers || {}),
+        Authorization: `Bearer ${token}`,
+      };
+    },
+  });
+
+  window.__msmeArcGisProxyAuthInstalled = true;
+}
+
+export const initMsmeWebGis = (...args) => {
+  ensureArcGisProxyAuthInterceptor();
+  return __legacyInitMsmeWebGis(...args);
+};
 
 const TRACK_TOOL_BUTTON_ID = "btnTrackPickPoint";
 const TRACK_TOOL_LAYER_ID = LAYER_ROADS_LINE; // Transportation_Infrastructure -> Roads (Line)

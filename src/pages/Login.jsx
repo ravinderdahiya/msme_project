@@ -21,7 +21,8 @@ import bgImage from "../assets/images/full-bg.png";
 import hepcLogo from "../assets/images/hepc-logo.png";
 import govtLogo from "../assets/images/govtlogo.png";
 import { useIn } from "../in/useIn";
-import { sendOtpApi, verifyOtpApi } from "../services/authService";
+import { adminLoginApi, googleLoginApi, sendOtpApi, verifyOtpApi } from "../services/authService";
+import { setAuthSession } from "../utils/authStorage";
 
 const LOGIN_TEXT = {
     en: {
@@ -60,6 +61,9 @@ const LOGIN_TEXT = {
         verifyOtp: "Verify OTP & Login",
         orLoginWith: "OR LOGIN WITH",
         googleLogin: "Login with Google",
+        googleNotConfigured: "Google login is not configured. Add VITE_GOOGLE_CLIENT_ID.",
+        googleNotReady: "Google login is not ready. Reload the page.",
+        googleFailed: "Google login failed. Try again.",
         securityTitle: "OTP Based Secure Login",
         securityText:
             "Passwordless access for investors through mobile verification.",
@@ -115,6 +119,9 @@ const LOGIN_TEXT = {
         verifyOtp: "OTP सत्यापित करें और लॉगिन करें",
         orLoginWith: "या इससे लॉगिन करें",
         googleLogin: "Google से लॉगिन करें",
+        googleNotConfigured: "Google लॉगिन कॉन्फ़िगर नहीं है। VITE_GOOGLE_CLIENT_ID जोड़ें.",
+        googleNotReady: "Google लॉगिन तैयार नहीं है। पेज रीलोड करें.",
+        googleFailed: "Google लॉगिन विफल। पुन: प्रयास करें.",
         securityTitle: "OTP आधारित सुरक्षित लॉगिन",
         securityText: "मोबाइल सत्यापन के माध्यम से निवेशकों के लिए पासवर्ड रहित प्रवेश.",
         adminSecurityTitle: "विभाग सुरक्षित लॉगिन",
@@ -226,7 +233,7 @@ export default function Login() {
         try {
             setLoading(true);
             const res = await verifyOtpApi(cleanMobile, otp);
-            localStorage.setItem("token", res.token);
+            setAuthSession({ token: res.token, user: res.user });
             setMessageKey("loginSuccess");
             setMessageType("success");
             navigate("/msme-gis-map");
@@ -239,7 +246,7 @@ export default function Login() {
         }
     }
 
-    function handleDepartmentLogin(e) {
+    async function handleDepartmentLogin(e) {
         e.preventDefault();
 
         if (!isValidDepartment) {
@@ -248,11 +255,94 @@ export default function Login() {
             return;
         }
 
-        localStorage.setItem("adminToken", "department-session");
-        navigate("/newadmin");
+        try {
+            setLoading(true);
+            const res = await adminLoginApi(departmentId.trim(), departmentPassword);
+            setAuthSession({ token: res.token, user: res.user });
+            setMessageKey("loginSuccess");
+            setMessageType("success");
+            navigate("/newadmin");
+        } catch (err) {
+            console.log(err.message);
+            setMessageKey("invalidAdmin");
+            setMessageType("error");
+        } finally {
+            setLoading(false);
+        }
     }
 
-    
+    const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
+
+    useEffect(() => {
+        if (!googleClientId) {
+            return;
+        }
+
+        const initGoogle = () => {
+            if (window.google?.accounts?.id) {
+                window.google.accounts.id.initialize({
+                    client_id: googleClientId,
+                    callback: handleGoogleResponse,
+                    ux_mode: "popup",
+                    cancel_on_tap_outside: false,
+                });
+            }
+        };
+
+        if (window.google?.accounts?.id) {
+            initGoogle();
+            return;
+        }
+
+        const interval = setInterval(() => {
+            if (window.google?.accounts?.id) {
+                initGoogle();
+                clearInterval(interval);
+            }
+        }, 100);
+
+        return () => clearInterval(interval);
+    }, [googleClientId]);
+
+    async function handleGoogleResponse(response) {
+        if (!response?.credential) {
+            setMessageKey("googleFailed");
+            setMessageType("error");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const res = await googleLoginApi(response.credential);
+            setAuthSession({ token: res.token, user: res.user });
+            setMessageKey("loginSuccess");
+            setMessageType("success");
+            navigate("/msme-gis-map");
+        } catch (err) {
+            console.log(err.message);
+            setMessageKey("googleFailed");
+            setMessageType("error");
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    function handleGoogleLogin() {
+        if (!googleClientId) {
+            setMessageKey("googleNotConfigured");
+            setMessageType("error");
+            return;
+        }
+
+        if (window.google?.accounts?.id) {
+            window.google.accounts.id.prompt();
+            return;
+        }
+
+        setMessageKey("googleNotReady");
+        setMessageType("error");
+    }
+
     function resetOtpFlow() {
         setOtpSent(false);
         setOtp("");
@@ -416,7 +506,7 @@ export default function Login() {
                                                     <span className="uppercase tracking-widest">{text.orLoginWith}</span>
                                                     <div className="h-px flex-1 bg-white/5"></div>
                                                 </div>
-                                                <button type="button" className="w-full h-[44px] sm:h-[48px] rounded-xl bg-white text-[#0f172a] font-bold text-[12px] flex items-center justify-center gap-3 hover:bg-[#f8fafc] transition-all shadow-md">
+                                                <button type="button" onClick={handleGoogleLogin} className="w-full h-[44px] sm:h-[48px] rounded-xl bg-white text-[#0f172a] font-bold text-[12px] flex items-center justify-center gap-3 hover:bg-[#f8fafc] transition-all shadow-md">
                                                     <svg className="w-4 h-4" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" /><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" /><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" /><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" /></svg>
                                                     {text.googleLogin}
                                                 </button>

@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/auth/AuthLayout";
 import hepcLogo from "../assets/images/hepc-logo.png";
 import govtLogo from "../assets/images/govtlogo.png";
+import { adminLoginApi } from "../services/authService";
+import { setAuthSession } from "../utils/authStorage";
 
 export default function NewAdminPage() {
   const [adminId, setAdminId] = useState("");
@@ -16,6 +18,7 @@ export default function NewAdminPage() {
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [showHepc, setShowHepc] = useState(true);
+  const [loading, setLoading] = useState(false);
 
   const navigate = useNavigate();
 
@@ -32,7 +35,7 @@ export default function NewAdminPage() {
     adminId.trim().length > 0 &&
     adminPassword.trim().length > 0;
 
-  function handleAdminLogin(e) {
+  async function handleAdminLogin(e) {
     e.preventDefault();
 
     if (!isValidAdmin) {
@@ -40,7 +43,17 @@ export default function NewAdminPage() {
       return;
     }
 
-    navigate("/dashboard");
+    try {
+      setLoading(true);
+      const res = await adminLoginApi(adminId.trim(), adminPassword);
+      setAuthSession({ token: res.token, user: res.user });
+      navigate("/newadmin/dashboard");
+    } catch (error) {
+      console.error(error);
+      setMessage("Invalid admin credentials.");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -175,10 +188,10 @@ export default function NewAdminPage() {
           {/* 🔥 BUTTON */}
           <button
             type="submit"
-            disabled={!isValidAdmin}
+            disabled={!isValidAdmin || loading}
             className="w-full rounded-xl bg-gradient-to-r from-[#0b2e73] via-blue-600 to-[#1f8f65] py-3 font-semibold text-white shadow-lg transition-all hover:scale-[1.01] disabled:opacity-60"
           >
-            Department Login
+            {loading ? "Logging in..." : "Department Login"}
           </button>
         </form>
       </div>

@@ -1,5 +1,17 @@
 import MapImageLayer from "@arcgis/core/layers/MapImageLayer";
 
+const PROXY_ROOT = "/mapserver/service"
+const MAP_SERVER_URLS = {
+  admin: `${PROXY_ROOT}/MSME_ADMIN_BOUNDARIES`,
+  base: `${PROXY_ROOT}/MSME_BASE_REFERENCE`,
+  env: `${PROXY_ROOT}/MSME_ENVIRONMENT`,
+  investment: `${PROXY_ROOT}/MSME_INVESTMENT`,
+  social: `${PROXY_ROOT}/MSME_SOCIAL`,
+  transport: `${PROXY_ROOT}/MSME_TRANSPORT`,
+  utilities: `${PROXY_ROOT}/MSME_UTILITIES`,
+  cadastral: `${PROXY_ROOT}/MSME_CADASTRAL`,
+}
+
 /**
  * 🔥 Dynamic popup template generator
  */
@@ -44,37 +56,37 @@ export const createMapLayers = () => {
   const TRANSPORT_ROAD_SUBLAYER_IDS = new Set([3, 4, 5]);
 
   const adminLayer = new MapImageLayer({
-    url: "https://hsacggm.in/server/rest/services/MSME/Administrative_Boundaries/MapServer",
+    url: MAP_SERVER_URLS.admin,
     title: "Administrative Boundaries",
     visible: true,
   });
 
   const baseLayer = new MapImageLayer({
-    url: "https://hsacggm.in/server/rest/services/MSME/Base_Reference_Layers/MapServer",
+    url: MAP_SERVER_URLS.base,
     title: "Base Reference Layers",
     visible: true,
   });
 
   const envLayer = new MapImageLayer({
-    url: "https://hsacggm.in/server/rest/services/MSME/Environmental_Constraints/MapServer",
+    url: MAP_SERVER_URLS.env,
     title: "Environmental Constraints",
     visible: true,
   });
 
   const investmentLayer = new MapImageLayer({
-    url: "https://hsacggm.in/server/rest/services/MSME/Investment_Zones/MapServer",
+    url: MAP_SERVER_URLS.investment,
     title: "Investment Zones",
     visible: true,
   });
 
   const socialLayer = new MapImageLayer({
-    url: "https://hsacggm.in/server/rest/services/MSME/Social_Infrastructure/MapServer",
+    url: MAP_SERVER_URLS.social,
     title: "Social Infrastructure",
     visible: true,
   });
 
   const transportLayer = new MapImageLayer({
-    url: "https://hsacggm.in/server/rest/services/MSME/Transportation_Infrastructure/MapServer",
+    url: MAP_SERVER_URLS.transport,
     title: "Transportation Infrastructure",
     visible: true,
   });
@@ -90,13 +102,13 @@ export const createMapLayers = () => {
   });
 
   const utilitiesLayer = new MapImageLayer({
-    url: "https://hsacggm.in/server/rest/services/MSME/Utilities/MapServer",
+    url: MAP_SERVER_URLS.utilities,
     title: "Utilities",
     visible: true,
   });
 
   const cadastralLayer = new MapImageLayer({
-    url: "https://hsacggm.in/server/rest/services/MSME/Haryana_Cadastral/MapServer",
+    url: MAP_SERVER_URLS.cadastral,
     title: "Haryana Cadastral",
     visible: true,
   });

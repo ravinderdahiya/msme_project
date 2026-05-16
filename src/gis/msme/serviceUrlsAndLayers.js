@@ -1,30 +1,17 @@
-/** MSME_HARSAC MapServer root selection.
- * Priority:
- * 1) VITE_ARCGIS_SERVICE_ROOT (explicit override)
- * 2) Dev proxy root only when VITE_ARCGIS_USE_PROXY=true
- * 3) Direct public ArcGIS root (default for prod and local fallback)
+/** ArcGIS URLs are always resolved via backend proxy.
+ * Backend gets actual service URLs from DB (`api_url` table) with secure fallback mapping.
  */
-const DEFAULT_DIRECT_ROOT = 'https://hsacggm.in/server/rest/services'
-const DEV_PROXY_ROOT = '/arcgis/server/rest/services'
-const USE_DEV_PROXY =
-  import.meta.env.DEV &&
-  String(import.meta.env.VITE_ARCGIS_USE_PROXY || '').toLowerCase() === 'true'
+const PROXY_ROOT = "/mapserver/service"
 
-const SERVICE_ROOT =
-  import.meta.env.VITE_ARCGIS_SERVICE_ROOT ||
-  (USE_DEV_PROXY ? DEV_PROXY_ROOT : DEFAULT_DIRECT_ROOT)
-
-export const BASE_MS = `${SERVICE_ROOT}/MSME_HARSAC/Base_Reference_Layers/MapServer`
-export const ADMIN_MS = `${SERVICE_ROOT}/MSME_HARSAC/Administrative_Boundaries/MapServer`
-export const ENV_MS = `${SERVICE_ROOT}/MSME_HARSAC/Environmental_Constraints/MapServer`
-export const INV_MS = `${SERVICE_ROOT}/MSME_HARSAC/Investment_Zones/MapServer`
-export const SOC_MS = `${SERVICE_ROOT}/MSME_HARSAC/Social_Infrastructure/MapServer`
-export const TRANS_MS = `${SERVICE_ROOT}/MSME_HARSAC/Transportation_Infrastructure/MapServer`
-export const UTIL_MS = `${SERVICE_ROOT}/MSME_HARSAC/Utilities/MapServer`
-export const CAD_MS = `${SERVICE_ROOT}/MSME_HARSAC/Haryana_Cadastral/MapServer`
-// Use MSME_HARSAC constituency service because it returns polygon geometry
-// for Vidhan/Lok boundaries (required for full-boundary buffer, not center-circle fallback).
-export const CON_MS = `${SERVICE_ROOT}/MSME_HARSAC/Constituency_Boundaries/MapServer`
+export const BASE_MS = `${PROXY_ROOT}/MSME_BASE_REFERENCE`
+export const ADMIN_MS = `${PROXY_ROOT}/MSME_ADMIN_BOUNDARIES`
+export const ENV_MS = `${PROXY_ROOT}/MSME_ENVIRONMENT`
+export const INV_MS = `${PROXY_ROOT}/MSME_INVESTMENT`
+export const SOC_MS = `${PROXY_ROOT}/MSME_SOCIAL`
+export const TRANS_MS = `${PROXY_ROOT}/MSME_TRANSPORT`
+export const UTIL_MS = `${PROXY_ROOT}/MSME_UTILITIES`
+export const CAD_MS = `${PROXY_ROOT}/MSME_CADASTRAL`
+export const CON_MS = `${PROXY_ROOT}/MSME_CONSTITUENCY`
 
 export const IDENTIFY_URLS = [BASE_MS, ADMIN_MS, ENV_MS, INV_MS, SOC_MS, TRANS_MS, UTIL_MS, CAD_MS, CON_MS]
 

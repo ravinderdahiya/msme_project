@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
+import { clearAuthSession } from "../utils/authStorage";
 import "../pages/newmainmap/NewMainMapHeader.css";
 import "./Header_gis_nm.css";
 import { MSME_GIS_REOPEN_DRAWER_EVENT } from "./gis/GisMobilePanelCloseBehaviour.jsx";
@@ -303,7 +304,14 @@ export default function HeaderGis({
           </span>
           <span className={lang === hiCode ? "is-active" : ""}>हि</span>
         </button>
-        <button type="button" className="nmhdr-login" onClick={() => navigate("/newLogin")}>
+        <button
+          type="button"
+          className="nmhdr-login"
+          onClick={() => {
+            clearAuthSession();
+            navigate("/login");
+          }}
+        >
           <LogOut size={18} strokeWidth={2} />
           <span className="nmhdr-login-text">Logout</span>
         </button>

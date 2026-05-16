@@ -16,12 +16,30 @@ export default defineConfig({
 
   // ✅ Optional (sirf tab use hoga jab /arcgis API hit hogi)
   server: {
+    host: 'localhost',
+    open: true,
     proxy: {
       '/arcgis': {
         target: 'https://hsacggm.in',
         changeOrigin: true,
         secure: false,
         rewrite: (path) => path.replace(/^\/arcgis/, ''),
+      },
+      '/user': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/otp': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/api-url': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
+      },
+      '/mapserver': {
+        target: 'http://localhost:8080',
+        changeOrigin: true,
       },
     },
   },
