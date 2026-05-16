@@ -1,6 +1,9 @@
 import { useCallback, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { History, LogIn, Moon, Search, Sun } from "lucide-react";
 import "./NewMainMapHeader.css";
+import { logoutApi } from "../../services/authService";
+import { clearAuthSession } from "../../utils/authStorage";
 
 const SEARCH_PLACEHOLDER =
   "Search places across Haryana or use the sidebar record search";
@@ -12,6 +15,7 @@ export default function NewMainMapHeader({
   theme = "light",
   onToggleTheme = () => {},
 }) {
+  const navigate = useNavigate();
   const [langEn, setLangEn] = useState(true);
   const [searchExpanded, setSearchExpanded] = useState(false);
 
@@ -22,6 +26,17 @@ export default function NewMainMapHeader({
     },
     [onSearchSubmit, search]
   );
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await logoutApi();
+    } catch (error) {
+      console.warn("Logout request failed:", error?.message || error);
+    } finally {
+      clearAuthSession();
+      navigate("/login", { replace: true });
+    }
+  }, [navigate]);
 
   return (
     <header className="nmhdr">
@@ -108,7 +123,7 @@ export default function NewMainMapHeader({
         <button
           type="button"
           className="nmhdr-login"
-          // onClick={() => navigate("/newLogin")}
+          onClick={handleLogout}
         >
           <LogIn size={18} strokeWidth={2} />
           <span className="nmhdr-login-text">Logout</span>

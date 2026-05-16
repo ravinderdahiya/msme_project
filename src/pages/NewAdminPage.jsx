@@ -10,7 +10,8 @@ import AuthLayout from "../components/auth/AuthLayout";
 import hepcLogo from "../assets/images/hepc-logo.png";
 import govtLogo from "../assets/images/govtlogo.png";
 import { adminLoginApi } from "../services/authService";
-import { setAuthSession } from "../utils/authStorage";
+import { getCurrentUser, getToken, setAuthSession } from "../utils/authStorage";
+import { getDefaultRouteForUser } from "../utils/authRedirect";
 
 export default function NewAdminPage() {
   const [adminId, setAdminId] = useState("");
@@ -31,6 +32,14 @@ export default function NewAdminPage() {
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    const token = getToken();
+    const user = getCurrentUser();
+    if (token && user) {
+      navigate(getDefaultRouteForUser(user), { replace: true });
+    }
+  }, [navigate]);
+
   const isValidAdmin =
     adminId.trim().length > 0 &&
     adminPassword.trim().length > 0;
@@ -47,7 +56,7 @@ export default function NewAdminPage() {
       setLoading(true);
       const res = await adminLoginApi(adminId.trim(), adminPassword);
       setAuthSession({ token: res.token, user: res.user });
-      navigate("/newadmin/dashboard");
+      navigate(getDefaultRouteForUser(res.user), { replace: true });
     } catch (error) {
       console.error(error);
       setMessage("Invalid admin credentials.");
@@ -114,7 +123,7 @@ export default function NewAdminPage() {
 
           <button
             type="button"
-            onClick={() => navigate("/newlogin")}
+            onClick={() => navigate("/login")}
             className="rounded-lg py-2 text-sm font-semibold text-gray-500"
           >
             Investor Login

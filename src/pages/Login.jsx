@@ -22,7 +22,8 @@ import hepcLogo from "../assets/images/hepc-logo.png";
 import govtLogo from "../assets/images/govtlogo.png";
 import { useIn } from "../in/useIn";
 import { adminLoginApi, googleLoginApi, sendOtpApi, verifyOtpApi } from "../services/authService";
-import { setAuthSession } from "../utils/authStorage";
+import { getCurrentUser, getToken, setAuthSession } from "../utils/authStorage";
+import { getDefaultRouteForUser } from "../utils/authRedirect";
 
 const LOGIN_TEXT = {
     en: {
@@ -173,6 +174,14 @@ export default function Login() {
         departmentId.trim().length > 0 && departmentPassword.trim().length > 0;
 
     useEffect(() => {
+        const token = getToken();
+        const user = getCurrentUser();
+        if (token && user) {
+            navigate(getDefaultRouteForUser(user), { replace: true });
+        }
+    }, [navigate]);
+
+    useEffect(() => {
         if (resendTimer > 0) {
             const timer = setInterval(() => {
                 setResendTimer((prev) => prev - 1);
@@ -236,7 +245,7 @@ export default function Login() {
             setAuthSession({ token: res.token, user: res.user });
             setMessageKey("loginSuccess");
             setMessageType("success");
-            navigate("/msme-gis-map");
+            navigate(getDefaultRouteForUser(res.user), { replace: true });
         } catch (err) {
             console.log(err.message);
             setMessageKey("verifyFailed");
@@ -261,7 +270,7 @@ export default function Login() {
             setAuthSession({ token: res.token, user: res.user });
             setMessageKey("loginSuccess");
             setMessageType("success");
-            navigate("/newadmin");
+            navigate(getDefaultRouteForUser(res.user), { replace: true });
         } catch (err) {
             console.log(err.message);
             setMessageKey("invalidAdmin");
@@ -317,7 +326,7 @@ export default function Login() {
             setAuthSession({ token: res.token, user: res.user });
             setMessageKey("loginSuccess");
             setMessageType("success");
-            navigate("/msme-gis-map");
+            navigate(getDefaultRouteForUser(res.user), { replace: true });
         } catch (err) {
             console.log(err.message);
             setMessageKey("googleFailed");

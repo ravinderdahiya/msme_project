@@ -9,7 +9,6 @@ import NewHomepage from "./pages/NewHomepage";
 import NewMainMap from "./pages/NewMainMap";
 import Login from "./pages/Login.jsx";
 
-import Admin from "./admin/Admin";
 // import MSMEMapPage from "./pages/MSMEMapPage.jsx";
 
 import ContactPage from "./pages/ContactPage";
@@ -71,15 +70,7 @@ function App() {
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                     <Route path="/login" element={<Login />} />
-                    <Route path="/newAdmin" element={<NewAdminPage />} />
-                    <Route
-                      path="/Admin"
-                      element={
-                        <ProtectedRoute requiredRoles={["admin", "superadmin"]}>
-                          <Admin />
-                        </ProtectedRoute>
-                      }
-                    />
+                    <Route path="/newadmin/login" element={<NewAdminPage />} />
                     <Route
                       path="/newadmin/*"
                       element={

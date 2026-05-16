@@ -20,3 +20,8 @@ export const googleLoginApi = async (idToken) => {
     const res = await http.post("/user/google-login", { idToken })
     return res.data
 }
+
+export const logoutApi = async () => {
+    const res = await http.post("/user/logout")
+    return res.data
+}
