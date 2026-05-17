@@ -247,7 +247,7 @@ export default function HeaderGis({
           </div>
         </div>
         <div className="nmhdr-titles">
-          <span className="nmhdr-title">MSME, Haryana</span>
+          <span className="nmhdr-title">Invest, Haryana</span>
           <span className="nmhdr-subtitle">GIS Investment Portal, Haryana</span>
         </div>
       </div>

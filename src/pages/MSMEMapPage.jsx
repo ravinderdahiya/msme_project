@@ -9,10 +9,13 @@ import "../msme-webgis.css";
 import "./MSMEGisPageShell.css";
 
 const MSMEGISPage = () => {
+  const ASSEMBLY_MAP_URL =
+    "https://investhry.harsac.in/portal/apps/experiencebuilder/experience/?id=f15f7171a8434a5cb8a0936c1993a67f";
   const { t, lang, setLang, languages } = useIn();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchBusy, setSearchBusy] = useState(false);
   const [theme, setTheme] = useState("black");
+  const [assemblyMapOpen, setAssemblyMapOpen] = useState(false);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -229,9 +232,30 @@ const MSMEGISPage = () => {
         setLang={setLang}
         languages={languages}
       />
-      <Sidebar t={t} />
+      <Sidebar t={t} onOpenAssemblyMap={() => setAssemblyMapOpen(true)} />
       <GisMobilePanelCloseBehaviour />
       <HaryanaMap t={t} />
+      {assemblyMapOpen ? (
+        <section className="assembly-map-inline-panel" aria-label="Assembly map inline panel">
+          <div className="assembly-map-inline-header">
+            <h2>Assembly Map</h2>
+            <button
+              type="button"
+              className="assembly-map-inline-back"
+              onClick={() => setAssemblyMapOpen(false)}
+            >
+              Back to Map
+            </button>
+          </div>
+          <iframe
+            title="Assembly Map"
+            src={ASSEMBLY_MAP_URL}
+            className="assembly-map-inline-frame"
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+          />
+        </section>
+      ) : null}
     </div>
   );
 };

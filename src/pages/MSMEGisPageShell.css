@@ -489,6 +489,61 @@ html:not([data-theme='black'])
   border: 1px solid rgba(15, 35, 64, 0.08);
 }
 
+#msmeGisRoot.msme-gis-page .assembly-map-inline-panel {
+  position: fixed;
+  top: var(--msme-gis-content-top);
+  left: calc(var(--msme-gis-shell-pad) + var(--msme-rail-total-w) + var(--msme-gis-inner-gap));
+  right: var(--msme-gis-shell-pad);
+  bottom: var(--msme-gis-shell-pad);
+  border-radius: 24px;
+  overflow: hidden;
+  background: #ffffff;
+  border: 1px solid rgba(15, 35, 64, 0.12);
+  box-shadow: 0 28px 70px rgba(15, 35, 64, 0.24);
+  z-index: 350;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+#msmeGisRoot.msme-gis-page .assembly-map-inline-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 14px;
+  background: linear-gradient(90deg, #2f3f72 0%, #254f8f 100%);
+  color: #ffffff;
+}
+
+#msmeGisRoot.msme-gis-page .assembly-map-inline-header h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+}
+
+#msmeGisRoot.msme-gis-page .assembly-map-inline-back {
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  background: rgba(255, 255, 255, 0.18);
+  color: #ffffff;
+  border-radius: 999px;
+  padding: 7px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+#msmeGisRoot.msme-gis-page .assembly-map-inline-back:hover {
+  background: rgba(255, 255, 255, 0.26);
+}
+
+#msmeGisRoot.msme-gis-page .assembly-map-inline-frame {
+  width: 100%;
+  height: 100%;
+  border: 0;
+  background: #f4f7fb;
+}
+
 #msmeGisRoot.msme-gis-page #gisLoadingOverlay {
   top: calc(var(--msme-gis-content-top) + 8px);
   left: calc(var(--msme-gis-shell-pad) + var(--msme-rail-total-w) + var(--msme-gis-inner-gap) + 8px);
@@ -2894,6 +2949,14 @@ html:not([data-theme='black'])
   }
 
   #msmeGisRoot.msme-gis-page #viewDiv {
+    top: calc(var(--msme-gis-content-top) + var(--msme-gis-rail-chrome-h) + var(--msme-gis-inner-gap));
+    left: var(--msme-gis-shell-pad);
+    right: var(--msme-gis-shell-pad);
+    bottom: var(--msme-gis-shell-pad);
+    border-radius: 20px;
+  }
+
+  #msmeGisRoot.msme-gis-page .assembly-map-inline-panel {
     top: calc(var(--msme-gis-content-top) + var(--msme-gis-rail-chrome-h) + var(--msme-gis-inner-gap));
     left: var(--msme-gis-shell-pad);
     right: var(--msme-gis-shell-pad);
