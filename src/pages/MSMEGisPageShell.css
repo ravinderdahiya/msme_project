@@ -1103,6 +1103,23 @@ html:not([data-theme='black'])
 }
 */
 
+/* Esri footer attribution ("Powered by Esri" / layer credits). Same node often has
+   .esri-component.esri-attribution.esri-widget — hide only this; do not blanket-hide
+   all .esri-widget / .esri-component or zoom / basemap / custom FABs break. */
+#msmeGisRoot.msme-gis-page #viewDiv .esri-attribution {
+  display: none !important;
+  visibility: hidden !important;
+  height: 0 !important;
+  min-height: 0 !important;
+  width: 0 !important;
+  min-width: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+}
+
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-left.esri-ui-corner .esri-component,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-bottom-left.esri-ui-corner .esri-component {
   margin: 0 !important;

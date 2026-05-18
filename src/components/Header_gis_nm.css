@@ -23,6 +23,29 @@
   border-color: rgba(15, 35, 64, 0.1) !important;
 }
 
+/* HEPC logo: slightly larger than default NewMainMap header (52×52 / 36px img) */
+#appHeader.nmhdr-gis .nmhdr-flip {
+  width: 56px;
+  height: 56px;
+}
+
+#appHeader.nmhdr-gis .nmhdr-flip-face img {
+  width: 40px;
+  height: 40px;
+}
+
+@media (max-width: 520px) {
+  #appHeader.nmhdr-gis .nmhdr-flip {
+    width: 50px;
+    height: 50px;
+  }
+
+  #appHeader.nmhdr-gis .nmhdr-flip-face img {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 /*
  * Hamburger (Header_gis): toggle class msme-gis-rail-hidden on #msmeGisRoot — collapse rail, full-width map.
  */
