@@ -14,7 +14,7 @@ import {
     ShieldCheck,
     UserRoundCog,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 
 import bgImage from "../assets/images/full-bg.png";
@@ -146,6 +146,8 @@ function getText(lang) {
     return String(lang).startsWith("hi") ? LOGIN_TEXT.hi : LOGIN_TEXT.en;
 }
 
+const GOOGLE_INIT_CLIENT_KEY = "__msmeGoogleInitializedClientId";
+
 export default function Login() {
     const { lang, setLang, languages } = useIn();
     const text = getText(lang);
@@ -222,7 +224,7 @@ export default function Login() {
             setMessageKey(otpSent ? "otpSentAgain" : "otpSent");
             setMessageType("success");
         } catch (err) {
-            console.log(err.message);
+            console.error("OTP send failed:", err?.response?.data || err?.message || err);
             setMessageKey("sendFailed");
             setMessageType("error");
         } finally {
@@ -247,7 +249,7 @@ export default function Login() {
             setMessageType("success");
             navigate(getDefaultRouteForUser(res.user), { replace: true });
         } catch (err) {
-            console.log(err.message);
+            console.error("OTP verify failed:", err?.response?.data || err?.message || err);
             setMessageKey("verifyFailed");
             setMessageType("error");
         } finally {
@@ -282,38 +284,7 @@ export default function Login() {
 
     const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
-    useEffect(() => {
-        if (!googleClientId) {
-            return;
-        }
-
-        const initGoogle = () => {
-            if (window.google?.accounts?.id) {
-                window.google.accounts.id.initialize({
-                    client_id: googleClientId,
-                    callback: handleGoogleResponse,
-                    ux_mode: "popup",
-                    cancel_on_tap_outside: false,
-                });
-            }
-        };
-
-        if (window.google?.accounts?.id) {
-            initGoogle();
-            return;
-        }
-
-        const interval = setInterval(() => {
-            if (window.google?.accounts?.id) {
-                initGoogle();
-                clearInterval(interval);
-            }
-        }, 100);
-
-        return () => clearInterval(interval);
-    }, [googleClientId]);
-
-    async function handleGoogleResponse(response) {
+    const handleGoogleResponse = useCallback(async (response) => {
         if (!response?.credential) {
             setMessageKey("googleFailed");
             setMessageType("error");
@@ -334,7 +305,53 @@ export default function Login() {
         } finally {
             setLoading(false);
         }
-    }
+    }, [navigate]);
+
+    useEffect(() => {
+        if (!googleClientId) {
+            return;
+        }
+
+        let isCancelled = false;
+
+        const initGoogle = () => {
+            if (isCancelled || !window.google?.accounts?.id) {
+                return;
+            }
+
+            if (window[GOOGLE_INIT_CLIENT_KEY] === googleClientId) {
+                return;
+            }
+
+            window.google.accounts.id.initialize({
+                client_id: googleClientId,
+                callback: handleGoogleResponse,
+                ux_mode: "popup",
+                cancel_on_tap_outside: false,
+            });
+
+            window[GOOGLE_INIT_CLIENT_KEY] = googleClientId;
+        };
+
+        if (window.google?.accounts?.id) {
+            initGoogle();
+            return () => {
+                isCancelled = true;
+            };
+        }
+
+        const interval = setInterval(() => {
+            if (window.google?.accounts?.id) {
+                initGoogle();
+                clearInterval(interval);
+            }
+        }, 100);
+
+        return () => {
+            isCancelled = true;
+            clearInterval(interval);
+        };
+    }, [googleClientId, handleGoogleResponse]);
 
     function handleGoogleLogin() {
         if (!googleClientId) {
