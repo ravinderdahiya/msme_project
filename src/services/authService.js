@@ -1,9 +1,4 @@
-import axios from 'axios';
-
-const http = axios.create({
-    baseURL:import.meta.env.VITE_SERVER_URL || 'http://localhost:8080',
-    withCredentials: true,
-})
+import http from "../api/axios"
 
 
 export const sendOtpApi = async  (mobile) =>{
@@ -13,5 +8,20 @@ export const sendOtpApi = async  (mobile) =>{
 
 export const verifyOtpApi = async (mobile, otp) => {
     const res = await http.post("/otp/verify-otp",{mobile, otp});
+    return res.data
+}
+
+export const adminLoginApi = async (adminId, password) => {
+    const res = await http.post("/user/admin-login", { adminId, password })
+    return res.data
+}
+
+export const googleLoginApi = async (idToken) => {
+    const res = await http.post("/user/google-login", { idToken })
+    return res.data
+}
+
+export const logoutApi = async () => {
+    const res = await http.post("/user/logout")
     return res.data
 }

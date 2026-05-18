@@ -63,6 +63,7 @@ import {
   approxModeFromAdminLayerId,
 } from "./serviceUrlsAndLayers.js";
 import { queryLayer, requestArcGisJson } from "./queryClient.js";
+import { getToken } from "../../utils/authStorage.js";
 import {
   geomFromJSON,
   wkidValue,
@@ -1003,6 +1004,37 @@ function patchLegacySource(source) {
     "          setStatus(\"Sketch inward buffer applied: \" + sketchInwardMeters + \" m inside polygon.\");",
     "        }",
     "      }",
+    "      if (String(g326.type || \"\").toLowerCase() === \"polyline\") {",
+    "        var lineBuffer32643 = null;",
+    "        try {",
+    "          lineBuffer32643 = geometryEngine.buffer(g326, Math.abs(sketchInwardMeters), \"meters\", true);",
+    "        } catch (eLn0) {",
+    "          lineBuffer32643 = null;",
+    "        }",
+    "        if (Array.isArray(lineBuffer32643)) {",
+    "          var lineParts = lineBuffer32643.filter(function (gPart2) {",
+    "            return !!(gPart2 && geometryIsUsable(gPart2));",
+    "          });",
+    "          if (lineParts.length === 1) lineBuffer32643 = lineParts[0];",
+    "          else if (lineParts.length > 1) lineBuffer32643 = geometryEngine.union(lineParts);",
+    "          else lineBuffer32643 = null;",
+    "        }",
+    "        if (lineBuffer32643 && geometryIsUsable(lineBuffer32643)) {",
+    "          sketchAnalysisGeom32643 = lineBuffer32643;",
+    "          var lineBufferWeb = projection.project(lineBuffer32643, SR_WEB);",
+    "          if (lineBufferWeb) {",
+    "            resultsLayer.add(new Graphic({",
+    "              geometry: lineBufferWeb,",
+    "              symbol: new SimpleFillSymbol({",
+    "                color: [14, 165, 233, 0.18],",
+    "                outline: new SimpleLineSymbol({ color: [2, 132, 199, 0.95], width: 1.8 })",
+    "              }),",
+    "              attributes: { type: \"sketch-line-buffer\", bufferM: sketchInwardMeters }",
+    "            }));",
+    "          }",
+    "          setStatus(\"Sketch line buffer applied: \" + sketchInwardMeters + \" m on both sides.\");",
+    "        }",
+    "      }",
     "      var anchor32643 = sketchAnalysisGeom32643.type === \"point\" ? sketchAnalysisGeom32643 : getGeometryCentroid(sketchAnalysisGeom32643);",
   ].join("\n");
   if (sketchInwardAnchorPattern.test(out)) {
@@ -1037,6 +1069,96 @@ function patchLegacySource(source) {
   }
 
   // Expose MapView for React UI (custom basemap dropdown) — first UI mount on the main map view.
+  // Some ArcGIS services expose a world-sized fullExtent; keep Haryana fallback on startup in that case.
+  // Keep Transportation -> Roads group and children (layer ids 3,4,5) on by default at startup.
+  var transportRoadsDefaultOnPattern = /applyInitialRequestedLayerPreset\(\);/;
+  var transportRoadsDefaultOnReplacement = [
+    "applyInitialRequestedLayerPreset();",
+    "    try {",
+    "      var transLyr = null;",
+    "      if (map && map.layers && typeof map.layers.forEach === \"function\") {",
+    "        map.layers.forEach(function (lyr) {",
+    "          if (transLyr) return;",
+    "          var title0 = String((lyr && lyr.title) || \"\");",
+    "          var url0 = String((lyr && lyr.url) || \"\");",
+    "          var isTransport = /Transportation/i.test(title0) || /Transportation_Infrastructure/i.test(url0);",
+    "          if (isTransport) transLyr = lyr;",
+    "        });",
+    "      }",
+    "      if (transLyr && typeof transLyr.when === \"function\") {",
+    "        transLyr.when(function () {",
+    "          [3, 4, 5].forEach(function (sid) {",
+    "            var roadsSl = transLyr.findSublayerById ? transLyr.findSublayerById(sid) : null;",
+    "            if (!roadsSl) return;",
+    "            roadsSl.visible = true;",
+    "            roadsSl.minScale = 0;",
+    "            roadsSl.maxScale = 0;",
+    "          });",
+    "        });",
+    "      }",
+    "    } catch (eRoadOn) {",
+    "      console.warn(\"[msme runtime patch] transport roads default-on failed\", eRoadOn);",
+    "    }",
+  ].join("\n");
+  if (transportRoadsDefaultOnPattern.test(out)) {
+    out = out.replace(transportRoadsDefaultOnPattern, transportRoadsDefaultOnReplacement);
+  } else {
+    console.warn("[msme runtime patch] transport roads default-on patch not applied.");
+  }
+
+  var initialExtentGuardPattern = /function getInitialMapExtent\(\) \{[\s\S]*?return projection\.project\(defaultStudyExtent32643, SR_WEB\);\r?\n\}/;
+  var initialExtentGuardReplacement = [
+    "function getInitialMapExtent() {",
+    "  var fallbackWeb = projection.project(defaultStudyExtent32643, SR_WEB);",
+    "  var haryanaFocusWeb = fallbackWeb && typeof fallbackWeb.expand === \"function\" ? fallbackWeb.expand(0.92) : fallbackWeb;",
+    "  var adminExtent = adminLayer && adminLayer.fullExtent ? adminLayer.fullExtent : null;",
+    "  if (!adminExtent) return haryanaFocusWeb;",
+    "  try {",
+    "    var adminWeb = projection.project(adminExtent, SR_WEB) || adminExtent;",
+    "    if (!adminWeb) return haryanaFocusWeb;",
+    "    var xmin = Number(adminWeb.xmin);",
+    "    var ymin = Number(adminWeb.ymin);",
+    "    var xmax = Number(adminWeb.xmax);",
+    "    var ymax = Number(adminWeb.ymax);",
+    "    if (!isFinite(xmin) || !isFinite(ymin) || !isFinite(xmax) || !isFinite(ymax)) return haryanaFocusWeb;",
+    "    var width = Math.abs(xmax - xmin);",
+    "    var height = Math.abs(ymax - ymin);",
+    "    if (width > 20000000 || height > 20000000) {",
+    "      console.warn(\"[extent] admin full extent too broad; using Haryana fallback extent.\");",
+    "      return haryanaFocusWeb;",
+    "    }",
+    "    return adminWeb;",
+    "  } catch (e0) {",
+    "    console.warn(\"[extent] admin full extent projection failed\", e0);",
+    "  }",
+    "  return haryanaFocusWeb;",
+    "}",
+  ].join("\n");
+  if (initialExtentGuardPattern.test(out)) {
+    out = out.replace(initialExtentGuardPattern, initialExtentGuardReplacement);
+  } else {
+    console.warn("[msme runtime patch] initial extent guard patch not applied.");
+  }
+
+  // If startup chain fails (e.g. APIs unreachable), still park map on Haryana fallback extent.
+  var initCatchFallbackPattern = /console\.error\(e\);\s*if \(isGateway502Error\(e\)\) \{/;
+  var initCatchFallbackReplacement = [
+    "console.error(e);",
+    "  projection.load().then(function () {",
+    "    var fallbackWeb = projection.project(defaultStudyExtent32643, SR_WEB);",
+    "    var haryanaFocusWeb = fallbackWeb && typeof fallbackWeb.expand === \"function\" ? fallbackWeb.expand(0.92) : fallbackWeb;",
+    "    if (view && haryanaFocusWeb) {",
+    "      view.goTo(haryanaFocusWeb, { animate: false }).catch(function () { return null; });",
+    "    }",
+    "  }).catch(function () { return null; });",
+    "  if (isGateway502Error(e)) {",
+  ].join("\n");
+  if (initCatchFallbackPattern.test(out)) {
+    out = out.replace(initCatchFallbackPattern, initCatchFallbackReplacement);
+  } else {
+    console.warn("[msme runtime patch] init catch Haryana fallback patch not applied.");
+  }
+
   var msmeMapViewBridgePattern = /view\.ui\.add/;
   var msmeMapViewBridgeReplacement =
     'try{if(typeof window!=="undefined")window.__msmeGisMapView=view;}catch(_msmeMvBr0){}view.ui.add';
@@ -1054,13 +1176,44 @@ const __legacySource = patchLegacySource([c1, c2, c3].join("").replace(/import\.
 
 const __legacyExports = eval("(() => {\n" + __legacySource + "\nreturn { initMsmeWebGis, applyMsmeGisUiStrings };\n})()");
 
-export const initMsmeWebGis = __legacyExports.initMsmeWebGis;
+const __legacyInitMsmeWebGis = __legacyExports.initMsmeWebGis;
 export { applyMsmeGisUiStrings };
 
+function ensureArcGisProxyAuthInterceptor() {
+  if (typeof window === "undefined") return;
+  if (window.__msmeArcGisProxyAuthInstalled) return;
+  if (!esriConfig?.request?.interceptors) return;
+
+  esriConfig.request.interceptors.push({
+    urls: /\/mapserver\/service\//i,
+    before(params) {
+      const token = getToken();
+      if (!token) return;
+      params.requestOptions = params.requestOptions || {};
+      params.requestOptions.headers = {
+        ...(params.requestOptions.headers || {}),
+        Authorization: `Bearer ${token}`,
+      };
+    },
+  });
+
+  window.__msmeArcGisProxyAuthInstalled = true;
+}
+
+export const initMsmeWebGis = (...args) => {
+  ensureArcGisProxyAuthInterceptor();
+  return __legacyInitMsmeWebGis(...args);
+};
+
 const TRACK_TOOL_BUTTON_ID = "btnTrackPickPoint";
-const TRACK_TOOL_LAYER_ID = 2; // Transportation_Infrastructure -> Rail Network
+const TRACK_TOOL_LAYER_ID = LAYER_ROADS_LINE; // Transportation_Infrastructure -> Roads (Line)
 const TRACK_TOOL_BUFFER_METERS = 500;
 const TRACK_TOOL_PICK_SNAP_METERS = 1500;
+const TRACK_TOOL_TARGET_WHERE =
+  "(" +
+  "UPPER(rd_name) LIKE '%NH-44%' OR UPPER(rd_name) LIKE '%NH 44%' OR UPPER(rd_name) LIKE '%NH44%' OR " +
+  "UPPER(r_temp_id) LIKE '%NH-44%' OR UPPER(r_temp_id) LIKE '%NH 44%' OR UPPER(r_temp_id) LIKE '%NH44%'" +
+  ")";
 
 function installRailTrackBufferTool() {
   if (typeof window === "undefined") return;
@@ -1079,9 +1232,9 @@ function installRailTrackBufferTool() {
 
   function setButtonLabel() {
     if (!state.buttonEl) return;
-    state.buttonEl.textContent = "Track Buffer (All, 500m)";
+    state.buttonEl.textContent = "NH-44 Select (500m)";
     state.buttonEl.setAttribute("aria-pressed", "false");
-    state.buttonEl.title = "Create 500m both-side buffer for all railway tracks";
+    state.buttonEl.title = "Click on NH-44 line to create both-side buffer";
   }
 
   function setStatus(msg) {
@@ -1118,7 +1271,7 @@ function installRailTrackBufferTool() {
     }
     state.graphicsLayer = new GraphicsLayer({
       id: "__msmeRailTrackBufferLayer",
-      title: "Track buffer results",
+      title: "NH-44 buffer results",
       listMode: "hide",
     });
     view.map.add(state.graphicsLayer);
@@ -1183,6 +1336,15 @@ function installRailTrackBufferTool() {
     if (!g || !geometryIsUsable(g)) return false;
     if (String(g.type || "").toLowerCase() !== "polyline") return false;
     return polylineVertexCount(g) >= 2;
+  }
+
+  function isNh44RoadFeature(attrs) {
+    var a = attrs || {};
+    var name = String(a.rd_name || "").toUpperCase();
+    var rid = String(a.r_temp_id || "").toUpperCase();
+    if (name.indexOf("NH-44") >= 0 || name.indexOf("NH 44") >= 0 || name.indexOf("NH44") >= 0) return true;
+    if (rid.indexOf("NH-44") >= 0 || rid.indexOf("NH 44") >= 0 || rid.indexOf("NH44") >= 0) return true;
+    return false;
   }
 
   function collectUsableRailPolylinesFromFeatures(features) {
@@ -1319,23 +1481,34 @@ function installRailTrackBufferTool() {
   }
 
   function pickNearestRailFeature(anchor32643, railFeatures) {
-    var best = null;
-    var bestDist = Infinity;
+    var bestNh44 = null;
+    var bestNh44Dist = Infinity;
+    var bestAny = null;
+    var bestAnyDist = Infinity;
     (railFeatures || []).forEach(function (f) {
+      var attrs = f && f.attributes ? f.attributes : {};
       var g32643 = featureGeometryToEngine(f && f.geometry);
       if (!isUsableRailPolyline(g32643)) return;
       var dM = distanceFromPointToGeometry(anchor32643, g32643);
       if (!isFinite(dM) || dM < 0) return;
-      if (dM < bestDist) {
-        bestDist = dM;
-        best = {
+      if (dM < bestAnyDist) {
+        bestAnyDist = dM;
+        bestAny = {
+          feature: f,
+          geometry: g32643,
+          snapDistanceM: dM,
+        };
+      }
+      if (isNh44RoadFeature(attrs) && dM < bestNh44Dist) {
+        bestNh44Dist = dM;
+        bestNh44 = {
           feature: f,
           geometry: g32643,
           snapDistanceM: dM,
         };
       }
     });
-    return best;
+    return bestNh44 || bestAny;
   }
 
   function addTrackResultGraphics(
@@ -1417,7 +1590,7 @@ function installRailTrackBufferTool() {
     var snapText = isFinite(snapDistanceM) ? " (snap: " + Math.round(snapDistanceM) + " m)" : "";
     var totalWidthMeters = Math.max(1, Math.round(sideBufferMeters * 2));
     setStatus(
-      "Track buffer ready: selected railway track, " +
+      "NH-44 buffer ready: selected road segment, " +
         sideBufferMeters +
         " m parallel each side on full selected line (total " +
         totalWidthMeters +
@@ -1428,7 +1601,7 @@ function installRailTrackBufferTool() {
 
   function runTrackNetworkBufferForAll(view, distanceM) {
     if (state.running) {
-      setStatus("Track: buffer generation already in progress...");
+      setStatus("NH-44: buffer generation already in progress...");
       return Promise.resolve(false);
     }
     var bufferMeters = normalizeTrackBufferMeters(distanceM);
@@ -1438,9 +1611,9 @@ function installRailTrackBufferTool() {
       .then(function () {
         if (!view || view.destroyed) return null;
         clearLegacyTrackConflicts();
-        setStatus("Track: loading railway network...");
+        setStatus("NH-44: loading road network...");
         return queryLayer(TRANS_MS, TRACK_TOOL_LAYER_ID, {
-          where: "1=1",
+          where: TRACK_TOOL_TARGET_WHERE,
           outFields: "objectid",
           returnGeometry: true,
           resultRecordCount: 2000,
@@ -1455,7 +1628,7 @@ function installRailTrackBufferTool() {
               lineGeoms.push(g32643);
             });
             if (!lineGeoms.length) {
-              setStatus("Track: railway line data not available for buffer.");
+              setStatus("NH-44: road line data not available for buffer.");
               return null;
             }
             var fullBuffer32643 = null;
@@ -1488,7 +1661,7 @@ function installRailTrackBufferTool() {
               }
             }
             if (!fullBuffer32643 || !geometryIsUsable(fullBuffer32643)) {
-              setStatus("Track: railway network buffer create nahi hua.");
+              setStatus("NH-44: buffer create nahi hua.");
               return null;
             }
 
@@ -1536,9 +1709,9 @@ function installRailTrackBufferTool() {
             }
 
             setStatus(
-              "Track network buffer ready: " +
+              "NH-44 network buffer ready: " +
                 lineGeoms.length +
-                " railway segment(s), both side " +
+                " road segment(s), both side " +
                 bufferMeters +
                 " m buffer.",
             );
@@ -1546,12 +1719,12 @@ function installRailTrackBufferTool() {
               if (typeof window !== "undefined" && typeof window.msmeGisRunCommunitySummaryForGeometry === "function") {
                 window.msmeGisRunCommunitySummaryForGeometry(fullBuffer32643, {
                   radiusM: bufferMeters,
-                  selectionSource: "track-network",
-                  roadSource: "railway-network",
+                  selectionSource: "nh44-network",
+                  roadSource: "nh44-road-network",
                   summary:
-                    "Track network buffer ready: " +
+                    "NH-44 network buffer ready: " +
                     lineGeoms.length +
-                    " railway segment(s), both side " +
+                    " road segment(s), both side " +
                     bufferMeters +
                     " m buffer.",
                 });
@@ -1560,14 +1733,14 @@ function installRailTrackBufferTool() {
             return true;
           })
           .catch(function (err) {
-            console.warn("[track network buffer] railway query failed", err);
-            setStatus("Track: railway network query failed.");
+            console.warn("[track network buffer] NH-44 query failed", err);
+            setStatus("NH-44: network query failed.");
             return null;
           });
       })
       .catch(function (err0) {
         console.warn("[track network buffer] projection failed", err0);
-        setStatus("Track: map projection unavailable.");
+        setStatus("NH-44: map projection unavailable.");
         return null;
       })
       .finally(function () {
@@ -1584,12 +1757,12 @@ function installRailTrackBufferTool() {
         if (!view || view.destroyed || !mapPoint) return null;
         var anchor32643 = projection.project(mapPoint, SR_METER) || null;
         if (!anchor32643) {
-          setStatus("Track: selected point is invalid.");
+          setStatus("NH-44: selected point is invalid.");
           return null;
         }
         var pickZone32643 = geometryEngine.buffer(anchor32643, TRACK_TOOL_PICK_SNAP_METERS, "meters");
         if (!pickZone32643) {
-          setStatus("Track: could not create track selection zone.");
+          setStatus("NH-44: could not create selection zone.");
           return null;
         }
         function queryByRadius(radiusM) {
@@ -1624,7 +1797,7 @@ function installRailTrackBufferTool() {
             if (nearest && nearest.geometry) return { nearest: nearest, candidateFeatures: features || [] };
             return queryLayer(TRANS_MS, TRACK_TOOL_LAYER_ID, {
               where: "1=1",
-              outFields: "objectid",
+              outFields: "objectid,rd_name,r_temp_id,road_catog",
               returnGeometry: true,
               resultRecordCount: 2000,
             })
@@ -1645,12 +1818,12 @@ function installRailTrackBufferTool() {
               ? resolvedPack.candidateFeatures
               : [];
             if (!nearestResolved || !nearestResolved.geometry) {
-              setStatus("Track: nearest railway trace nahi mila. Track ke paas click karein.");
+              setStatus("NH-44 trace nahi mila. NH-44 line ke paas click karein.");
               return null;
             }
             var sourceRailLine32643 = resolveRailLineForBuffer(anchor32643, nearestResolved.geometry, sideBufferMeters);
             if (!isUsableRailPolyline(sourceRailLine32643)) {
-              setStatus("Track: selected railway trace par valid line segment nahi mila.");
+              setStatus("NH-44: selected trace par valid line segment nahi mila.");
               return null;
             }
             var selectedRailLines32643 = buildConnectedRailLinesForBuffer(
@@ -1661,7 +1834,7 @@ function installRailTrackBufferTool() {
             if (!selectedRailLines32643.length) selectedRailLines32643 = [sourceRailLine32643];
             var lineBuffer32643 = buildRailBufferFromLines(selectedRailLines32643, sideBufferMeters);
             if (!lineBuffer32643 || !geometryIsUsable(lineBuffer32643)) {
-              setStatus("Track: selected railway trace par buffer create nahi hua.");
+              setStatus("NH-44: selected trace par buffer create nahi hua.");
               return null;
             }
             addTrackResultGraphics(
@@ -1677,10 +1850,10 @@ function installRailTrackBufferTool() {
               if (typeof window !== "undefined" && typeof window.msmeGisRunCommunitySummaryForGeometry === "function") {
                 window.msmeGisRunCommunitySummaryForGeometry(lineBuffer32643, {
                   radiusM: sideBufferMeters,
-                  selectionSource: "track-pick",
-                  roadSource: "railway-track",
+                  selectionSource: "nh44-pick",
+                  roadSource: "nh44-road",
                   summary:
-                    "Track buffer ready: selected railway track, " +
+                    "NH-44 buffer ready: selected road segment, " +
                     sideBufferMeters +
                     " m each side.",
                 });
@@ -1689,13 +1862,13 @@ function installRailTrackBufferTool() {
             return true;
           })
           .catch(function (err) {
-            console.warn("[track buffer] railway query failed", err);
-            setStatus("Track: railway query failed.");
+            console.warn("[track buffer] NH-44 query failed", err);
+            setStatus("NH-44 query failed.");
           });
       })
       .catch(function (err0) {
         console.warn("[track buffer] projection failed", err0);
-        setStatus("Track: map projection unavailable.");
+        setStatus("NH-44: map projection unavailable.");
       });
   }
 
@@ -1706,13 +1879,13 @@ function installRailTrackBufferTool() {
     stopPickMode();
     state.pickMode = true;
     if (state.buttonEl) {
-      state.buttonEl.textContent = "Track: Select on map";
+      state.buttonEl.textContent = "NH-44: Select on map";
       state.buttonEl.setAttribute("aria-pressed", "true");
-      state.buttonEl.title = "Click on map near railway track";
+      state.buttonEl.title = "Click on map near NH-44 road line";
     }
     setPickCursor(view);
     setStatus(
-      "Track mode on: click selected railway track to create " +
+      "NH-44 mode on: click NH-44 road line to create " +
         bufferWidthMeters +
         " m width parallel buffer.",
     );
@@ -1728,17 +1901,16 @@ function installRailTrackBufferTool() {
     var btn = document.getElementById(TRACK_TOOL_BUTTON_ID);
     if (!btn || btn === state.buttonEl) return;
     state.buttonEl = btn;
-    state.buttonEl.textContent = "Track Buffer (All, 500m)";
-    state.buttonEl.title = "Create 500m both-side buffer for all railway tracks";
+    state.buttonEl.textContent = "NH-44 Select (500m)";
+    state.buttonEl.title = "Click and pick NH-44 line for both-side buffer";
     state.buttonEl.setAttribute("aria-pressed", "false");
     btn.addEventListener("click", function () {
       var view = window.__msmeGisMapView;
       if (!view || view.destroyed) {
-        setStatus("Track tool unavailable: map not ready.");
+        setStatus("NH-44 tool unavailable: map not ready.");
         return;
       }
-      stopPickMode();
-      runTrackNetworkBufferForAll(view, TRACK_TOOL_BUFFER_METERS);
+      startPickMode(view, TRACK_TOOL_BUFFER_METERS);
     });
   }
 
@@ -1761,7 +1933,7 @@ function installRailTrackBufferTool() {
   window.msmeGisRunTrackNetworkBuffer = function (distanceM) {
     var view = window.__msmeGisMapView;
     if (!view || view.destroyed) {
-      setStatus("Track tool unavailable: map not ready.");
+      setStatus("NH-44 tool unavailable: map not ready.");
       return Promise.resolve(false);
     }
     stopPickMode();

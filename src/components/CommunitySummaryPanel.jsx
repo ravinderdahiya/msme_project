@@ -48,6 +48,12 @@ function isCommunitySummaryCandidate(reportSnap) {
   if (!reportSnap) return false
   if (reportSnap.communitySummary) return true
   if (reportSnap.reportKind === 'map-selection') return true
+  var countNum = Number(reportSnap.count)
+  var hasCount = Number.isFinite(countNum) && countNum >= 0
+  var nearestDistanceNum = Number(reportSnap.nearestDistanceM)
+  var hasNearestDistance = Number.isFinite(nearestDistanceNum) && nearestDistanceNum >= 0
+  var maxDistanceNum = Number(reportSnap.maxDistanceM)
+  var hasMaxDistance = Number.isFinite(maxDistanceNum) && maxDistanceNum >= 0
   if (
     reportSnap.reportKind === 'analysis' &&
     String(reportSnap.tool || '').toLowerCase() === 'buffer'
@@ -58,16 +64,32 @@ function isCommunitySummaryCandidate(reportSnap) {
     reportSnap.reportKind === 'analysis' &&
     String(reportSnap.tool || '').toLowerCase() === 'closest'
   ) {
-    return !!(reportSnap.communitySummary || reportSnap.radiusM)
+    return !!(reportSnap.communitySummary || reportSnap.radiusM || hasCount || hasNearestDistance)
   }
   if (
     reportSnap.reportKind === 'analysis' &&
     String(reportSnap.tool || '').toLowerCase() === 'proximity'
   ) {
-    return !!(reportSnap.communitySummary || reportSnap.radiusM)
+    return !!(reportSnap.communitySummary || reportSnap.radiusM || hasCount || hasMaxDistance)
   }
 
   return false
+}
+
+function shouldAutoOpenCommunityPanel(reportSnap) {
+  if (!reportSnap) return false
+  var isAnalysis = reportSnap.reportKind === 'analysis'
+  var tool = String(reportSnap.tool || '').toLowerCase()
+  if (isAnalysis && (tool === 'closest' || tool === 'proximity')) {
+    var countNum = Number(reportSnap.count)
+    var hasCount = Number.isFinite(countNum) && countNum >= 0
+    var nearestDistanceNum = Number(reportSnap.nearestDistanceM)
+    var hasNearestDistance = Number.isFinite(nearestDistanceNum) && nearestDistanceNum >= 0
+    var maxDistanceNum = Number(reportSnap.maxDistanceM)
+    var hasMaxDistance = Number.isFinite(maxDistanceNum) && maxDistanceNum >= 0
+    return !!(reportSnap.communitySummary || hasCount || hasNearestDistance || hasMaxDistance)
+  }
+  return isCommunitySummaryCandidate(reportSnap)
 }
 
 const LOADING_ROWS = [
@@ -557,6 +579,17 @@ export default function CommunitySummaryPanel() {
     }
   }, [])
 
+  useEffect(() => {
+    function openFromExternalTrigger() {
+      setOpen(true)
+    }
+
+    window.addEventListener('msme-community-panel-open', openFromExternalTrigger)
+    return () => {
+      window.removeEventListener('msme-community-panel-open', openFromExternalTrigger)
+    }
+  }, [])
+
   const summary = useMemo(
     () => pickLatestCommunitySummary(analysisSnap, mapSnap),
     [analysisSnap, mapSnap],
@@ -579,13 +612,15 @@ export default function CommunitySummaryPanel() {
   useEffect(() => {
     if (summary) {
       setLastSummary(summary)
-      setOpen(true)
+      if (shouldAutoOpenCommunityPanel(latestReport)) {
+        setOpen(true)
+      }
       setSelectedCategoryKeys([])
     }
-  }, [summary])
+  }, [summary, latestReport])
 
   useEffect(() => {
-    if (isCommunitySummaryCandidate(latestReport)) {
+    if (shouldAutoOpenCommunityPanel(latestReport)) {
       setOpen(true)
     }
   }, [latestReport])
@@ -595,8 +630,28 @@ export default function CommunitySummaryPanel() {
     window.msmeGisSelectedCommunityCategoryKeys = selectedCategoryKeys.slice()
   }, [selectedCategoryKeys])
 
-  if (!open) return null
   if (!displaySummary && !waitingForCounts) return null
+  if (!open) {
+    return (
+      <button
+        type="button"
+        className="community-ba-reopen-btn"
+        aria-label="Open community panel"
+        title="Open community panel"
+        onClick={() => setOpen(true)}
+      >
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" aria-hidden="true">
+          <path
+            d="M4 19V5M4 19h16M8 15V9l3 4 3-6 3 8"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </button>
+    )
+  }
 
   const allRows = Array.isArray(displaySummary && displaySummary.categories)
     ? displaySummary.categories
@@ -892,6 +947,10 @@ export default function CommunitySummaryPanel() {
     handleClearMapGraphics()
   }
 
+  function handleClosePanel() {
+    setOpen(false)
+  }
+
   return (
     <aside
       className="community-summary-panel community-ba-panel"
@@ -915,7 +974,7 @@ export default function CommunitySummaryPanel() {
             type="button"
             className="community-ba-icon-btn"
             aria-label="Collapse panel"
-            onClick={() => setOpen(false)}
+            onClick={handleClosePanel}
           >
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
               <path
@@ -932,7 +991,7 @@ export default function CommunitySummaryPanel() {
             type="button"
             className="community-ba-icon-btn"
             aria-label="Close summary"
-            onClick={() => setOpen(false)}
+            onClick={handleClosePanel}
           >
             <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
               <path

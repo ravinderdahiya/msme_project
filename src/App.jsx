@@ -9,7 +9,6 @@ import NewHomepage from "./pages/NewHomepage";
 import NewMainMap from "./pages/NewMainMap";
 import Login from "./pages/Login.jsx";
 
-import Admin from "./admin/Admin";
 // import MSMEMapPage from "./pages/MSMEMapPage.jsx";
 
 import ContactPage from "./pages/ContactPage";
@@ -27,6 +26,7 @@ import Haryana_map from "./components/Haryana_map";
 // import { useState } from "react";
 import MSMEMapPage from "./pages/MSMEMapPage.jsx";
 import NotFound from "./components/InfoCards";
+import ProtectedRoute from "./routes/ProtectedRoute.jsx";
 
 // import LoginPage from "./pages/LoginPage";
 
@@ -46,7 +46,7 @@ function App() {
 
 
     return (
-        <BrowserRouter>
+        <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Suspense fallback={<div>Loading...</div>}>
                 <Routes>
                     <Route path="/" element={<Homepage />} />
@@ -57,15 +57,28 @@ function App() {
                     <Route path="/newmainmap/nearby-places" element={<NewMainMap />} />
                     <Route path="/newmainmap/buffer" element={<NewMainMap />} />
                     <Route path="/newmainmap" element={<NewMainMap />} />
-                    <Route path="/msme-gis-map" element={<MSMEMapPage />} />
+                    <Route
+                      path="/msme-gis-map"
+                      element={
+                        <ProtectedRoute>
+                          <MSMEMapPage />
+                        </ProtectedRoute>
+                      }
+                    />
                     <Route path="/demo-map" element={<HaryanaDemoMap />} />
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/about" element={<AboutPage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />
                     <Route path="/login" element={<Login />} />
-                    <Route path="/newAdmin" element={<NewAdminPage />} />
-                    <Route path="/Admin" element={<Admin />} />
-                    <Route path="/newadmin/*" element={<NewAdmin />} />
+                    <Route path="/newadmin/login" element={<NewAdminPage />} />
+                    <Route
+                      path="/newadmin/*"
+                      element={
+                        <ProtectedRoute requiredRoles={["admin", "superadmin"]}>
+                          <NewAdmin />
+                        </ProtectedRoute>
+                      }
+                    />
             
                 </Routes>
             </Suspense>

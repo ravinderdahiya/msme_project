@@ -3,6 +3,7 @@ export const newAdminNavItems = [
     { key: "users", label: "Users", icon: "users" },
     { key: "layers", label: "Layers", icon: "layers-3" },
     { key: "data-services", label: "Data Services", icon: "database" },
+    { key: "api-urls", label: "API URLs", icon: "database" },
     { key: "analysis-tools", label: "Analysis Tools", icon: "bar-chart-3" },
     { key: "reports", label: "Reports", icon: "file-text" },
     { key: "logs", label: "Logs", icon: "file-clock" },

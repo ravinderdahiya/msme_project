@@ -93,6 +93,7 @@ export default function ShapeSketchButton() {
   }
 
   function selectedShapeLabel() {
+    if (shapeMode === 'polyline') return 'Line Buffer'
     if (shapeMode === 'rectangle') return 'Rectangle'
     if (shapeMode === 'circle') return 'Circle'
     return 'Polygon'
@@ -165,6 +166,7 @@ export default function ShapeSketchButton() {
                 onChange={(e) => setShapeMode(String(e.target.value || 'polygon'))}
               >
                 <option value="polygon">Polygon</option>
+                <option value="polyline">Line Buffer</option>
                 <option value="rectangle">Rectangle</option>
                 <option value="circle">Circle</option>
               </select>

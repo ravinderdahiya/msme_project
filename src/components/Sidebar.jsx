@@ -4,7 +4,7 @@ import LandLocationReport from './LandLocationReport.jsx'
 import CommunitySummaryPanel from './CommunitySummaryPanel.jsx'
 import GisLegacyPanelsHidden from './gis/GisLegacyPanelsHidden.jsx'
 
-export default function Sidebar({ t }) {
+export default function Sidebar({ t, onOpenAssemblyMap }) {
   function openClosestPanelAndStart() {
     var spatialPanel = document.getElementById("spatialPanel");
     var openSpatialBtn = document.getElementById("btnOpenSpatial");
@@ -19,6 +19,12 @@ export default function Sidebar({ t }) {
 
     if (window.msmeGisStartClosestPointSelection) {
       window.msmeGisStartClosestPointSelection();
+    }
+  }
+
+  function openAssemblyMapInline() {
+    if (typeof onOpenAssemblyMap === "function") {
+      onOpenAssemblyMap();
     }
   }
 
@@ -139,13 +145,12 @@ export default function Sidebar({ t }) {
                   <small>{t('railTitleMultiSelect')}</small>
                 </span>
               </button>
-              <a
+              <button
+                type="button"
                 className="nm-sidebar-item"
                 id="btnMapSelToAnalysis"
                 title={t('railTitleMapSelAnalysis')}
-                href="https://investhry.harsac.in/portal/apps/dashboards/42d358b30b5f4311aeec6d9d61b313da"
-                target="_blank"
-                rel="noopener noreferrer"
+                onClick={openAssemblyMapInline}
               >
                 <span className="nm-sidebar-icon" aria-hidden>
                   <svg viewBox="0 0 24 24" width={18} height={18} focusable="false">
@@ -154,11 +159,10 @@ export default function Sidebar({ t }) {
                   </svg>
                 </span>
                 <span>
-                  <strong>Veiw Assembly</strong>
+                  <strong>Assembly Map</strong>
                 
                 </span>
-              </a>
-
+              </button>
             </div>
           </div>
 

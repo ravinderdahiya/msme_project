@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
+import { clearAuthSession } from "../utils/authStorage";
+import { logoutApi } from "../services/authService";
 import "../pages/newmainmap/NewMainMapHeader.css";
 import "./Header_gis_nm.css";
 import { MSME_GIS_REOPEN_DRAWER_EVENT } from "./gis/GisMobilePanelCloseBehaviour.jsx";
@@ -56,6 +58,17 @@ export default function HeaderGis({
     if (!setLang) return;
     setLang(lang === enCode ? hiCode : enCode);
   }, [setLang, lang, enCode, hiCode]);
+
+  const handleLogout = useCallback(async () => {
+    try {
+      await logoutApi();
+    } catch (error) {
+      console.warn("Logout request failed:", error?.message || error);
+    } finally {
+      clearAuthSession();
+      navigate("/login", { replace: true });
+    }
+  }, [navigate]);
 
   useEffect(() => {
     if (!isMobile) setMobileDrawerOpen(false);
@@ -234,7 +247,7 @@ export default function HeaderGis({
           </div>
         </div>
         <div className="nmhdr-titles">
-          <span className="nmhdr-title">MSME, Haryana</span>
+          <span className="nmhdr-title">Invest, Haryana</span>
           <span className="nmhdr-subtitle">GIS Investment Portal, Haryana</span>
         </div>
       </div>
@@ -303,7 +316,11 @@ export default function HeaderGis({
           </span>
           <span className={lang === hiCode ? "is-active" : ""}>हि</span>
         </button>
-        <button type="button" className="nmhdr-login" onClick={() => navigate("/newLogin")}>
+        <button
+          type="button"
+          className="nmhdr-login"
+          onClick={handleLogout}
+        >
           <LogOut size={18} strokeWidth={2} />
           <span className="nmhdr-login-text">Logout</span>
         </button>
