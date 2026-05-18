@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite'
+import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import dns from 'node:dns'
 
@@ -6,8 +6,12 @@ import dns from 'node:dns'
 dns.setDefaultResultOrder('ipv4first')
 
 
-export default defineConfig({
-  plugins: [react()],
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '')
+  const backendTarget = env.VITE_SERVER_URL || 'http://localhost:5000'
+
+  return {
+    plugins: [react()],
 
   // ✅ ArcGIS fix (IMPORTANT)
   optimizeDeps: {
@@ -15,32 +19,33 @@ export default defineConfig({
   },
 
   // ✅ Optional (sirf tab use hoga jab /arcgis API hit hogi)
-  server: {
-    host: 'localhost',
-    open: true,
-    proxy: {
-      '/arcgis': {
-        target: 'https://hsacggm.in',
-        changeOrigin: true,
-        secure: false,
-        rewrite: (path) => path.replace(/^\/arcgis/, ''),
-      },
-      '/user': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/otp': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/api-url': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
-      },
-      '/mapserver': {
-        target: 'http://localhost:8080',
-        changeOrigin: true,
+    server: {
+      host: 'localhost',
+      open: true,
+      proxy: {
+        '/arcgis': {
+          target: 'https://hsacggm.in',
+          changeOrigin: true,
+          secure: false,
+          rewrite: (path) => path.replace(/^\/arcgis/, ''),
+        },
+        '/user': {
+          target: backendTarget,
+          changeOrigin: true,
+        },
+        '/otp': {
+          target: backendTarget,
+          changeOrigin: true,
+        },
+        '/api-url': {
+          target: backendTarget,
+          changeOrigin: true,
+        },
+        '/mapserver': {
+          target: backendTarget,
+          changeOrigin: true,
+        },
       },
     },
-  },
+  }
 })

@@ -1,22 +1,16 @@
-import axios from 'axios';
-
-const API_BASE_URL = 'http://localhost:5000/api';
-
-const api = axios.create({
-  baseURL: API_BASE_URL,
-});
+import http from "../api/axios"
 
 // POST - Create user
 export const createUser = async (userData) => {
-  return api.post('/users', userData);
+  return http.post('/api/users', userData);
 };
 
 // GET - Fetch users
 export const getUsers = async () => {
-  return api.get('/users');
+  return http.get('/api/users');
 };
 
 // GET - Fetch single user
 export const getUserById = async (id) => {
-  return api.get(`/users/${id}`);
+  return http.get(`/api/users/${id}`);
 };
