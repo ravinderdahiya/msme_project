@@ -1,4 +1,4 @@
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { clearAuthSession, getCurrentUser, getToken } from "../utils/authStorage";
 
 function isJwtExpired(token) {
@@ -20,19 +20,23 @@ function isJwtExpired(token) {
 }
 
 function ProtectedRoute({ children, requiredRoles = [] }) {
+  const location = useLocation();
   const token = getToken();
   const user = getCurrentUser();
+  const loginTo = `/login?redirect=${encodeURIComponent(
+    `${location.pathname}${location.search}`,
+  )}`;
 
-  if (!token) return <Navigate to="/login" />;
+  if (!token) return <Navigate to={loginTo} replace />;
   if (isJwtExpired(token)) {
     clearAuthSession();
-    return <Navigate to="/login" replace />;
+    return <Navigate to={loginTo} replace />;
   }
   if (requiredRoles.length > 0) {
     const role = String(user?.role || "").toLowerCase();
     const allowed = requiredRoles.map((item) => String(item).toLowerCase());
     if (!allowed.includes(role)) {
-      return <Navigate to="/msme-gis-map" replace />;
+      return <Navigate to="/" replace />;
     }
   }
 

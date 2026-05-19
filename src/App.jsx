@@ -49,7 +49,8 @@ function App() {
         <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Suspense fallback={<div>Loading...</div>}>
                 <Routes>
-                    <Route path="/" element={<Homepage />} />
+                    <Route path="/" element={<MSMEMapPage />} />
+                    <Route path="/home" element={<Homepage />} />
                     <Route path="/newhomepage" element={<NewHomepage />} />
                     <Route path="/newmainmap/select-land" element={<NewMainMap />} />
                     <Route path="/newmainmap/layers" element={<NewMainMap />} />
@@ -57,14 +58,7 @@ function App() {
                     <Route path="/newmainmap/nearby-places" element={<NewMainMap />} />
                     <Route path="/newmainmap/buffer" element={<NewMainMap />} />
                     <Route path="/newmainmap" element={<NewMainMap />} />
-                    <Route
-                      path="/msme-gis-map"
-                      element={
-                        <ProtectedRoute>
-                          <MSMEMapPage />
-                        </ProtectedRoute>
-                      }
-                    />
+                    <Route path="/msme-gis-map" element={<Navigate to="/" replace />} />
                     <Route path="/demo-map" element={<HaryanaDemoMap />} />
                     <Route path="/contact" element={<ContactPage />} />
                     <Route path="/about" element={<AboutPage />} />

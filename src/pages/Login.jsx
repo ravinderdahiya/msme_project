@@ -15,7 +15,7 @@ import {
     UserRoundCog,
 } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 
 import bgImage from "../assets/images/full-bg.png";
 import hepcLogo from "../assets/images/hepc-logo.png";
@@ -23,8 +23,8 @@ import govtLogo from "../assets/images/govtlogo.png";
 import { setHttpAuthToken } from "../api/axios";
 import { useIn } from "../in/useIn";
 import { adminLoginApi, googleLoginApi, sendOtpApi, verifyOtpApi } from "../services/authService";
-import { getCurrentUser, getToken, setAuthSession } from "../utils/authStorage";
-import { getDefaultRouteForUser } from "../utils/authRedirect";
+import { setAuthSession } from "../utils/authStorage";
+import { getPostLoginRoute } from "../utils/authRedirect";
 
 const LOGIN_TEXT = {
     en: {
@@ -164,6 +164,8 @@ export default function Login() {
     const [loading, setLoading] = useState(false);
     const [resendTimer, setResendTimer] = useState(0);
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const redirectAfterLogin = searchParams.get("redirect") || "";
 
     const enCode =
         (languages || []).find((language) => /^en/i.test(String(language.code)))?.code ?? "en";
@@ -175,14 +177,6 @@ export default function Login() {
     const isValidOtp = otp.replace(/\D/g, "").slice(0, 6).length === 6;
     const isValidDepartment =
         departmentId.trim().length > 0 && departmentPassword.trim().length > 0;
-
-    useEffect(() => {
-        const token = getToken();
-        const user = getCurrentUser();
-        if (token && user) {
-            navigate(getDefaultRouteForUser(user), { replace: true });
-        }
-    }, [navigate]);
 
     useEffect(() => {
         if (resendTimer > 0) {
@@ -249,7 +243,7 @@ export default function Login() {
             setHttpAuthToken(res.token);
             setMessageKey("loginSuccess");
             setMessageType("success");
-            navigate(getDefaultRouteForUser(res.user), { replace: true });
+            navigate(getPostLoginRoute(res.user, redirectAfterLogin), { replace: true });
         } catch (err) {
             console.error("OTP verify failed:", err?.response?.data || err?.message || err);
             setMessageKey("verifyFailed");
@@ -275,7 +269,7 @@ export default function Login() {
             setHttpAuthToken(res.token);
             setMessageKey("loginSuccess");
             setMessageType("success");
-            navigate(getDefaultRouteForUser(res.user), { replace: true });
+            navigate(getPostLoginRoute(res.user, redirectAfterLogin), { replace: true });
         } catch (err) {
             console.log(err.message);
             setMessageKey("invalidAdmin");
@@ -301,7 +295,7 @@ export default function Login() {
             setHttpAuthToken(res.token);
             setMessageKey("loginSuccess");
             setMessageType("success");
-            navigate(getDefaultRouteForUser(res.user), { replace: true });
+            navigate(getPostLoginRoute(res.user, redirectAfterLogin), { replace: true });
         } catch (err) {
             console.log(err.message);
             setMessageKey("googleFailed");
@@ -309,7 +303,7 @@ export default function Login() {
         } finally {
             setLoading(false);
         }
-    }, [navigate]);
+    }, [navigate, redirectAfterLogin]);
 
     useEffect(() => {
         if (!googleClientId) {

@@ -37,7 +37,7 @@ Frontend uses a single API base URL:
 - `VITE_API_BASE_URL`
 
 Example:
-- `http://localhost:5000/msme_backend/api` (local)
+- `http://localhost:8080/msme_backend/api` (local)
 - `https://investhry.harsac.in/msme_backend/api` (live)
 
 Endpoints are consumed relative to that base URL:

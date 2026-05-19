@@ -1,21 +1,15 @@
-/** ArcGIS URLs are always resolved via backend proxy.
- * Backend gets actual service URLs from DB (`api_url` table) with secure fallback mapping.
- */
-const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "")
-const API_BASE_URL = normalizeBaseUrl(
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_SERVER_URL
-)
-const PROXY_ROOT = API_BASE_URL ? `${API_BASE_URL}/mapserver/service` : "/mapserver/service"
+/** Map services: public hsacggm (/arcgis proxy in local dev). Same for all users. */
+import { resolveMapServiceUrl } from "./resolveMapServiceUrl.js"
 
-export const BASE_MS = `${PROXY_ROOT}/MSME_BASE_REFERENCE`
-export const ADMIN_MS = `${PROXY_ROOT}/MSME_ADMIN_BOUNDARIES`
-export const ENV_MS = `${PROXY_ROOT}/MSME_ENVIRONMENT`
-export const INV_MS = `${PROXY_ROOT}/MSME_INVESTMENT`
-export const SOC_MS = `${PROXY_ROOT}/MSME_SOCIAL`
-export const TRANS_MS = `${PROXY_ROOT}/MSME_TRANSPORT`
-export const UTIL_MS = `${PROXY_ROOT}/MSME_UTILITIES`
-export const CAD_MS = `${PROXY_ROOT}/MSME_CADASTRAL`
-export const CON_MS = `${PROXY_ROOT}/MSME_CONSTITUENCY`
+export const BASE_MS = resolveMapServiceUrl("MSME_BASE_REFERENCE")
+export const ADMIN_MS = resolveMapServiceUrl("MSME_ADMIN_BOUNDARIES")
+export const ENV_MS = resolveMapServiceUrl("MSME_ENVIRONMENT")
+export const INV_MS = resolveMapServiceUrl("MSME_INVESTMENT")
+export const SOC_MS = resolveMapServiceUrl("MSME_SOCIAL")
+export const TRANS_MS = resolveMapServiceUrl("MSME_TRANSPORT")
+export const UTIL_MS = resolveMapServiceUrl("MSME_UTILITIES")
+export const CAD_MS = resolveMapServiceUrl("MSME_CADASTRAL")
+export const CON_MS = resolveMapServiceUrl("MSME_CONSTITUENCY")
 
 export const IDENTIFY_URLS = [BASE_MS, ADMIN_MS, ENV_MS, INV_MS, SOC_MS, TRANS_MS, UTIL_MS, CAD_MS, CON_MS]
 

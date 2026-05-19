@@ -17,14 +17,27 @@ export const getCurrentUser = () => {
   }
 }
 
+export const notifyAuthSessionChanged = () => {
+  if (typeof window === "undefined") return
+  try {
+    window.dispatchEvent(new CustomEvent("msme-auth-changed"))
+  } catch {
+    /* ignore */
+  }
+}
+
 export const setAuthSession = ({ token, user }) => {
   if (typeof window === "undefined") return
   if (token) localStorage.setItem(TOKEN_KEY, token)
   if (user) localStorage.setItem(USER_KEY, JSON.stringify(user))
+  notifyAuthSessionChanged()
 }
 
 export const clearAuthSession = () => {
   if (typeof window === "undefined") return
   localStorage.removeItem(TOKEN_KEY)
   localStorage.removeItem(USER_KEY)
+  notifyAuthSessionChanged()
 }
+
+export const isAuthenticated = () => Boolean(getToken())

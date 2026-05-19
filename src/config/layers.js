@@ -1,19 +1,16 @@
 import MapImageLayer from "@arcgis/core/layers/MapImageLayer";
 
-const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "")
-const API_BASE_URL = normalizeBaseUrl(
-  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_SERVER_URL
-)
-const PROXY_ROOT = API_BASE_URL ? `${API_BASE_URL}/mapserver/service` : "/mapserver/service"
+import { resolveMapServiceUrl } from "../gis/msme/resolveMapServiceUrl.js"
+
 const MAP_SERVER_URLS = {
-  admin: `${PROXY_ROOT}/MSME_ADMIN_BOUNDARIES`,
-  base: `${PROXY_ROOT}/MSME_BASE_REFERENCE`,
-  env: `${PROXY_ROOT}/MSME_ENVIRONMENT`,
-  investment: `${PROXY_ROOT}/MSME_INVESTMENT`,
-  social: `${PROXY_ROOT}/MSME_SOCIAL`,
-  transport: `${PROXY_ROOT}/MSME_TRANSPORT`,
-  utilities: `${PROXY_ROOT}/MSME_UTILITIES`,
-  cadastral: `${PROXY_ROOT}/MSME_CADASTRAL`,
+  admin: resolveMapServiceUrl("MSME_ADMIN_BOUNDARIES"),
+  base: resolveMapServiceUrl("MSME_BASE_REFERENCE"),
+  env: resolveMapServiceUrl("MSME_ENVIRONMENT"),
+  investment: resolveMapServiceUrl("MSME_INVESTMENT"),
+  social: resolveMapServiceUrl("MSME_SOCIAL"),
+  transport: resolveMapServiceUrl("MSME_TRANSPORT"),
+  utilities: resolveMapServiceUrl("MSME_UTILITIES"),
+  cadastral: resolveMapServiceUrl("MSME_CADASTRAL"),
 }
 
 /**

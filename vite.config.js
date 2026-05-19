@@ -8,8 +8,8 @@ dns.setDefaultResultOrder('ipv4first')
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const rawApiBaseUrl = env.VITE_API_BASE_URL || env.VITE_SERVER_URL || 'http://localhost:5000'
-  const apiBaseUrl = /^https?:\/\//i.test(rawApiBaseUrl) ? rawApiBaseUrl : 'http://localhost:5000'
+  const rawApiBaseUrl = env.VITE_API_BASE_URL || env.VITE_SERVER_URL || 'http://localhost:8080'
+  const apiBaseUrl = /^https?:\/\//i.test(rawApiBaseUrl) ? rawApiBaseUrl : 'http://localhost:8080'
   const parsedApiUrl = new URL(apiBaseUrl)
   const backendTarget = parsedApiUrl.origin
   const backendBasePath = parsedApiUrl.pathname.replace(/\/+$/, '')
@@ -34,6 +34,8 @@ export default defineConfig(({ mode }) => {
         '/msme_backend/api': {
           target: backendTarget,
           changeOrigin: true,
+          // Backend mounts /otp, /user at root — strip deploy prefix in local dev.
+          rewrite: (path) => path.replace(/^\/msme_backend\/api/, '') || '/',
         },
         '/arcgis': {
           target: 'https://hsacggm.in',

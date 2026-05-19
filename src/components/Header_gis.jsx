@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { LogIn, LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
 import { setHttpAuthToken } from "../api/axios";
-import { clearAuthSession } from "../utils/authStorage";
+import { clearAuthSession, getToken } from "../utils/authStorage";
 import { logoutApi } from "../services/authService";
 import "../pages/newmainmap/NewMainMapHeader.css";
 import "./Header_gis_nm.css";
@@ -41,7 +41,9 @@ export default function HeaderGis({
   languages,
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const headerRef = useRef(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getToken()));
   const [searchExpanded, setSearchExpanded] = useState(false);
   /** Desktop / tablet: hide rail for full-width map */
   const [railHidden, setRailHidden] = useState(false);
@@ -60,6 +62,22 @@ export default function HeaderGis({
     setLang(lang === enCode ? hiCode : enCode);
   }, [setLang, lang, enCode, hiCode]);
 
+  useEffect(() => {
+    const syncAuth = () => setIsLoggedIn(Boolean(getToken()));
+    syncAuth();
+    window.addEventListener("msme-auth-changed", syncAuth);
+    window.addEventListener("storage", syncAuth);
+    return () => {
+      window.removeEventListener("msme-auth-changed", syncAuth);
+      window.removeEventListener("storage", syncAuth);
+    };
+  }, []);
+
+  const handleLogin = useCallback(() => {
+    const redirect = encodeURIComponent(`${location.pathname}${location.search}`);
+    navigate(`/login?redirect=${redirect}`);
+  }, [location.pathname, location.search, navigate]);
+
   const handleLogout = useCallback(async () => {
     try {
       await logoutApi();
@@ -68,9 +86,9 @@ export default function HeaderGis({
     } finally {
       clearAuthSession();
       setHttpAuthToken("");
-      navigate("/login", { replace: true });
+      setIsLoggedIn(false);
     }
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     if (!isMobile) setMobileDrawerOpen(false);
@@ -318,14 +336,21 @@ export default function HeaderGis({
           </span>
           <span className={lang === hiCode ? "is-active" : ""}>हि</span>
         </button>
-        <button
-          type="button"
-          className="nmhdr-login"
-          onClick={handleLogout}
-        >
-          <LogOut size={18} strokeWidth={2} />
-          <span className="nmhdr-login-text">Logout</span>
-        </button>
+        {isLoggedIn ? (
+          <button type="button" className="nmhdr-login" onClick={handleLogout}>
+            <LogOut size={18} strokeWidth={2} />
+            <span className="nmhdr-login-text">Logout</span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className="nmhdr-login nmhdr-login--signin"
+            onClick={handleLogin}
+          >
+            <LogIn size={18} strokeWidth={2} />
+            <span className="nmhdr-login-text">Login</span>
+          </button>
+        )}
       </div>
     </header>
   );

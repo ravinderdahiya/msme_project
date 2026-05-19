@@ -63,7 +63,8 @@ import {
   approxModeFromAdminLayerId,
 } from "./serviceUrlsAndLayers.js";
 import { queryLayer, requestArcGisJson } from "./queryClient.js";
-import { clearAuthSession, getToken } from "../../utils/authStorage.js";
+import { getToken } from "../../utils/authStorage.js";
+import { handleGisUnauthorized } from "../../utils/gisAuthFailure.js";
 import {
   geomFromJSON,
   wkidValue,
@@ -157,6 +158,7 @@ import {
   shortRouteLabelText,
 } from "./routingHelpers.js";
 
+import { HSACGGM_MAP_SERVICE_URLS } from "./arcgisMapServiceUrls.js";
 import c1 from "./runtimeChunks/chunk01.js";
 import c2 from "./runtimeChunks/chunk02.js";
 import c3 from "./runtimeChunks/chunk03.js";
@@ -165,9 +167,33 @@ const __msmeImportMeta = {
   env: (typeof import.meta !== "undefined" && import.meta && import.meta.env) ? import.meta.env : {},
 };
 
-function patchLegacySource(source) {
+function patchLegacyMapServiceUrls(source) {
   if (!source) return source;
   var out = source;
+  var isDev = Boolean(__msmeImportMeta.env && __msmeImportMeta.env.DEV);
+
+  if (isDev) {
+    out = out.replace(/https?:\/\/hsacggm\.in/gi, "/arcgis");
+  }
+
+  Object.keys(HSACGGM_MAP_SERVICE_URLS).forEach(function (key) {
+    var direct = HSACGGM_MAP_SERVICE_URLS[key];
+    if (!direct) return;
+    var layerUrl = isDev ? direct.replace(/^https?:\/\/hsacggm\.in/i, "/arcgis") : direct;
+    var escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    [
+      new RegExp("https?:\\/\\/[^\"'`\\s]+\\/mapserver\\/service\\/" + escapedKey, "gi"),
+      new RegExp("\\/msme_backend\\/api\\/mapserver\\/service\\/" + escapedKey, "gi"),
+    ].forEach(function (re) {
+      out = out.replace(re, layerUrl);
+    });
+  });
+  return out;
+}
+
+function patchLegacySource(source) {
+  if (!source) return source;
+  var out = patchLegacyMapServiceUrls(source);
   var closestPdfFnPattern = /(function buildClosestScreenPdfReport\(\)\s*\{[\s\S]*?\n\})(\r?\n\r?\n\/\*\* @deprecated Use getters per report type; returns map selection only for backward compatibility\. \*\/)/;
   var closestPdfFnReplacement = [
     "function buildClosestScreenPdfReport() {",
@@ -1185,12 +1211,7 @@ function ensureArcGisProxyAuthInterceptor() {
   if (!esriConfig?.request?.interceptors) return;
 
   const authFailed = () => {
-    try {
-      clearAuthSession();
-    } catch {}
-    if (window.__msmeArcGisAuthRedirecting) return;
-    window.__msmeArcGisAuthRedirecting = true;
-    window.location.assign("/login");
+    handleGisUnauthorized();
   };
 
   const isUnauthorizedError = (error) => {
@@ -1219,7 +1240,7 @@ function ensureArcGisProxyAuthInterceptor() {
       };
     },
     error(error) {
-      if (isUnauthorizedError(error)) {
+      if (isUnauthorizedError(error) && getToken()) {
         authFailed();
       }
       throw error;

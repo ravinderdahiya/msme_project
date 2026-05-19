@@ -1,5 +1,8 @@
 import esriRequest from '@arcgis/core/request.js'
-import { clearAuthSession, getToken } from "../../utils/authStorage.js"
+import { getToken } from "../../utils/authStorage.js"
+import { handleGisUnauthorized } from "../../utils/gisAuthFailure.js"
+import { HSACGGM_MAP_SERVICE_URLS } from "./arcgisMapServiceUrls.js"
+import { toDevArcGisProxyUrl } from "./resolveMapServiceUrl.js"
 
 let arcgisRequestsInFlight = 0
 
@@ -68,47 +71,69 @@ function isUnauthorizedError(error) {
 }
 
 function handleAuthFailure() {
-  if (typeof window === 'undefined') return
-  try {
-    clearAuthSession()
-  } catch {
-    // no-op
+  if (!getToken()) return
+  handleGisUnauthorized()
+}
+
+function mapQueryPublicFallbackUrl(requestUrl) {
+  const raw = String(requestUrl || "")
+  const path = raw.replace(/\?.*$/, "")
+  const suffix = raw.slice(path.length)
+
+  const proxyMatch = path.match(/\/mapserver\/service\/([^/]+)(\/.*)?$/i)
+  if (proxyMatch) {
+    const direct = HSACGGM_MAP_SERVICE_URLS[proxyMatch[1]]
+    if (direct) {
+      const base = import.meta.env.DEV ? toDevArcGisProxyUrl(direct) : direct
+      return base + (proxyMatch[2] || "") + suffix
+    }
   }
-  if (window.__msmeArcGisAuthRedirecting) return
-  window.__msmeArcGisAuthRedirecting = true
-  window.location.assign('/login')
+
+  if (import.meta.env.DEV && /^https?:\/\/hsacggm\.in/i.test(path)) {
+    return toDevArcGisProxyUrl(path) + suffix
+  }
+
+  return ""
 }
 
 export function requestArcGisJson(url, options) {
   const maxAttempts = options && options.maxAttempts ? options.maxAttempts : 3
   const delays = [350, 1000]
-  const token = getToken()
-  const requestOptions = {
-    ...(options || {}),
-    authMode: 'anonymous',
-    headers: {
-      ...((options && options.headers) || {}),
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-  }
 
-  function run(attempt) {
-    return esriRequest(url, requestOptions).catch((error) => {
-      if (isUnauthorizedError(error)) {
-        handleAuthFailure()
+  function run(requestUrl, attempt, usedFallback) {
+    const token = getToken()
+    const requestOptions = {
+      ...(options || {}),
+      authMode: 'anonymous',
+      headers: {
+        ...((options && options.headers) || {}),
+        ...(token && String(requestUrl).includes("/mapserver/service/")
+          ? { Authorization: `Bearer ${token}` }
+          : {}),
+      },
+    }
+
+    return esriRequest(requestUrl, requestOptions).catch((error) => {
+      if (isUnauthorizedError(error) || /404|not found/i.test(errorText(error))) {
+        if (isUnauthorizedError(error)) handleAuthFailure()
+        const fallback = usedFallback ? "" : mapQueryPublicFallbackUrl(requestUrl)
+        if (fallback && fallback !== requestUrl) {
+          console.warn("[map query] retrying via public ArcGIS URL", fallback)
+          return run(fallback, attempt, true)
+        }
         throw error
       }
       if (attempt >= maxAttempts - 1 || !shouldRetry(error)) {
         throw error
       }
       const waitMs = delays[Math.min(attempt, delays.length - 1)]
-      console.warn(`[request retry] ${url} (${attempt + 2}/${maxAttempts})`, error)
-      return delay(waitMs).then(() => run(attempt + 1))
+      console.warn(`[request retry] ${requestUrl} (${attempt + 2}/${maxAttempts})`, error)
+      return delay(waitMs).then(() => run(requestUrl, attempt + 1, usedFallback))
     })
   }
 
   beginGisLoading(url)
-  return run(0).finally(() => {
+  return run(url, 0, false).finally(() => {
     endGisLoading(url)
   })
 }
