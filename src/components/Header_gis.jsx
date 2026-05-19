@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
+import { setHttpAuthToken } from "../api/axios";
 import { clearAuthSession } from "../utils/authStorage";
 import { logoutApi } from "../services/authService";
 import "../pages/newmainmap/NewMainMapHeader.css";
@@ -66,6 +67,7 @@ export default function HeaderGis({
       console.warn("Logout request failed:", error?.message || error);
     } finally {
       clearAuthSession();
+      setHttpAuthToken("");
       navigate("/login", { replace: true });
     }
   }, [navigate]);

@@ -1,7 +1,11 @@
 /** ArcGIS URLs are always resolved via backend proxy.
  * Backend gets actual service URLs from DB (`api_url` table) with secure fallback mapping.
  */
-const PROXY_ROOT = "/mapserver/service"
+const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "")
+const API_BASE_URL = normalizeBaseUrl(
+  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_SERVER_URL
+)
+const PROXY_ROOT = API_BASE_URL ? `${API_BASE_URL}/mapserver/service` : "/mapserver/service"
 
 export const BASE_MS = `${PROXY_ROOT}/MSME_BASE_REFERENCE`
 export const ADMIN_MS = `${PROXY_ROOT}/MSME_ADMIN_BOUNDARIES`

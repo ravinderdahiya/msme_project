@@ -1,5 +1,5 @@
 import esriRequest from '@arcgis/core/request.js'
-import { getToken } from "../../utils/authStorage.js"
+import { clearAuthSession, getToken } from "../../utils/authStorage.js"
 
 let arcgisRequestsInFlight = 0
 
@@ -55,12 +55,37 @@ function shouldRetry(error) {
   )
 }
 
+function isUnauthorizedError(error) {
+  if (!error) return false
+  const status =
+    Number(error?.details?.httpStatus) ||
+    Number(error?.response?.status) ||
+    Number(error?.httpStatus) ||
+    0
+  if (status === 401 || status === 403) return true
+  const text = errorText(error).toLowerCase()
+  return text.includes('401') || text.includes('403') || text.includes('unauthorized')
+}
+
+function handleAuthFailure() {
+  if (typeof window === 'undefined') return
+  try {
+    clearAuthSession()
+  } catch {
+    // no-op
+  }
+  if (window.__msmeArcGisAuthRedirecting) return
+  window.__msmeArcGisAuthRedirecting = true
+  window.location.assign('/login')
+}
+
 export function requestArcGisJson(url, options) {
   const maxAttempts = options && options.maxAttempts ? options.maxAttempts : 3
   const delays = [350, 1000]
   const token = getToken()
   const requestOptions = {
     ...(options || {}),
+    authMode: 'anonymous',
     headers: {
       ...((options && options.headers) || {}),
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -69,6 +94,10 @@ export function requestArcGisJson(url, options) {
 
   function run(attempt) {
     return esriRequest(url, requestOptions).catch((error) => {
+      if (isUnauthorizedError(error)) {
+        handleAuthFailure()
+        throw error
+      }
       if (attempt >= maxAttempts - 1 || !shouldRetry(error)) {
         throw error
       }
