@@ -34,6 +34,10 @@ export default defineConfig(({ mode }) => {
         '/msme_backend/api': {
           target: backendTarget,
           changeOrigin: true,
+          rewrite: (path) => {
+            const rewritten = path.replace(/^\/msme_backend\/api/, '')
+            return rewritten || '/'
+          },
         },
         '/arcgis': {
           target: 'https://hsacggm.in',

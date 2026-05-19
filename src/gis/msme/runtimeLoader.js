@@ -1168,6 +1168,28 @@ function patchLegacySource(source) {
     console.warn("[msme runtime patch] map view bridge (__msmeGisMapView) not applied.");
   }
 
+  // Keep Haryana visually centered in map viewport when sidebar/panels toggle.
+  // Legacy padding uses large left inset, which pushes goTo center towards left.
+  var uiZoomPaddingPattern =
+    /function getUiZoomPadding\(\) \{[\s\S]*?return \{ top: 76, bottom: 56, left: left, right: 44 \};\s*\}/;
+  var uiZoomPaddingReplacement = [
+    "function getUiZoomPadding() {",
+    "  var isMobileLayout = typeof window !== \"undefined\" && window.matchMedia && window.matchMedia(\"(max-width: 768px)\").matches;",
+    "  var inset = isMobileLayout ? 12 : 44;",
+    "  return {",
+    "    top: isMobileLayout ? 68 : 76,",
+    "    bottom: isMobileLayout ? 40 : 56,",
+    "    left: inset,",
+    "    right: inset",
+    "  };",
+    "}",
+  ].join("\n");
+  if (uiZoomPaddingPattern.test(out)) {
+    out = out.replace(uiZoomPaddingPattern, uiZoomPaddingReplacement);
+  } else {
+    console.warn("[msme runtime patch] UI zoom padding centering patch not applied.");
+  }
+
   return out;
 }
 
