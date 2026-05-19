@@ -9,6 +9,7 @@ import { useNavigate } from "react-router-dom";
 import AuthLayout from "../components/auth/AuthLayout";
 import hepcLogo from "../assets/images/hepc-logo.png";
 import govtLogo from "../assets/images/govtlogo.png";
+import { setHttpAuthToken } from "../api/axios";
 import { adminLoginApi } from "../services/authService";
 import { getCurrentUser, getToken, setAuthSession } from "../utils/authStorage";
 import { getDefaultRouteForUser } from "../utils/authRedirect";
@@ -56,6 +57,7 @@ export default function NewAdminPage() {
       setLoading(true);
       const res = await adminLoginApi(adminId.trim(), adminPassword);
       setAuthSession({ token: res.token, user: res.user });
+      setHttpAuthToken(res.token);
       navigate(getDefaultRouteForUser(res.user), { replace: true });
     } catch (error) {
       console.error(error);

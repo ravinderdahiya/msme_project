@@ -20,6 +20,7 @@ import { useNavigate } from "react-router-dom";
 import bgImage from "../assets/images/full-bg.png";
 import hepcLogo from "../assets/images/hepc-logo.png";
 import govtLogo from "../assets/images/govtlogo.png";
+import { setHttpAuthToken } from "../api/axios";
 import { useIn } from "../in/useIn";
 import { adminLoginApi, googleLoginApi, sendOtpApi, verifyOtpApi } from "../services/authService";
 import { getCurrentUser, getToken, setAuthSession } from "../utils/authStorage";
@@ -245,6 +246,7 @@ export default function Login() {
             setLoading(true);
             const res = await verifyOtpApi(cleanMobile, otp);
             setAuthSession({ token: res.token, user: res.user });
+            setHttpAuthToken(res.token);
             setMessageKey("loginSuccess");
             setMessageType("success");
             navigate(getDefaultRouteForUser(res.user), { replace: true });
@@ -270,6 +272,7 @@ export default function Login() {
             setLoading(true);
             const res = await adminLoginApi(departmentId.trim(), departmentPassword);
             setAuthSession({ token: res.token, user: res.user });
+            setHttpAuthToken(res.token);
             setMessageKey("loginSuccess");
             setMessageType("success");
             navigate(getDefaultRouteForUser(res.user), { replace: true });
@@ -295,6 +298,7 @@ export default function Login() {
             setLoading(true);
             const res = await googleLoginApi(response.credential);
             setAuthSession({ token: res.token, user: res.user });
+            setHttpAuthToken(res.token);
             setMessageKey("loginSuccess");
             setMessageType("success");
             navigate(getDefaultRouteForUser(res.user), { replace: true });

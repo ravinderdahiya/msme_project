@@ -63,7 +63,7 @@ import {
   approxModeFromAdminLayerId,
 } from "./serviceUrlsAndLayers.js";
 import { queryLayer, requestArcGisJson } from "./queryClient.js";
-import { getToken } from "../../utils/authStorage.js";
+import { clearAuthSession, getToken } from "../../utils/authStorage.js";
 import {
   geomFromJSON,
   wkidValue,
@@ -1184,16 +1184,45 @@ function ensureArcGisProxyAuthInterceptor() {
   if (window.__msmeArcGisProxyAuthInstalled) return;
   if (!esriConfig?.request?.interceptors) return;
 
+  const authFailed = () => {
+    try {
+      clearAuthSession();
+    } catch {}
+    if (window.__msmeArcGisAuthRedirecting) return;
+    window.__msmeArcGisAuthRedirecting = true;
+    window.location.assign("/login");
+  };
+
+  const isUnauthorizedError = (error) => {
+    if (!error) return false;
+    const status =
+      Number(error?.details?.httpStatus) ||
+      Number(error?.response?.status) ||
+      Number(error?.httpStatus) ||
+      0;
+    if (status === 401 || status === 403) return true;
+    const text = String(error?.message || "").toLowerCase();
+    return text.includes("401") || text.includes("403") || text.includes("unauthorized");
+  };
+
   esriConfig.request.interceptors.push({
     urls: /\/mapserver\/service\//i,
     before(params) {
       const token = getToken();
-      if (!token) return;
       params.requestOptions = params.requestOptions || {};
+      // We use backend JWT auth for proxy URLs; avoid ArcGIS IdentityManager prompts/noise.
+      params.requestOptions.authMode = "anonymous";
+      if (!token) return;
       params.requestOptions.headers = {
         ...(params.requestOptions.headers || {}),
         Authorization: `Bearer ${token}`,
       };
+    },
+    error(error) {
+      if (isUnauthorizedError(error)) {
+        authFailed();
+      }
+      throw error;
     },
   });
 

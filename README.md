@@ -33,15 +33,19 @@ This repository contains the **MSME Haryana web frontend** built with **React + 
 
 ### Backend/API touchpoints (from frontend code)
 
-This repo is primarily frontend. Backend code is **not included** here, but frontend expects:
+Frontend uses a single API base URL:
+- `VITE_API_BASE_URL`
 
-- `http://localhost:8080`
-  - `POST /otp/send-otp`
-  - `POST /otp/verify-otp`
-- `http://localhost:5000/api`
-  - `/users` CRUD-style usage in `src/services/api.js`
-- `http://localhost:5000/api/auth/register`
-  - register call in `src/components/Register.js`
+Example:
+- `http://localhost:5000/msme_backend/api` (local)
+- `https://investhry.harsac.in/msme_backend/api` (live)
+
+Endpoints are consumed relative to that base URL:
+- `POST /otp/send-otp`
+- `POST /otp/verify-otp`
+- `GET/POST /api/users`
+- `POST /api/auth/register`
+- `GET /mapserver/service/*`
 
 ### External GIS services
 
@@ -53,18 +57,16 @@ This repo is primarily frontend. Backend code is **not included** here, but fron
 Create/update `.env` in project root:
 
 ```env
-REACT_APP_API_URL=http://localhost:8080
-VITE_SERVER_URL=http://localhost:8080
+VITE_API_BASE_URL=http://localhost:5000/msme_backend/api
+VITE_SERVER_URL=http://localhost:5000/msme_backend/api
+REACT_APP_API_URL=http://localhost:5000/msme_backend/api
 VITE_ARCGIS_API_KEY=
-VITE_ARCGIS_ROUTE_SERVICE_URL=
-VITE_ARCGIS_USE_PROXY=false
-VITE_ARCGIS_SERVICE_ROOT=
 ```
 
 Notes:
 
 - `VITE_ARCGIS_API_KEY` is recommended for stable ArcGIS routing/geocoding behavior.
-- Dev proxy is configured in `vite.config.js` for `/arcgis` -> `https://hsacggm.in`.
+- For future domain change, update only `VITE_API_BASE_URL` (preferably in `.env.production`).
 
 ## 5) How To Start The Project
 

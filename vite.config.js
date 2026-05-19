@@ -8,7 +8,15 @@ dns.setDefaultResultOrder('ipv4first')
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const backendTarget = env.VITE_SERVER_URL || 'http://localhost:5000'
+  const rawApiBaseUrl = env.VITE_API_BASE_URL || env.VITE_SERVER_URL || 'http://localhost:5000'
+  const apiBaseUrl = /^https?:\/\//i.test(rawApiBaseUrl) ? rawApiBaseUrl : 'http://localhost:5000'
+  const parsedApiUrl = new URL(apiBaseUrl)
+  const backendTarget = parsedApiUrl.origin
+  const backendBasePath = parsedApiUrl.pathname.replace(/\/+$/, '')
+  const withBackendBasePath = (path) => {
+    const cleanPath = path.startsWith('/') ? path : `/${path}`
+    return `${backendBasePath}${cleanPath}`
+  }
 
   return {
     plugins: [react()],
@@ -23,6 +31,10 @@ export default defineConfig(({ mode }) => {
       host: 'localhost',
       open: true,
       proxy: {
+        '/msme_backend/api': {
+          target: backendTarget,
+          changeOrigin: true,
+        },
         '/arcgis': {
           target: 'https://hsacggm.in',
           changeOrigin: true,
@@ -32,18 +44,27 @@ export default defineConfig(({ mode }) => {
         '/user': {
           target: backendTarget,
           changeOrigin: true,
+          rewrite: (path) => withBackendBasePath(path),
         },
         '/otp': {
           target: backendTarget,
           changeOrigin: true,
+          rewrite: (path) => withBackendBasePath(path),
         },
         '/api-url': {
           target: backendTarget,
           changeOrigin: true,
+          rewrite: (path) => withBackendBasePath(path),
+        },
+        '/data-services': {
+          target: backendTarget,
+          changeOrigin: true,
+          rewrite: (path) => withBackendBasePath(path),
         },
         '/mapserver': {
           target: backendTarget,
           changeOrigin: true,
+          rewrite: (path) => withBackendBasePath(path),
         },
       },
     },

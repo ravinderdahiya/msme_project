@@ -1,6 +1,10 @@
 import MapImageLayer from "@arcgis/core/layers/MapImageLayer";
 
-const PROXY_ROOT = "/mapserver/service"
+const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "")
+const API_BASE_URL = normalizeBaseUrl(
+  import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_SERVER_URL
+)
+const PROXY_ROOT = API_BASE_URL ? `${API_BASE_URL}/mapserver/service` : "/mapserver/service"
 const MAP_SERVER_URLS = {
   admin: `${PROXY_ROOT}/MSME_ADMIN_BOUNDARIES`,
   base: `${PROXY_ROOT}/MSME_BASE_REFERENCE`,
