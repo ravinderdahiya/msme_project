@@ -127,8 +127,8 @@ export default function ShapeSketchButton() {
         id="trackMapFab"
         className="buffer-map-fab track-map-fab esri-widget--button"
         data-map-label="Shape"
-        title="Shape draw"
-        aria-label="Shape draw"
+        title="  Analysis by Shape "
+        aria-label="Analysis by  Shape "
         aria-expanded={open ? 'true' : 'false'}
         aria-haspopup="dialog"
         onClick={() => setOpen((prev) => !prev)}
@@ -147,7 +147,7 @@ export default function ShapeSketchButton() {
       {open ? (
         <div className="shape-mini-panel" role="dialog" aria-label="Select sketch shape">
           <div className="buffer-mini-panel__head">
-            <strong>Shape Draw</strong>
+            <strong> Buffer Analysis by Shape </strong>
             <button
               type="button"
               className="buffer-mini-panel__close"

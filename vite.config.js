@@ -34,8 +34,12 @@ export default defineConfig(({ mode }) => {
         '/msme_backend/api': {
           target: backendTarget,
           changeOrigin: true,
-          // Backend mounts /otp, /user at root — strip deploy prefix in local dev.
-          rewrite: (path) => path.replace(/^\/msme_backend\/api/, '') || '/',
+
+          rewrite: (path) => {
+            const rewritten = path.replace(/^\/msme_backend\/api/, '')
+            return rewritten || '/'
+          },
+
         },
         '/arcgis': {
           target: 'https://hsacggm.in',

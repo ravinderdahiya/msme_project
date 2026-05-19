@@ -28,6 +28,17 @@ export default function Sidebar({ t, onOpenAssemblyMap }) {
     }
   }
 
+  function openMeasureTool() {
+    var selectToolsPanel = document.getElementById("selectToolsPanel");
+    var selectToolBtn = document.getElementById("btnSelectTool");
+    if (selectToolsPanel && selectToolsPanel.classList.contains("collapsed") && selectToolBtn) {
+      selectToolBtn.click();
+    }
+    if (window.msmeGisStartSketch && typeof window.msmeGisStartSketch === "function") {
+      window.msmeGisStartSketch("polyline");
+    }
+  }
+
   return (
     <>
       <aside id="rail" className="nm-sidebar rail-nm" aria-label="Map tools">
@@ -87,7 +98,7 @@ export default function Sidebar({ t, onOpenAssemblyMap }) {
                   <small>{t('railTitleLayers')}</small>
                 </span>
               </button>
-              <button
+              {/* <button
                 type="button"
                 className="nm-sidebar-item"
                 id="btnClosestPointRail"
@@ -106,45 +117,8 @@ export default function Sidebar({ t, onOpenAssemblyMap }) {
                   <strong>{t('railClosestPoint')}</strong>
                   <small>{t('railTitleClosestPoint')}</small>
                 </span>
-              </button>
-              <button
-                type="button"
-                className="nm-sidebar-item"
-                id="btnSelectTool"
-                title={t('railTitleSelect')}
-                aria-pressed="false"
-              >
-                <span className="nm-sidebar-icon" aria-hidden>
-                  <svg viewBox="0 0 24 24" width={18} height={18} focusable="false">
-                    <path fill="currentColor" d="M4 2l2 18 3.5-7 7-3.5L4 2z" />
-                    <circle cx="18" cy="18" r="3" fill="none" stroke="currentColor" strokeWidth="1.5" />
-                  </svg>
-                </span>
-                <span>
-                  <strong>{t('railSelect')}</strong>
-                  <small>{t('railTitleSelect')}</small>
-                </span>
-              </button>
-              <button
-                type="button"
-                className="nm-sidebar-item"
-                id="btnMapMultiSelect"
-                title={t('railTitleMultiSelect')}
-                aria-pressed="false"
-              >
-                <span className="nm-sidebar-icon" aria-hidden>
-                  <svg viewBox="0 0 24 24" width={18} height={18} focusable="false">
-                    <rect x="4" y="4" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                    <rect x="4" y="13" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                    <path fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" d="M16 8h4M18 6v4" />
-                    <rect x="13" y="13" width="7" height="7" rx="1.6" fill="none" stroke="currentColor" strokeWidth="1.8" />
-                  </svg>
-                </span>
-                <span>
-                  <strong>{t('railMultiSelect')}</strong>
-                  <small>{t('railTitleMultiSelect')}</small>
-                </span>
-              </button>
+              </button> */}
+
               <button
                 type="button"
                 className="nm-sidebar-item"
