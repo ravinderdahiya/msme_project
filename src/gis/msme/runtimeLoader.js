@@ -167,6 +167,30 @@ const __msmeImportMeta = {
   env: (typeof import.meta !== "undefined" && import.meta && import.meta.env) ? import.meta.env : {},
 };
 
+function applyArcGisIdentityPolicy() {
+  var env = __msmeImportMeta && __msmeImportMeta.env ? __msmeImportMeta.env : {};
+  var useIdentity =
+    String(env.VITE_ARCGIS_USE_IDENTITY || "").trim().toLowerCase() === "true";
+  var portalUrl = String(env.VITE_ARCGIS_PORTAL_URL || "").trim();
+
+  if (esriConfig && esriConfig.request) {
+    // Public map services should not trigger IdentityManager/browser auth popups.
+    esriConfig.request.useIdentity = useIdentity;
+  }
+
+  if (!useIdentity) {
+    try {
+      IdentityManager.destroyCredentials();
+    } catch (_identityErr0) {}
+  }
+
+  if (portalUrl) {
+    esriConfig.portalUrl = portalUrl.replace(/\/+$/, "");
+  }
+}
+
+applyArcGisIdentityPolicy();
+
 function patchLegacyMapServiceUrls(source) {
   if (!source) return source;
   var out = source;
@@ -1214,6 +1238,133 @@ function patchLegacySource(source) {
     out = out.replace(uiZoomPaddingPattern, uiZoomPaddingReplacement);
   } else {
     console.warn("[msme runtime patch] UI zoom padding centering patch not applied.");
+  }
+
+  // Community panel fetches can fan out into many objectId chunk requests.
+  // Keep chunk size + parallelism conservative to avoid proxy/TLS disconnects.
+  var communityFeatureFetchPattern =
+    /function queryLayerFeaturesByObjectIds\(url, layerId, objectIds\) \{[\s\S]*?return Promise\.all\(tasks\)\.then\(function \(parts\) \{[\s\S]*?return merged;\s*\}\);\s*\}/;
+  var communityFeatureFetchReplacement = [
+    "function queryLayerFeaturesByObjectIds(url, layerId, objectIds) {",
+    "  var ids = Array.isArray(objectIds) ? objectIds : [];",
+    "  if (!ids.length) return Promise.resolve([]);",
+    "  var chunks = chunkArray(ids, 80);",
+    "  var nextIdx = 0;",
+    "  var merged = [];",
+    "  var workerCount = Math.min(2, Math.max(1, chunks.length));",
+    "",
+    "  function fetchChunk(idChunk) {",
+    "    return queryLayer(url, layerId, {",
+    "      where: \"1=1\",",
+    "      objectIds: idChunk.join(\",\"),",
+    "      returnGeometry: true,",
+    "      outFields: \"*\",",
+    "      outSR: 4326,",
+    "      resultRecordCount: Math.max(120, idChunk.length + 20)",
+    "    }).then(function (data) {",
+    "      return {",
+    "        features: data && Array.isArray(data.features) ? data.features : [],",
+    "        spatialReference: data && data.spatialReference ? data.spatialReference : null",
+    "      };",
+    "    }).catch(function () {",
+    "      return { features: [], spatialReference: null };",
+    "    });",
+    "  }",
+    "",
+    "  function runWorker() {",
+    "    if (nextIdx >= chunks.length) return Promise.resolve();",
+    "    var myIdx = nextIdx++;",
+    "    var idChunk = chunks[myIdx];",
+    "    return fetchChunk(idChunk).then(function (part) {",
+    "      var sr = part && part.spatialReference ? part.spatialReference : null;",
+    "      (part && part.features ? part.features : []).forEach(function (feature) {",
+    "        merged.push({ feature: feature, spatialReference: sr, layerId: layerId });",
+    "      });",
+    "      return runWorker();",
+    "    });",
+    "  }",
+    "",
+    "  var workers = [];",
+    "  for (var w = 0; w < workerCount; w++) workers.push(runWorker());",
+    "  return Promise.all(workers).then(function () { return merged; });",
+    "}",
+  ].join("\n");
+  if (communityFeatureFetchPattern.test(out)) {
+    out = out.replace(communityFeatureFetchPattern, communityFeatureFetchReplacement);
+  } else {
+    console.warn("[msme runtime patch] community feature fetch throttling patch not applied.");
+  }
+
+  // Plan Route must use fresh device GPS, not a stale cached point (often Delhi from IP geolocation).
+  var ensureCurrentLocationRoutePattern =
+    /function ensureCurrentLocationForRoute\(\) \{\s*return resolveCurrentLocationForRoute\(\)\.then\(function \(wgs\) \{\s*if \(wgs\) return wgs;\s*setStatus\("Fetching current location for routing\.\.\."\);\s*return fetchBrowserCurrentLocationWgsForRoute\(\);\s*\}\)\.then\(function \(wgsFinal\) \{/;
+  var ensureCurrentLocationRouteReplacement = [
+    "function ensureCurrentLocationForRoute() {",
+    '  setStatus("Fetching current location for routing...");',
+    "  lastCurrentLocationWgs = null;",
+    "  return fetchBrowserCurrentLocationWgsForRoute().then(function (freshWgs) {",
+    "    if (freshWgs) return freshWgs;",
+    "    return resolveCurrentLocationForRoute();",
+    "  }).then(function (wgsFinal) {",
+  ].join("\n");
+  if (ensureCurrentLocationRoutePattern.test(out)) {
+    out = out.replace(ensureCurrentLocationRoutePattern, ensureCurrentLocationRouteReplacement);
+  } else {
+    console.warn("[msme runtime patch] ensureCurrentLocationForRoute GPS-first patch not applied.");
+  }
+
+  var resolveCurrentLocationGeomPattern =
+    /return projection\.load\(\)\.then\(function \(\) \{\s*if \(g\.type === "point" && isValidWgsLatLon\(Number\(g\.y\), Number\(g\.x\)\)\) \{\s*return \{ lat: Number\(g\.y\), lon: Number\(g\.x\) \};\s*\}\s*var p = g\.type === "point" \? g : null;\s*var pWgs = p \? projection\.project\(p, SR4326\) : null;/;
+  var resolveCurrentLocationGeomReplacement = [
+    "return projection.load().then(function () {",
+    '      var lat = NaN;',
+    "      var lon = NaN;",
+    '      if (g.type === "point") {',
+    "        if (g.latitude != null && g.longitude != null) {",
+    "          lat = Number(g.latitude);",
+    "          lon = Number(g.longitude);",
+    "        } else {",
+    "          lat = Number(g.y);",
+    "          lon = Number(g.x);",
+    "        }",
+    "      }",
+    "      if (isValidWgsLatLon(lat, lon)) {",
+    "        return { lat: lat, lon: lon };",
+    "      }",
+    "      var p = g.type === \"point\" ? g : null;",
+    "      var pWgs = p ? projection.project(p, SR4326) : null;",
+  ].join("\n");
+  if (resolveCurrentLocationGeomPattern.test(out)) {
+    out = out.replace(resolveCurrentLocationGeomPattern, resolveCurrentLocationGeomReplacement);
+  } else {
+    console.warn("[msme runtime patch] resolveCurrentLocation geometry patch not applied.");
+  }
+
+  var fetchBrowserGeoErrorPattern =
+    /resolve\(lastCurrentLocationWgs\);\s*\}, function \(\) \{\s*resolve\(null\);\s*\}, \{\s*enableHighAccuracy: true,\s*timeout: 10000,\s*maximumAge: 0\s*\}\);\s*\}\);\s*\}\s*function buildAoiSelectionQueryForRoute/;
+  var fetchBrowserGeoErrorReplacement = [
+    "resolve(lastCurrentLocationWgs);",
+    "    }, function (geoErr) {",
+    "      try {",
+    '        if (geoErr && geoErr.code === 1) setStatus("Location permission denied. Allow location access in the browser.");',
+    '        else if (geoErr && geoErr.code === 2) setStatus("Location unavailable. Enable GPS or try again.");',
+    '        else if (geoErr && geoErr.code === 3) setStatus("Location request timed out. Try again.");',
+    "      } catch (eGeo) {}",
+    "      resolve(null);",
+    "    }, {",
+    "      enableHighAccuracy: true,",
+    "      timeout: 15000,",
+    "      maximumAge: 0",
+    "    });",
+    "  });",
+    "}",
+    "",
+    "function buildAoiSelectionQueryForRoute",
+  ].join("\n");
+  if (fetchBrowserGeoErrorPattern.test(out)) {
+    out = out.replace(fetchBrowserGeoErrorPattern, fetchBrowserGeoErrorReplacement);
+  } else {
+    console.warn("[msme runtime patch] fetchBrowser geolocation error patch not applied.");
   }
 
   return out;

@@ -1,9 +1,16 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import dns from 'node:dns'
+import https from 'node:https'
 
 // Prefer IPv4 on local dev proxy to avoid IPv6-first gateway failures on some networks.
 dns.setDefaultResultOrder('ipv4first')
+const arcgisProxyAgent = new https.Agent({
+  keepAlive: true,
+  maxSockets: 4,
+  maxFreeSockets: 2,
+  timeout: 120000,
+})
 
 
 export default defineConfig(({ mode }) => {
@@ -45,6 +52,9 @@ export default defineConfig(({ mode }) => {
           target: 'https://hsacggm.in',
           changeOrigin: true,
           secure: false,
+          agent: arcgisProxyAgent,
+          timeout: 120000,
+          proxyTimeout: 120000,
           rewrite: (path) => path.replace(/^\/arcgis/, ''),
         },
         '/user': {

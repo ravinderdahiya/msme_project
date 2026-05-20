@@ -1,4 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  coercePlaceDetails,
+  extractPointForPlaceLookup,
+  mergePlaceDetails,
+  queryPlaceDetailsByPointWgs84,
+  resolvePlaceLookupPointFromGeometry,
+} from '../gis/msme/placeDetailsHelpers.js'
+import {
+  autoSelectVidhanSabhaInUi,
+  coerceAssemblyDetails,
+  extractAssemblyGeometryCandidates,
+  mergeAssemblyDetails,
+  queryAssemblyDetailsByGeometry,
+  queryAssemblyDetailsByPointWgs84,
+} from '../gis/msme/assemblyDetailsHelpers.js'
 import '../css/CommunitySummaryPanel.css'
 
 function parseIsoMs(iso) {
@@ -20,6 +35,20 @@ function formatMeters(value) {
   var n = Number(value)
   if (!Number.isFinite(n) || n < 0) return ''
   return `${Math.round(n)} m`
+}
+
+function formatMetricValue(value, suffix) {
+  if (value == null || value === '') return '-'
+  var num = Number(value)
+  if (Number.isFinite(num)) {
+    if (Number.isInteger(num)) return `${num}${suffix || ''}`
+    return `${num.toFixed(1)}${suffix || ''}`
+  }
+  return `${String(value)}${suffix || ''}`
+}
+
+function hasMetricValue(value) {
+  return !(value == null || value === '')
 }
 
 function pickLatestCommunitySummary(analysisSnap, mapSnap) {
@@ -78,6 +107,7 @@ function isCommunitySummaryCandidate(reportSnap) {
 
 function shouldAutoOpenCommunityPanel(reportSnap) {
   if (!reportSnap) return false
+  if (resolvePlaceDetails(null, reportSnap)) return true
   var isAnalysis = reportSnap.reportKind === 'analysis'
   var tool = String(reportSnap.tool || '').toLowerCase()
   if (isAnalysis && (tool === 'closest' || tool === 'proximity')) {
@@ -366,6 +396,50 @@ function getLocationLabel(summary, report) {
   return 'Selected area'
 }
 
+function resolvePlaceDetails(summary, report) {
+  var candidates = []
+  if (summary && summary.placeDetails) candidates.push(summary.placeDetails)
+  if (summary && summary.domContext && summary.domContext.placeDetails) {
+    candidates.push(summary.domContext.placeDetails)
+  }
+  if (report && report.placeDetails) candidates.push(report.placeDetails)
+  if (report && report.domContext && report.domContext.placeDetails) {
+    candidates.push(report.domContext.placeDetails)
+  }
+  if (report && Array.isArray(report.clicks) && report.clicks.length > 0) {
+    var lastClick = report.clicks[report.clicks.length - 1]
+    if (lastClick && lastClick.placeDetails) candidates.push(lastClick.placeDetails)
+  }
+
+  for (var i = 0; i < candidates.length; i += 1) {
+    var details = coercePlaceDetails(candidates[i])
+    if (details) return details
+  }
+  return null
+}
+
+function resolveAssemblyDetails(summary, report) {
+  var candidates = []
+  if (summary && summary.assemblyDetails) candidates.push(summary.assemblyDetails)
+  if (summary && summary.domContext && summary.domContext.assemblyDetails) {
+    candidates.push(summary.domContext.assemblyDetails)
+  }
+  if (report && report.assemblyDetails) candidates.push(report.assemblyDetails)
+  if (report && report.domContext && report.domContext.assemblyDetails) {
+    candidates.push(report.domContext.assemblyDetails)
+  }
+  if (report && Array.isArray(report.clicks) && report.clicks.length > 0) {
+    var lastClick = report.clicks[report.clicks.length - 1]
+    if (lastClick && lastClick.assemblyDetails) candidates.push(lastClick.assemblyDetails)
+  }
+
+  for (var i = 0; i < candidates.length; i += 1) {
+    var details = coerceAssemblyDetails(candidates[i])
+    if (details) return details
+  }
+  return null
+}
+
 function getCategoryItems(row) {
   if (!row) return []
 
@@ -556,6 +630,12 @@ export default function CommunitySummaryPanel() {
   const [lastSummary, setLastSummary] = useState(null)
   const [openCategoryKey, setOpenCategoryKey] = useState(null)
   const [selectedCategoryKeys, setSelectedCategoryKeys] = useState([])
+  const [runtimePlaceDetails, setRuntimePlaceDetails] = useState(null)
+  const [runtimeAssemblyDetails, setRuntimeAssemblyDetails] = useState(null)
+  const [resolvedLookupPoint, setResolvedLookupPoint] = useState(null)
+  const placeLookupCacheRef = useRef({})
+  const assemblyLookupCacheRef = useRef({})
+  const autoAssemblySelectionRef = useRef('')
 
   useEffect(() => {
     function refreshSnapshots() {
@@ -603,6 +683,44 @@ export default function CommunitySummaryPanel() {
   const waitingForCounts = !summary && isCommunitySummaryCandidate(latestReport)
   const displaySummary = summary || lastSummary
 
+  const placeDetailsFromSnapshot = useMemo(
+    () => resolvePlaceDetails(displaySummary, latestReport),
+    [displaySummary, latestReport],
+  )
+  const directPlaceLookupPoint = useMemo(
+    () => extractPointForPlaceLookup(displaySummary, latestReport),
+    [displaySummary, latestReport],
+  )
+  const placeDetails = useMemo(
+    () => mergePlaceDetails(placeDetailsFromSnapshot, runtimePlaceDetails),
+    [placeDetailsFromSnapshot, runtimePlaceDetails],
+  )
+  const assemblyDetailsFromSnapshot = useMemo(
+    () => resolveAssemblyDetails(displaySummary, latestReport),
+    [displaySummary, latestReport],
+  )
+  const assemblyDetails = useMemo(
+    () => mergeAssemblyDetails(assemblyDetailsFromSnapshot, runtimeAssemblyDetails),
+    [assemblyDetailsFromSnapshot, runtimeAssemblyDetails],
+  )
+  const assemblyDistrictLabel = useMemo(
+    () =>
+      (assemblyDetails && assemblyDetails.district) || (placeDetails && placeDetails.district) || '-',
+    [assemblyDetails, placeDetails],
+  )
+  const hasAssemblyMetricDetails = useMemo(() => {
+    if (!assemblyDetails) return false
+    return (
+      hasMetricValue(assemblyDetails.proposedPolicy) ||
+      hasMetricValue(assemblyDetails.intermediateAreaPct) ||
+      hasMetricValue(assemblyDetails.coreAreaPct) ||
+      hasMetricValue(assemblyDetails.subPrimeAreaPct) ||
+      hasMetricValue(assemblyDetails.mcPct) ||
+      hasMetricValue(assemblyDetails.existingIndustry)
+    )
+  }, [assemblyDetails])
+  const hasAssemblyName = !!(assemblyDetails && assemblyDetails.vidhanSabha)
+
   const isStaleUpdating =
     waitingForCounts &&
     !!displaySummary &&
@@ -626,11 +744,177 @@ export default function CommunitySummaryPanel() {
   }, [latestReport])
 
   useEffect(() => {
+    var cancelled = false
+    if (directPlaceLookupPoint) {
+      setResolvedLookupPoint(directPlaceLookupPoint)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    resolvePlaceLookupPointFromGeometry(displaySummary, latestReport).then((p) => {
+      if (cancelled) return
+      setResolvedLookupPoint(p || null)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [displaySummary, latestReport, directPlaceLookupPoint])
+
+  useEffect(() => {
+    var cancelled = false
+
+    if (placeDetailsFromSnapshot) {
+      setRuntimePlaceDetails(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    if (!resolvedLookupPoint) {
+      setRuntimePlaceDetails(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    var cacheKey = `${resolvedLookupPoint.lat.toFixed(6)},${resolvedLookupPoint.lon.toFixed(6)}`
+    if (placeLookupCacheRef.current[cacheKey]) {
+      setRuntimePlaceDetails(placeLookupCacheRef.current[cacheKey])
+      return () => {
+        cancelled = true
+      }
+    }
+
+    queryPlaceDetailsByPointWgs84(resolvedLookupPoint).then((details) => {
+      if (cancelled) return
+      if (!details) {
+        setRuntimePlaceDetails(null)
+        return
+      }
+      placeLookupCacheRef.current[cacheKey] = details
+      setRuntimePlaceDetails(details)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [placeDetailsFromSnapshot, resolvedLookupPoint])
+
+  useEffect(() => {
+    var cancelled = false
+
+    if (assemblyDetailsFromSnapshot) {
+      setRuntimeAssemblyDetails(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    var geometryCandidates = extractAssemblyGeometryCandidates(displaySummary, latestReport)
+
+    function tryGeometryFallback(onResolved) {
+      if (!Array.isArray(geometryCandidates) || geometryCandidates.length === 0) {
+        onResolved(null)
+        return
+      }
+      var idx = 0
+      function runNext() {
+        if (cancelled) return
+        if (idx >= geometryCandidates.length) {
+          onResolved(null)
+          return
+        }
+        var rawGeometry = geometryCandidates[idx]
+        idx += 1
+        queryAssemblyDetailsByGeometry(rawGeometry).then((details) => {
+          if (cancelled) return
+          if (details) {
+            onResolved(details)
+            return
+          }
+          runNext()
+        })
+      }
+      runNext()
+    }
+
+    if (!resolvedLookupPoint) {
+      tryGeometryFallback((details) => {
+        if (cancelled) return
+        setRuntimeAssemblyDetails(details || null)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    var cacheKey = `${resolvedLookupPoint.lat.toFixed(6)},${resolvedLookupPoint.lon.toFixed(6)}`
+    if (assemblyLookupCacheRef.current[cacheKey]) {
+      setRuntimeAssemblyDetails(assemblyLookupCacheRef.current[cacheKey])
+      return () => {
+        cancelled = true
+      }
+    }
+
+    queryAssemblyDetailsByPointWgs84(resolvedLookupPoint).then((details) => {
+      if (cancelled) return
+      if (details) {
+        assemblyLookupCacheRef.current[cacheKey] = details
+        setRuntimeAssemblyDetails(details)
+        return
+      }
+      tryGeometryFallback((fallbackDetails) => {
+        if (cancelled) return
+        if (fallbackDetails) {
+          assemblyLookupCacheRef.current[cacheKey] = fallbackDetails
+          setRuntimeAssemblyDetails(fallbackDetails)
+          return
+        }
+        setRuntimeAssemblyDetails(null)
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [assemblyDetailsFromSnapshot, resolvedLookupPoint, displaySummary, latestReport])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
     window.msmeGisSelectedCommunityCategoryKeys = selectedCategoryKeys.slice()
   }, [selectedCategoryKeys])
 
-  if (!displaySummary && !waitingForCounts) return null
+  const hasPlaceDetails = !!placeDetails
+  const hasAssemblyDetails = !!assemblyDetails
+  const placeCardShouldRender = useMemo(() => {
+    if (hasPlaceDetails) return true
+    if (!latestReport) return false
+    if (latestReport.reportKind === 'map-selection') return true
+    if (latestReport.reportKind !== 'analysis') return false
+    var tool = String(latestReport.tool || '').toLowerCase()
+    return tool === 'closest' || tool === 'proximity' || tool === 'buffer'
+  }, [hasPlaceDetails, latestReport])
+  const assemblyCardShouldRender = useMemo(() => {
+    if (hasAssemblyDetails) return true
+    if (!latestReport) return false
+    if (latestReport.reportKind === 'map-selection') return true
+    if (latestReport.reportKind !== 'analysis') return false
+    var tool = String(latestReport.tool || '').toLowerCase()
+    return tool === 'closest' || tool === 'proximity' || tool === 'buffer'
+  }, [hasAssemblyDetails, latestReport])
+
+  useEffect(() => {
+    if (!assemblyDetails) return
+    var key = `${assemblyDetails.vidhanSabhaCode || ''}|${assemblyDetails.vidhanSabha || ''}|${assemblyDetails.district || ''}`
+    if (!key || key === '||') return
+    if (autoAssemblySelectionRef.current === key) return
+    autoAssemblySelectionRef.current = key
+    autoSelectVidhanSabhaInUi(assemblyDetails)
+  }, [assemblyDetails])
+
+  if (!displaySummary && !waitingForCounts && !hasPlaceDetails && !hasAssemblyDetails) return null
   if (!open) {
     return (
       <button
@@ -679,6 +963,7 @@ export default function CommunitySummaryPanel() {
       : latestReport && latestReport.radiusM
 
   const locationLabel = getLocationLabel(displaySummary, latestReport)
+
   const selectableCategoryKeys = rows
     .map((row) => String(row && row.key ? row.key : '').toLowerCase())
     .filter((key) => key)
@@ -1005,6 +1290,88 @@ export default function CommunitySummaryPanel() {
           </button>
         </div>
       </div>
+
+      {placeCardShouldRender ? (
+        <div className="community-ba-place-card" aria-label="Pinned place details">
+          <h4 className="community-ba-place-card__title">Pinned Place Details</h4>
+          <div className="community-ba-place-grid">
+            <p>
+              <strong>District</strong>
+              <span>{(placeDetails && placeDetails.district) || '-'}</span>
+            </p>
+            <p>
+              <strong>Tehsil</strong>
+              <span>{(placeDetails && placeDetails.tehsil) || '-'}</span>
+            </p>
+            <p>
+              <strong>Village</strong>
+              <span>{(placeDetails && placeDetails.village) || '-'}</span>
+            </p>
+            <p>
+              <strong>Block</strong>
+              <span>{(placeDetails && placeDetails.block) || '-'}</span>
+            </p>
+            <p>
+              <strong>Ward</strong>
+              <span>{(placeDetails && placeDetails.ward) || '-'}</span>
+            </p>
+            <p>
+              <strong>Pincode</strong>
+              <span>{(placeDetails && placeDetails.pincode) || '-'}</span>
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {assemblyCardShouldRender ? (
+        <div className="community-ba-assembly-card" aria-label="Vidhan Sabha profile">
+          <h4 className="community-ba-place-card__title">Vidhan Sabha Profile</h4>
+          <div className="community-ba-assembly-header">
+            <p className="community-ba-assembly-name">
+              {(assemblyDetails && assemblyDetails.vidhanSabha) || '-'}
+            </p>
+            <p className="community-ba-assembly-sub">
+              District: {assemblyDistrictLabel}
+            </p>
+          </div>
+          <div className="community-ba-assembly-grid">
+            <article className="community-ba-assembly-metric">
+              <strong>Proposed Policy</strong>
+              <span>{(assemblyDetails && assemblyDetails.proposedPolicy) || '-'}</span>
+            </article>
+            <article className="community-ba-assembly-metric">
+              <strong>Intermediate Area %</strong>
+              <span>{formatMetricValue(assemblyDetails && assemblyDetails.intermediateAreaPct, '%')}</span>
+            </article>
+            <article className="community-ba-assembly-metric">
+              <strong>Core Area %</strong>
+              <span>{formatMetricValue(assemblyDetails && assemblyDetails.coreAreaPct, '%')}</span>
+            </article>
+            <article className="community-ba-assembly-metric">
+              <strong>Sub Prime Area %</strong>
+              <span>{formatMetricValue(assemblyDetails && assemblyDetails.subPrimeAreaPct, '%')}</span>
+            </article>
+            <article className="community-ba-assembly-metric">
+              <strong>MC %</strong>
+              <span>{formatMetricValue(assemblyDetails && assemblyDetails.mcPct, '%')}</span>
+            </article>
+            <article className="community-ba-assembly-metric">
+              <strong>Existing Industry</strong>
+              <span>{formatMetricValue(assemblyDetails && assemblyDetails.existingIndustry, '')}</span>
+            </article>
+          </div>
+          {!hasAssemblyName ? (
+            <p className="community-ba-assembly-note">
+              Is clicked point par Vidhan Sabha match nahi mila (outside Haryana ho sakta hai).
+            </p>
+          ) : null}
+          {hasAssemblyName && !hasAssemblyMetricDetails ? (
+            <p className="community-ba-assembly-note">
+              Detailed policy/area metrics is waqt map service me available nahi hain.
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="community-ba-toolbar">
         <div className="community-ba-toolbar-meta">
