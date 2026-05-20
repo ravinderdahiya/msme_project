@@ -129,8 +129,7 @@
   box-shadow: none !important;
   backdrop-filter: none !important;
   backdrop-filter: none;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   isolation: isolate;
 }
 
@@ -400,6 +399,10 @@ html:not([data-theme='black'])
 #msmeGisRoot.msme-gis-page #rail #selectToolsPanel .stools-body {
   flex: 1;
   min-height: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
 }
 
 /* (width expansion handled above) */
@@ -434,6 +437,57 @@ html:not([data-theme='black'])
   border-radius: 18px;
   padding: 14px;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* Laptop / desktop: keep sidebar panels within viewport and scroll inner content */
+@media (min-width: 1101px) {
+  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar {
+    max-height: calc(100dvh - var(--msme-gis-content-top) - var(--msme-gis-shell-pad));
+  }
+
+  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar .nm-sidebar-left,
+  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar .nm-sidebar-gis-panels {
+    max-height: 100%;
+    min-height: 0;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail.rail-nm.nm-sidebar .nm-sidebar-gis-panels {
+    height: 100%;
+    flex: 1 1 auto;
+    overflow: hidden;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialPanel:not(.collapsed),
+  #msmeGisRoot.msme-gis-page #rail #selectToolsPanel:not(.collapsed),
+  #msmeGisRoot.msme-gis-page #rail #toolsPanel:not(.collapsed),
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel:not(.collapsed) {
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialPanel .sp-head,
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel .ap-head,
+  #msmeGisRoot.msme-gis-page #rail #selectToolsPanel .stools-head,
+  #msmeGisRoot.msme-gis-page #rail #toolsPanel .tp-head,
+  #msmeGisRoot.msme-gis-page #rail #toolsPanel .gis-tools-layer-search {
+    flex-shrink: 0;
+  }
+
+  #msmeGisRoot.msme-gis-page #rail #spatialPanel .sp-scroll,
+  #msmeGisRoot.msme-gis-page #rail #aoiPanel .ap-scroll,
+  #msmeGisRoot.msme-gis-page #rail #toolsPanel .tp-scroll,
+  #msmeGisRoot.msme-gis-page #rail #selectToolsPanel .stools-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
 }
 
 /* MSME shell: spatial toolbar should be ONE card (outer bg + content inside),

@@ -3,9 +3,64 @@
  * Mounted inside `#rail` beside the nm-sidebar controls; styled by MSMEGisPageShell.css.
  */
 import { useEffect, useState } from "react";
+import { POI_LAYERS } from "../../gis/msme/serviceUrlsAndLayers.js";
+
+const SPATIAL_DISTANCE_UNIT_OPTIONS = (
+  <>
+    <option value="km">Kilometer</option>
+    <option value="m">Meter</option>
+    <option value="yd">Yard</option>
+    <option value="ft">Feet</option>
+  </>
+);
+
+function populatePoiCheckboxGrid(containerId, checkboxClass, selectAllId) {
+  const container = document.getElementById(containerId);
+  if (!container || container.children.length > 0) return;
+
+  POI_LAYERS.forEach((layer) => {
+    const label = document.createElement("label");
+    label.innerHTML =
+      `<input type="checkbox" class="${checkboxClass}" data-url="${layer.url}" data-layer="${layer.layerId}" checked /> ` +
+      layer.label;
+    container.appendChild(label);
+  });
+
+  const selectAll = document.getElementById(selectAllId);
+  if (selectAll && !selectAll.dataset.poiBound) {
+    selectAll.dataset.poiBound = "1";
+    selectAll.addEventListener("change", function onSelectAllChange() {
+      container.querySelectorAll(`.${checkboxClass}`).forEach((input) => {
+        input.checked = selectAll.checked;
+      });
+    });
+  }
+}
 
 export default function GisLegacyPanelsHidden({ t }) {
   const [layerSearch, setLayerSearch] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+    let attempts = 0;
+    let timer = null;
+
+    function ensurePoiGrids() {
+      if (cancelled) return;
+      populatePoiCheckboxGrid("bufCheckboxes", "buf-cb", "bufCheckAll");
+      populatePoiCheckboxGrid("closestCheckboxes", "closest-cb", "closestCheckAll");
+      attempts += 1;
+      if (attempts < 40) {
+        timer = window.setTimeout(ensurePoiGrids, 300);
+      }
+    }
+
+    ensurePoiGrids();
+    return () => {
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
+    };
+  }, []);
 
   useEffect(() => {
     const container = document.getElementById("layerListContainer");
@@ -129,12 +184,11 @@ export default function GisLegacyPanelsHidden({ t }) {
                     className="closest-dist-num"
                     min="0.1"
                     step="0.5"
-                    defaultValue="1.5"
+                    defaultValue="5"
                     aria-label="Buffer distance value"
                   />
                   <select id="bufferPickDistUnit" className="sm" defaultValue="km" aria-label="Buffer distance unit">
-                    <option value="km">Kilometer</option>
-                    <option value="m">Meter</option>
+                    {SPATIAL_DISTANCE_UNIT_OPTIONS}
                   </select>
                   <button type="button" className="btn-secondary" id="btnBufferPickPoint">
                     {t("closestPickPoint")}
@@ -142,17 +196,17 @@ export default function GisLegacyPanelsHidden({ t }) {
                   <button type="button" className="btn-ghost" id="btnBufferClearMark">
                     {t("bufferClearMark")}
                   </button>
-                  <button type="button" className="btn-secondary" id="btnTrackPickPoint">
+                  {/* <button type="button" className="btn-secondary" id="btnTrackPickPoint">
                     NH-44 Select (500m)
-                  </button>
+                  </button> */}
                 </div>
-                <div className="row">
+                {/* <div className="row">
                   <span className="lbl">{t("bufferQueryRadius")}</span>
                   <input type="range" id="bufMarkQueryRadius" min="1000" max="15000" step="500" defaultValue="5000" />
                   <span className="val" id="bufMarkQueryRadiusVal">
                     5000
                   </span>
-                </div>
+                </div> */}
                 <div className="row">
                   {/* <span className="lbl">{t("bufferRoadSource")}</span>
                   <select id="bufRoadLayer" className="sm" title={t("bufRoadLayerTitle")} defaultValue="4">
@@ -168,6 +222,12 @@ export default function GisLegacyPanelsHidden({ t }) {
                     {t("runBuffer")}
                   </button>
                 </div>
+                <div className="row">
+                  <label>
+                    <input type="checkbox" id="bufCheckAll" defaultChecked /> {t("proximitySelectPoi")}
+                  </label>
+                </div>
+                <div id="bufCheckboxes" className="chk-grid"></div>
                 {/* <div className="buffer-mark-row">
                   <button type="button" className="btn-secondary" id="btnBufferPdf">
                     Download buffer PDF
@@ -184,26 +244,25 @@ export default function GisLegacyPanelsHidden({ t }) {
                     className="closest-dist-num"
                     min="0.1"
                     step="0.5"
-                    defaultValue="2"
+                    defaultValue="5"
                     aria-label="Proximity distance value"
                   />
                   <select id="proximityPickDistUnit" className="sm" defaultValue="km" aria-label="Proximity distance unit">
-                    <option value="km">Kilometer</option>
-                    <option value="m">Meter</option>
+                    {SPATIAL_DISTANCE_UNIT_OPTIONS}
                   </select>
                   <button type="button" className="btn-secondary" id="btnProximityPickPoint">
                     {t("closestPickPoint")}
                   </button>
                 </div>
                 <div className="row">
-                  <label>
+                  {/* <label>
                     <input type="checkbox" id="proxCheckAll" /> {t("proximitySelectPoi")}
                   </label>
                   <span className="lbl">{t("proximityMaxDist")}</span>
                   <input type="range" id="proxDist" min="100" max="10000" step="100" defaultValue="2000" />
                   <span className="val" id="proxDistVal">
                     2000
-                  </span>
+                  </span> */}
                   <button type="button" className="btn-run" id="runProximity">
                     {t("proximityRun")}
                   </button>
@@ -226,15 +285,18 @@ export default function GisLegacyPanelsHidden({ t }) {
                     aria-label="Closest distance value"
                   />
                   <select id="closestDistUnit" className="sm" defaultValue="km" aria-label="Closest distance unit">
-                    <option value="km">Kilometer</option>
-                    <option value="m">Meter</option>
+                    {SPATIAL_DISTANCE_UNIT_OPTIONS}
                   </select>
                   <button type="button" className="btn-secondary" id="btnClosestPickPoint">
                     {t("closestPickPoint")}
                   </button>
                 </div>
-                {/* <div id="intCheckboxes" className="chk-grid"></div> */}
-                {/* <p className="panel-hint">{t("intersectHint")}</p> */}
+                <div className="row">
+                  <label>
+                    <input type="checkbox" id="closestCheckAll" defaultChecked /> {t("proximitySelectPoi")}
+                  </label>
+                </div>
+                <div id="closestCheckboxes" className="chk-grid"></div>
               </div>
 
               <div id="pE" className="panel" role="tabpanel">

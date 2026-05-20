@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { convertDistanceToMeters } from "../gis/msme/distanceUiHelpers.js";
 
 function parseLatLon(raw) {
   var text = String(raw || "").trim();
@@ -99,10 +100,15 @@ export default function BufferButton({ t }) {
   }
 
   function distanceMeters() {
-    var n = Number(distanceValue);
-    if (!isFinite(n) || n <= 0) return 1500;
-    if (unit === "km") return Math.round(n * 1000);
-    return Math.round(n);
+    var m = convertDistanceToMeters(distanceValue, unit);
+    if (!isFinite(m) || m <= 0) return 1500;
+    return m;
+  }
+
+  function distanceInputStep() {
+    if (unit === "km") return "0.5";
+    if (unit === "m") return "100";
+    return "1";
   }
 
   function startPickMode() {
@@ -380,7 +386,7 @@ export default function BufferButton({ t }) {
                 type="number"
                 className="buffer-mini-panel__num"
                 min="0.1"
-                step={unit === "km" ? "0.5" : "100"}
+                step={distanceInputStep()}
                 value={distanceValue}
                 onChange={(e) => setDistanceValue(e.target.value)}
               />
@@ -391,6 +397,8 @@ export default function BufferButton({ t }) {
               >
                 <option value="km">Kilometer</option>
                 <option value="m">Meter</option>
+                <option value="yd">Yard</option>
+                <option value="ft">Feet</option>
               </select>
             </div>
 
