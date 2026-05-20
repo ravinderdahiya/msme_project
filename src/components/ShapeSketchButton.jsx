@@ -166,7 +166,7 @@ export default function ShapeSketchButton() {
                 onChange={(e) => setShapeMode(String(e.target.value || 'polygon'))}
               >
                 <option value="polygon">Polygon</option>
-                <option value="polyline">Line Buffer</option>
+                <option value="polyline">Line </option>
                 <option value="rectangle">Rectangle</option>
                 <option value="circle">Circle</option>
               </select>
