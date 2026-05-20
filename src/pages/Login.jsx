@@ -227,31 +227,61 @@ export default function Login() {
         }
     }
 
-    async function handleVerifyOtp(e) {
-        e.preventDefault();
+  async function handleVerifyOtp(e) {
+    e.preventDefault();
 
-        if (!isValidOtp) {
-            setMessageKey("invalidOtp");
-            setMessageType("error");
-            return;
-        }
-
-        try {
-            setLoading(true);
-            const res = await verifyOtpApi(cleanMobile, otp);
-            setAuthSession({ token: res.token, user: res.user });
-            setHttpAuthToken(res.token);
-            setMessageKey("loginSuccess");
-            setMessageType("success");
-            navigate(getPostLoginRoute(res.user, redirectAfterLogin), { replace: true });
-        } catch (err) {
-            console.error("OTP verify failed:", err?.response?.data || err?.message || err);
-            setMessageKey("verifyFailed");
-            setMessageType("error");
-        } finally {
-            setLoading(false);
-        }
+    if (!isValidOtp) {
+        setMessageKey("invalidOtp");
+        setMessageType("error");
+        return;
     }
+
+    try {
+        setLoading(true);
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+
+                console.log(latitude,longitude)
+
+                const res = await verifyOtpApi(
+                    cleanMobile,
+                    otp,
+                    latitude,
+                    longitude
+                );
+
+                setAuthSession({ token: res.token, user: res.user });
+                setHttpAuthToken(res.token);
+
+                setMessageKey("loginSuccess");
+                setMessageType("success");
+
+                navigate(
+                    getPostLoginRoute(res.user, redirectAfterLogin),
+                    { replace: true }
+                );
+            },
+            (error) => {
+                console.log("Location Error:", error);
+
+                setMessageKey("verifyFailed");
+                setMessageType("error");
+            }
+        );
+
+    } catch (err) {
+        console.error("OTP verify failed:", err?.response?.data || err?.message || err);
+
+        setMessageKey("verifyFailed");
+        setMessageType("error");
+    } finally {
+        setLoading(false);
+    }
+}
 
     async function handleDepartmentLogin(e) {
         e.preventDefault();
