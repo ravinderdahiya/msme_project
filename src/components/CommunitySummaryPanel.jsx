@@ -611,6 +611,119 @@ function csvEscape(value) {
   return text
 }
 
+const PLACE_DETAIL_FIELDS = [
+  { key: 'district', label: 'District', icon: 'map' },
+  { key: 'tehsil', label: 'Tehsil', icon: 'building' },
+  { key: 'village', label: 'Village', icon: 'home' },
+  { key: 'block', label: 'Block', icon: 'grid' },
+  { key: 'ward', label: 'Ward', icon: 'people' },
+  { key: 'pincode', label: 'Pincode', icon: 'pin' },
+]
+
+const ASSEMBLY_METRIC_ROWS = [
+  { key: 'proposedPolicy', label: 'Proposed Policy', suffix: '', tone: '#7c3aed', bg: '#ede9fe' },
+  { key: 'coreAreaPct', label: 'Core Area %', suffix: '%', tone: '#2563eb', bg: '#dbeafe' },
+  { key: 'intermediateAreaPct', label: 'Intermediate Area %', suffix: '%', tone: '#0891b2', bg: '#cffafe' },
+  { key: 'subPrimeAreaPct', label: 'Sub Prime Area %', suffix: '%', tone: '#ea580c', bg: '#ffedd5' },
+  { key: 'mcPct', label: 'MC %', suffix: '%', tone: '#0d9488', bg: '#ccfbf1' },
+  { key: 'existingIndustry', label: 'Existing Industry', suffix: '', tone: '#64748b', bg: '#f1f5f9' },
+]
+
+function PlaceDetailFieldIcon({ type }) {
+  var stroke = {
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    fill: 'none',
+  }
+  switch (type) {
+    case 'building':
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4" {...stroke} />
+        </svg>
+      )
+    case 'home':
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M3 10.5L12 3l9 7.5V21H3zM9 21v-6h6v6" {...stroke} />
+        </svg>
+      )
+    case 'grid':
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="1" {...stroke} />
+          <rect x="14" y="3" width="7" height="7" rx="1" {...stroke} />
+          <rect x="3" y="14" width="7" height="7" rx="1" {...stroke} />
+          <rect x="14" y="14" width="7" height="7" rx="1" {...stroke} />
+        </svg>
+      )
+    case 'people':
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <circle cx="9" cy="8" r="3" {...stroke} />
+          <circle cx="17" cy="9" r="2.5" {...stroke} />
+          <path d="M3 21c0-3.3 2.7-6 6-6M14 21c0-2.5 1.5-4.5 3.5-5" {...stroke} />
+        </svg>
+      )
+    case 'pin':
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M12 21s-6-5.2-6-10a6 6 0 1112 0c0 4.8-6 10-6 10z" {...stroke} />
+          <circle cx="12" cy="11" r="2" {...stroke} />
+        </svg>
+      )
+    default:
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M12 21s-6-5.2-6-10a6 6 0 1112 0c0 4.8-6 10-6 10z" {...stroke} />
+          <circle cx="12" cy="11" r="2" {...stroke} />
+        </svg>
+      )
+  }
+}
+
+function SectionTitleIcon({ kind }) {
+  if (kind === 'assembly') {
+    return (
+      <span className="community-ba-section-icon community-ba-section-icon--assembly" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+          <path
+            d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-4h6v4"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+    )
+  }
+  return (
+    <span className="community-ba-section-icon community-ba-section-icon--place" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+        <path
+          d="M12 21s-6-5.2-6-10a6 6 0 1112 0c0 4.8-6 10-6 10z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        />
+        <circle cx="12" cy="11" r="2.5" fill="currentColor" />
+      </svg>
+    </span>
+  )
+}
+
+function AssemblyMetricIcon({ tone }) {
+  return (
+    <span className="community-ba-assembly-metric__icon" style={{ color: tone }} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+        <rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    </span>
+  )
+}
+
 export default function CommunitySummaryPanel() {
   const [analysisSnap, setAnalysisSnap] = useState(() =>
     typeof window !== 'undefined' &&
@@ -1291,89 +1404,76 @@ export default function CommunitySummaryPanel() {
         </div>
       </div>
 
+      <div className="community-ba-scroll">
       {placeCardShouldRender ? (
-        <div className="community-ba-place-card" aria-label="Pinned place details">
-          <h4 className="community-ba-place-card__title">Pinned Place Details</h4>
+        <section className="community-ba-section community-ba-place-card" aria-label="Pinned place details">
+          <h4 className="community-ba-section__title">
+            <SectionTitleIcon kind="place" />
+            Pinned Place Details
+          </h4>
           <div className="community-ba-place-grid">
-            <p>
-              <strong>District</strong>
-              <span>{(placeDetails && placeDetails.district) || '-'}</span>
-            </p>
-            <p>
-              <strong>Tehsil</strong>
-              <span>{(placeDetails && placeDetails.tehsil) || '-'}</span>
-            </p>
-            <p>
-              <strong>Village</strong>
-              <span>{(placeDetails && placeDetails.village) || '-'}</span>
-            </p>
-            <p>
-              <strong>Block</strong>
-              <span>{(placeDetails && placeDetails.block) || '-'}</span>
-            </p>
-            <p>
-              <strong>Ward</strong>
-              <span>{(placeDetails && placeDetails.ward) || '-'}</span>
-            </p>
-            <p>
-              <strong>Pincode</strong>
-              <span>{(placeDetails && placeDetails.pincode) || '-'}</span>
-            </p>
+            {PLACE_DETAIL_FIELDS.map((field) => (
+              <div key={field.key} className="community-ba-place-field">
+                <span className="community-ba-place-field__icon">
+                  <PlaceDetailFieldIcon type={field.icon} />
+                </span>
+                <div className="community-ba-place-field__text">
+                  <strong>{field.label}</strong>
+                  <span>{(placeDetails && placeDetails[field.key]) || '-'}</span>
+                </div>
+              </div>
+            ))}
           </div>
-        </div>
+        </section>
       ) : null}
 
       {assemblyCardShouldRender ? (
-        <div className="community-ba-assembly-card" aria-label="Vidhan Sabha profile">
-          <h4 className="community-ba-place-card__title">Vidhan Sabha Profile</h4>
+        <section className="community-ba-section community-ba-assembly-card" aria-label="Vidhan Sabha profile">
+          <h4 className="community-ba-section__title">
+            <SectionTitleIcon kind="assembly" />
+            Vidhan Sabha Profile
+          </h4>
           <div className="community-ba-assembly-header">
             <p className="community-ba-assembly-name">
-              {(assemblyDetails && assemblyDetails.vidhanSabha) || '-'}
+              {(assemblyDetails && assemblyDetails.vidhanSabha) || '—'}
             </p>
             <p className="community-ba-assembly-sub">
               District: {assemblyDistrictLabel}
             </p>
           </div>
           <div className="community-ba-assembly-grid">
-            <article className="community-ba-assembly-metric">
-              <strong>Proposed Policy</strong>
-              <span>{(assemblyDetails && assemblyDetails.proposedPolicy) || '-'}</span>
-            </article>
-            <article className="community-ba-assembly-metric">
-              <strong>Intermediate Area %</strong>
-              <span>{formatMetricValue(assemblyDetails && assemblyDetails.intermediateAreaPct, '%')}</span>
-            </article>
-            <article className="community-ba-assembly-metric">
-              <strong>Core Area %</strong>
-              <span>{formatMetricValue(assemblyDetails && assemblyDetails.coreAreaPct, '%')}</span>
-            </article>
-            <article className="community-ba-assembly-metric">
-              <strong>Sub Prime Area %</strong>
-              <span>{formatMetricValue(assemblyDetails && assemblyDetails.subPrimeAreaPct, '%')}</span>
-            </article>
-            <article className="community-ba-assembly-metric">
-              <strong>MC %</strong>
-              <span>{formatMetricValue(assemblyDetails && assemblyDetails.mcPct, '%')}</span>
-            </article>
-            <article className="community-ba-assembly-metric">
-              <strong>Existing Industry</strong>
-              <span>{formatMetricValue(assemblyDetails && assemblyDetails.existingIndustry, '')}</span>
-            </article>
+            {ASSEMBLY_METRIC_ROWS.map((metric) => (
+              <article
+                key={metric.key}
+                className="community-ba-assembly-metric"
+                style={{ background: metric.bg }}
+              >
+                <AssemblyMetricIcon tone={metric.tone} />
+                <strong>{metric.label}</strong>
+                <span>
+                  {metric.suffix
+                    ? formatMetricValue(assemblyDetails && assemblyDetails[metric.key], metric.suffix)
+                    : (assemblyDetails && assemblyDetails[metric.key]) || '-'}
+                </span>
+              </article>
+            ))}
           </div>
           {!hasAssemblyName ? (
             <p className="community-ba-assembly-note">
+              <span className="community-ba-assembly-note__dot" aria-hidden="true" />
               Is clicked point par Vidhan Sabha match nahi mila (outside Haryana ho sakta hai).
             </p>
           ) : null}
           {hasAssemblyName && !hasAssemblyMetricDetails ? (
             <p className="community-ba-assembly-note">
+              <span className="community-ba-assembly-note__dot" aria-hidden="true" />
               Detailed policy/area metrics is waqt map service me available nahi hain.
             </p>
           ) : null}
-        </div>
+        </section>
       ) : null}
 
-      <div className="community-ba-toolbar">
+      <section className="community-ba-section community-ba-toolbar">
         <div className="community-ba-toolbar-meta">
           <span className="community-ba-toolbar-list-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
@@ -1468,7 +1568,7 @@ export default function CommunitySummaryPanel() {
             <span className="community-ba-tool-btn__lbl">Download CSV</span>
           </button>
         </div>
-      </div>
+      </section>
 
       <div className="community-summary-body">
         <div className="community-ba-intro-card">
@@ -1615,9 +1715,10 @@ export default function CommunitySummaryPanel() {
             i
           </span>
           <span className="community-ba-footer-meta__text">
-            Updated: {formatUpdatedAt(updatedAt)}
-            {radiusM ? ` | Radius: ${radiusM} m` : ''}
-            {` | Total: ${totalCount}`}
+            Select categories and click on the map to view the data.
+            {updatedAt ? ` Updated ${formatUpdatedAt(updatedAt)}.` : ''}
+            {radiusM ? ` Radius ${radiusM} m.` : ''}
+            {displaySummary ? ` Total ${totalCount}.` : ''}
           </span>
         </p>
 
@@ -1627,6 +1728,7 @@ export default function CommunitySummaryPanel() {
             they appear as 0.
           </p>
         ) : null}
+      </div>
       </div>
     </aside>
   )

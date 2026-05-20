@@ -127,6 +127,8 @@ export const STRINGS = {
     railMultiSelect: 'Multi',
     railTitleMapSelAnalysis: 'Apply map selection to spatial analysis extent',
     railMapSelAnalysis: 'Use for analysis',
+    railMeasurementTool: 'Measurement Tool',
+    railTitleMeasurementTool: 'Draw on map to measure distance',
     reportTabAoi: 'AOI & land',
     reportTabMap: 'Map selection',
     reportTabAnalysis: 'Analysis',
@@ -293,6 +295,8 @@ export const STRINGS = {
     railAnalysis: 'विश्लेषण',
     railAoi: 'AOI',
     railLayers: 'परतें',
+    railMeasurementTool: 'मापन उपकरण',
+    railTitleMeasurementTool: 'दूरी मापने के लिए मानचित्र पर रेखा बनाएँ',
     railSelect: 'चयन',
     coordPlaceholder: 'मानचित्र पर कर्सर घुमाएँ…',
     langRecommendHint:
@@ -400,6 +404,8 @@ export const STRINGS = {
     railAnalysis: 'Analyse',
     railAoi: 'AOI',
     railLayers: 'Couches',
+    railMeasurementTool: 'Outil de mesure',
+    railTitleMeasurementTool: 'Tracer sur la carte pour mesurer la distance',
     railSelect: 'Sélect.',
     coordPlaceholder: 'Déplacez le curseur sur la carte…',
     langRecommendHint:
@@ -489,6 +495,8 @@ export const STRINGS = {
     railAnalysis: 'Análisis',
     railAoi: 'AOI',
     railLayers: 'Capas',
+    railMeasurementTool: 'Herramienta de medición',
+    railTitleMeasurementTool: 'Dibujar en el mapa para medir distancia',
     railSelect: 'Seleccionar',
     coordPlaceholder: 'Mueva el cursor sobre el mapa…',
     langRecommendHint:

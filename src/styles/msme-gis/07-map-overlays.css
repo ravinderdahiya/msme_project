@@ -387,6 +387,16 @@
   pointer-events: none;
 }
 
+/* Two-line map label — button stays circular */
+.buffer-map-fab.track-map-fab[data-map-label]::after,
+#trackMapFab[data-map-label]::after {
+  content: "Analysis by\A Shape";
+  white-space: pre;
+  text-align: center;
+  line-height: 1.15;
+  font-size: 10px;
+}
+
 .buffer-fab-wrap {
   position: fixed;
   right: 10%;

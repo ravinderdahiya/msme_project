@@ -959,6 +959,15 @@ html:not([data-theme='black'])
   order: 1 !important;
 }
 
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .track-map-fab[data-map-label]::after,
+#msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner #trackMapFab[data-map-label]::after {
+  content: "Analysis by\A Shape" !important;
+  white-space: pre !important;
+  text-align: center !important;
+  line-height: 1.15 !important;
+  font-size: 10px !important;
+}
+
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap .buffer-map-fab,
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab,
@@ -2119,8 +2128,8 @@ html:not([data-theme='black'])
     overflow: visible;
   }
 
-  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-widget--button::after,
-  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-button::after {
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-widget--button:not([data-map-label])::after,
+  #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right .esri-button:not([data-map-label])::after {
     content: attr(aria-label);
     position: absolute;
     top: calc(100% + 6px);
