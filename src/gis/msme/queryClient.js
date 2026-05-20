@@ -5,6 +5,31 @@ import { HSACGGM_MAP_SERVICE_URLS } from "./arcgisMapServiceUrls.js"
 import { toDevArcGisProxyUrl } from "./resolveMapServiceUrl.js"
 
 let arcgisRequestsInFlight = 0
+let arcgisActiveNetworkRequests = 0
+const arcgisPendingNetworkRequests = []
+const MAX_PARALLEL_ARCGIS_REQUESTS = 3
+
+function runWithArcgisRequestSlot(task) {
+  return new Promise((resolve, reject) => {
+    const execute = () => {
+      arcgisActiveNetworkRequests += 1
+      Promise.resolve()
+        .then(task)
+        .then(resolve, reject)
+        .finally(() => {
+          arcgisActiveNetworkRequests = Math.max(0, arcgisActiveNetworkRequests - 1)
+          const next = arcgisPendingNetworkRequests.shift()
+          if (typeof next === 'function') next()
+        })
+    }
+
+    if (arcgisActiveNetworkRequests < MAX_PARALLEL_ARCGIS_REQUESTS) {
+      execute()
+      return
+    }
+    arcgisPendingNetworkRequests.push(execute)
+  })
+}
 
 function emitGisLoading(url) {
   if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') return
@@ -53,18 +78,23 @@ function errorText(error) {
 
 function shouldRetry(error) {
   const text = errorText(error)
-  return /ERR_CONNECTION_RESET|Failed to fetch|NetworkError|fetch failed|timeout|503|502|504|429|temporar|socket|connection/i.test(
+  return /ERR_CONNECTION_RESET|ECONNRESET|socket hang up|TLS connection|Failed to fetch|NetworkError|fetch failed|timeout|503|502|504|429|temporar|socket|connection/i.test(
     text,
+  )
+}
+
+function errorStatusCode(error) {
+  return (
+    Number(error?.details?.httpStatus) ||
+    Number(error?.response?.status) ||
+    Number(error?.httpStatus) ||
+    0
   )
 }
 
 function isUnauthorizedError(error) {
   if (!error) return false
-  const status =
-    Number(error?.details?.httpStatus) ||
-    Number(error?.response?.status) ||
-    Number(error?.httpStatus) ||
-    0
+  const status = errorStatusCode(error)
   if (status === 401 || status === 403) return true
   const text = errorText(error).toLowerCase()
   return text.includes('401') || text.includes('403') || text.includes('unauthorized')
@@ -97,14 +127,15 @@ function mapQueryPublicFallbackUrl(requestUrl) {
 }
 
 export function requestArcGisJson(url, options) {
-  const maxAttempts = options && options.maxAttempts ? options.maxAttempts : 3
-  const delays = [350, 1000]
+  const maxAttempts = options && options.maxAttempts ? options.maxAttempts : 4
+  const delays = [500, 1500, 3000]
 
   function run(requestUrl, attempt, usedFallback) {
     const token = getToken()
     const requestOptions = {
       ...(options || {}),
       authMode: 'anonymous',
+      timeout: (options && options.timeout) || 90000,
       headers: {
         ...((options && options.headers) || {}),
         ...(token && String(requestUrl).includes("/mapserver/service/")
@@ -113,14 +144,32 @@ export function requestArcGisJson(url, options) {
       },
     }
 
-    return esriRequest(requestUrl, requestOptions).catch((error) => {
-      if (isUnauthorizedError(error) || /404|not found/i.test(errorText(error))) {
+    return runWithArcgisRequestSlot(() => esriRequest(requestUrl, requestOptions)).catch((error) => {
+      const fallback = usedFallback ? "" : mapQueryPublicFallbackUrl(requestUrl)
+      const status = errorStatusCode(error)
+      const text = errorText(error)
+      const isNotFound = /404|not found/i.test(text)
+      const isServerFailure = status >= 500
+      const isTokenFailure = /token required|invalid token|status:?\s*(498|499)/i.test(text)
+      const shouldTryPublicFallback =
+        !!fallback &&
+        fallback !== requestUrl &&
+        (
+          isUnauthorizedError(error) ||
+          isNotFound ||
+          isServerFailure ||
+          isTokenFailure ||
+          shouldRetry(error)
+        )
+
+      if (shouldTryPublicFallback) {
         if (isUnauthorizedError(error)) handleAuthFailure()
-        const fallback = usedFallback ? "" : mapQueryPublicFallbackUrl(requestUrl)
-        if (fallback && fallback !== requestUrl) {
-          console.warn("[map query] retrying via public ArcGIS URL", fallback)
-          return run(fallback, attempt, true)
-        }
+        console.warn("[map query] retrying via public ArcGIS URL", fallback)
+        return run(fallback, attempt, true)
+      }
+
+      if (isUnauthorizedError(error) || isNotFound) {
+        if (isUnauthorizedError(error)) handleAuthFailure()
         throw error
       }
       if (attempt >= maxAttempts - 1 || !shouldRetry(error)) {
