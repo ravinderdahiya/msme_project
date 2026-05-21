@@ -198,8 +198,116 @@ function applyArcGisIdentityPolicy() {
 
 applyArcGisIdentityPolicy();
 
+const MAP_PIN_PATH_LEGACY =
+  "M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5S10.62 6.5 12 6.5s2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z";
+
+const POPUP_SR_WEB = new SpatialReference({ wkid: 3857 });
+
+/** Stable map anchor for identify popup (always Web Mercator, matches MapView). */
+function resolvePopupAnchorPoint(mapPoint) {
+  if (!mapPoint || mapPoint.type !== "point") return mapPoint;
+  const wkid = mapPoint.spatialReference && Number(mapPoint.spatialReference.wkid);
+  if (wkid === 3857 || wkid === 102100) return mapPoint;
+  try {
+    const projected = projection.project(mapPoint, POPUP_SR_WEB);
+    return projected && projected.type === "point" ? projected : mapPoint;
+  } catch (eProj) {
+    console.warn("[popup anchor]", eProj);
+    return mapPoint;
+  }
+}
+
+/** Keep popup above the red pin — not auto-docked to a screen corner. */
+function repositionIdentifyPopup(view, mapPoint) {
+  if (!view || view.destroyed || !view.popup || !mapPoint) return;
+  const popup = view.popup;
+  const anchor = resolvePopupAnchorPoint(mapPoint);
+  const apply = function () {
+    if (!view || view.destroyed || !popup || !popup.visible) return;
+    try {
+      popup.dockEnabled = false;
+      popup.location = anchor;
+      if (typeof popup.reposition === "function") popup.reposition();
+    } catch (eRepo) {
+      console.warn("[popup reposition]", eRepo);
+    }
+  };
+  apply();
+  if (typeof window !== "undefined") {
+    window.requestAnimationFrame(apply);
+    window.setTimeout(apply, 80);
+  }
+}
+
+/** Minimize on identify popup; no auto-dock to corner; no default blue highlight. */
+function configureMsmeMapPopupUi(view) {
+  if (!view || view.destroyed || !view.popup) return;
+  try {
+    const popup = view.popup;
+    popup.collapseEnabled = true;
+    popup.dockEnabled = false;
+    popup.alignment = "top-center";
+    popup.highlightEnabled = false;
+    popup.dockOptions = {
+      buttonEnabled: false,
+      breakpoint: false,
+    };
+    if ("collisionEnabled" in popup) popup.collisionEnabled = true;
+    popup.visibleElements = {
+      closeButton: true,
+      collapseButton: true,
+      dockButton: false,
+      featureNavigation: true,
+      heading: true,
+      spinner: true,
+    };
+  } catch (eCfg) {
+    console.warn("[popup ui]", eCfg);
+  }
+}
+
+function installIdentifyPopupLayoutHook() {
+  if (typeof window === "undefined" || window.__msmeIdentifyPopupLayoutHook) return;
+  window.__msmeIdentifyPopupLayoutHook = true;
+  const previousNotify = window.notifyViewLayoutChanged;
+  window.notifyViewLayoutChanged = function () {
+    if (typeof previousNotify === "function") {
+      try {
+        previousNotify.apply(this, arguments);
+      } catch (ePrev) {
+        console.warn("[notifyViewLayoutChanged]", ePrev);
+      }
+    }
+    const view = window.__msmeGisMapView;
+    const loc = window.__msmeLastIdentifyPopupLocation;
+    if (view && loc && view.popup && view.popup.visible) {
+      repositionIdentifyPopup(view, loc);
+    }
+  };
+}
+
+function installMapPopupUiSetup() {
+  if (typeof window === "undefined") return;
+  let tries = 0;
+  const timer = window.setInterval(function () {
+    tries += 1;
+    const view = window.__msmeGisMapView;
+    if (view && !view.destroyed && view.popup) {
+      configureMsmeMapPopupUi(view);
+      window.clearInterval(timer);
+      return;
+    }
+    if (tries >= 80) window.clearInterval(timer);
+  }, 200);
+}
+
 function openIdentifyMapPopup(view, mapPoint, lat, lon, primaryLayerName, distM, flat) {
   if (!view || view.destroyed || !mapPoint || !view.popup) return;
+  configureMsmeMapPopupUi(view);
+  const anchorPoint = resolvePopupAnchorPoint(mapPoint);
+  if (typeof window !== "undefined") {
+    window.__msmeLastIdentifyPopupLocation = anchorPoint;
+  }
   try {
     var syncPlace = extractPlaceDetailsFromIdentifyFlat(flat || [], ADMIN_MS);
     var popupHtml = buildSimpleIdentifyPopupHtml(
@@ -210,11 +318,18 @@ function openIdentifyMapPopup(view, mapPoint, lat, lon, primaryLayerName, distM,
       gisPh("mapPopupTitle"),
       syncPlace,
     );
-    view.popup.open({
+    const popup = view.popup;
+    try {
+      if (popup.visible) popup.close();
+    } catch (eClose0) {}
+    popup.open({
       title: "",
       content: popupHtml,
-      location: mapPoint,
+      location: anchorPoint,
+      updateLocationEnabled: true,
+      collapsed: false,
     });
+    repositionIdentifyPopup(view, anchorPoint);
     queryPlaceDetailsByPointWgs84({ lat: lat, lon: lon })
       .then(function (queried) {
         if (!view || view.destroyed || !view.popup || !view.popup.visible) return;
@@ -230,6 +345,7 @@ function openIdentifyMapPopup(view, mapPoint, lat, lon, primaryLayerName, distM,
         );
         try {
           view.popup.content = updatedHtml;
+          repositionIdentifyPopup(view, anchorPoint);
         } catch (eUp) {
           console.warn("[identify popup update]", eUp);
         }
@@ -1347,7 +1463,7 @@ function patchLegacySource(source) {
 
   var msmeMapViewBridgePattern = /view\.ui\.add/;
   var msmeMapViewBridgeReplacement =
-    'try{if(typeof window!=="undefined")window.__msmeGisMapView=view;}catch(_msmeMvBr0){}view.ui.add';
+    'try{if(typeof window!=="undefined"){window.__msmeGisMapView=view;if(window.configureMsmeMapPopupUi)window.configureMsmeMapPopupUi(view);}}catch(_msmeMvBr0){}view.ui.add';
   if (msmeMapViewBridgePattern.test(out)) {
     out = out.replace(msmeMapViewBridgePattern, msmeMapViewBridgeReplacement);
   } else {
@@ -1921,11 +2037,50 @@ function patchLegacySource(source) {
   var mapClickPinSymReplacement = [
     "var communityZoomLabelGraphic = null;",
     "var symMapClickPin = new SimpleMarkerSymbol({",
-    '  style: "circle",',
-    "  color: [98, 54, 191, 0.98],",
-    "  size: 13,",
-    '  outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 2 })',
+    '  style: "path",',
+    '  path: "' + MAP_PIN_PATH_LEGACY + '",',
+    "  color: [226, 35, 26, 0.98],",
+    "  size: 22,",
+    '  outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 1.25 })',
     "});",
+    "",
+    "function clearAnalysisToolMapGraphics() {",
+    "  try { clearResults(); } catch (eClr0) {}",
+    "  try { if (identifyLayer) identifyLayer.removeAll(); } catch (eClr1) {}",
+    "  try { if (connectorLayer) connectorLayer.removeAll(); } catch (eClr2) {}",
+    "  try { clearConnectorGraphics(); } catch (eClr3) {}",
+    "  try { clearCommunityZoomGraphic(); } catch (eClr4) {}",
+    "  try { clearBufferAnchorMarker(); } catch (eClr5) {}",
+    "  try {",
+    "    closestPointPickModeActive = false;",
+    "    quickBufferAutoRunAfterAnchorPick = false;",
+    "    quickProximityAutoRunAfterAnchorPick = false;",
+    '    if (typeof window !== "undefined") window.__msmeGisActiveAnalysisTool = null;',
+    "  } catch (eClr6) {}",
+    "}",
+    "",
+    "function clearMapClickPlaceGraphics() {",
+    "  try {",
+    "    if (view && view.popup) {",
+    "      try { if (view.popup.visible) view.popup.close(); } catch (ePop0) {}",
+    "    }",
+    "  } catch (ePop1) {}",
+    "  try {",
+    "    if (identifyLayer && identifyLayer.graphics) {",
+    "      var pinGraphics = [];",
+    "      identifyLayer.graphics.forEach(function (g) {",
+    "        var t = g && g.attributes && g.attributes.type;",
+    '        if (t === "map-click-pin" || t === "map-click-radius") pinGraphics.push(g);',
+    "      });",
+    "      if (pinGraphics.length) identifyLayer.removeMany(pinGraphics);",
+    "    }",
+    "  } catch (ePinClr0) {}",
+    "  try { if (connectorLayer) connectorLayer.removeAll(); } catch (ePinClr1) {}",
+    "  try { clearConnectorGraphics(); } catch (ePinClr2) {}",
+    "  try {",
+    "    if (!mapSelectionAccumulateMode) mapIdentifyClickSessions = [];",
+    "  } catch (ePinClr3) {}",
+    "}",
     "",
     "function setMapClickSelectionGraphics(mapPoint, anchor32643, radiusM, selectionSource) {",
     '  if (String(selectionSource || "") !== "map-click") return;',
@@ -1976,6 +2131,23 @@ function patchLegacySource(source) {
     console.warn("[msme runtime patch] map click pin symbol patch not applied.");
   }
 
+  var symPointPinPattern =
+    /var symPoint = new SimpleMarkerSymbol\(\{\s*style: "circle", color: \[234, 67, 53, 0\.95\], size: 9,\s*outline: new SimpleLineSymbol\(\{ color: \[255, 255, 255, 1\], width: 1 \}\)\s*\}\);/;
+  var symPointPinReplacement = [
+    "var symPoint = new SimpleMarkerSymbol({",
+    '  style: "path",',
+    '  path: "' + MAP_PIN_PATH_LEGACY + '",',
+    "  color: [226, 35, 26, 0.98],",
+    "  size: 16,",
+    '  outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 1.25 })',
+    "});",
+  ].join("\n");
+  if (symPointPinPattern.test(out)) {
+    out = out.replace(symPointPinPattern, symPointPinReplacement);
+  } else {
+    console.warn("[msme runtime patch] symPoint red pin patch not applied.");
+  }
+
   var mapClickPinCallPattern =
     /  \} catch \(e2\) \{\}\s*\r?\n\r?\n  return queryNearbyRowsFromPoint\(anchor32643, radiusM\)\.then/;
   var mapClickPinCallReplacement = [
@@ -2013,8 +2185,7 @@ function patchLegacySource(source) {
   var mapClickPlaceOnlyFnPattern = /function finalizeIdentifyResults\(anchor32643, mapPoint, flat, selectionSource\) \{/;
   var mapClickPlaceOnlyFnReplacement = [
     "function finishMapClickPlaceResults(anchor32643, mapPoint, flat, lat, lon, radiusM) {",
-    "  identifyLayer.removeAll();",
-    "  connectorLayer.removeAll();",
+    "  clearAnalysisToolMapGraphics();",
     "  setMapClickSelectionGraphics(mapPoint, anchor32643, radiusM, \"map-click\");",
     "  var primaryNb = flat.filter(function (r) { return !isBoundaryLayerName(r.layerName); });",
     "  var popName = \"Selected location\";",
@@ -2062,6 +2233,7 @@ function patchLegacySource(source) {
     "  };",
     "  return enrichReportSnapshotWithPlaceContext(placePayload, anchor32643, null).then(function (finalSnap) {",
     "    function publishMapClickSnap(snap) {",
+    "      publishAnalysisReportSnapshot(null);",
     "      publishMapSelectionReportSnapshot(snap);",
     "      try {",
     "        if (typeof window !== \"undefined\" && window.dispatchEvent) {",
@@ -2120,6 +2292,75 @@ function patchLegacySource(source) {
     out = out.replace(mapClickPlaceOnlyEarlyPattern, mapClickPlaceOnlyEarlyReplacement);
   } else {
     console.warn("[msme runtime patch] map click place-only early return patch not applied.");
+  }
+
+  var mapClickClearBufferPattern =
+    /if \(!mapSelectionAccumulateMode\) \{\s*identifyLayer\.removeAll\(\);\s*lastCadParcel32643 = null;\s*cadParcelLayer\.removeAll\(\);\s*mapIdentifyClickSessions = \[\];\s*\}/;
+  var mapClickClearBufferReplacement = [
+    "clearAnalysisToolMapGraphics();",
+    "  if (!mapSelectionAccumulateMode) {",
+    "    lastCadParcel32643 = null;",
+    "    cadParcelLayer.removeAll();",
+    "    mapIdentifyClickSessions = [];",
+    "  }",
+  ].join("\n");
+  if (mapClickClearBufferPattern.test(out)) {
+    out = out.replace(mapClickClearBufferPattern, mapClickClearBufferReplacement);
+  } else {
+    console.warn("[msme runtime patch] map click clear analysis buffers patch not applied.");
+  }
+
+  var bufferPickClearPinPattern =
+    /if \(bufferMarkModeActive\) \{\s*projection\.load\(\)\.then\(function \(\) \{\s*bufferMarkPoint32643 = projection\.project\(event\.mapPoint, SR_METER\);/;
+  var bufferPickClearPinReplacement = [
+    "if (bufferMarkModeActive) {",
+    "    projection.load().then(function () {",
+    "      clearMapClickPlaceGraphics();",
+    "      bufferMarkPoint32643 = projection.project(event.mapPoint, SR_METER);",
+  ].join("\n");
+  if (bufferPickClearPinPattern.test(out)) {
+    out = out.replace(bufferPickClearPinPattern, bufferPickClearPinReplacement);
+  } else {
+    console.warn("[msme runtime patch] buffer pick clear pinpoint patch not applied.");
+  }
+
+  var closestRunClearPinPattern =
+    /function runClosestFromPickedPoint\(anchor32643Point, radiusM\) \{\s*var radius = Number\(radiusM\);/;
+  var closestRunClearPinReplacement = [
+    "function runClosestFromPickedPoint(anchor32643Point, radiusM) {",
+    "  clearMapClickPlaceGraphics();",
+    "  var radius = Number(radiusM);",
+  ].join("\n");
+  if (closestRunClearPinPattern.test(out)) {
+    out = out.replace(closestRunClearPinPattern, closestRunClearPinReplacement);
+  } else {
+    console.warn("[msme runtime patch] closest run clear pinpoint patch not applied.");
+  }
+
+  var runBufferClearPinPattern =
+    /msmeBind\("runBuffer", "click", function \(\) \{\s*clearResults\(\);/;
+  var runBufferClearPinReplacement = [
+    'msmeBind("runBuffer", "click", function () {',
+    "  clearMapClickPlaceGraphics();",
+    "  clearResults();",
+  ].join("\n");
+  if (runBufferClearPinPattern.test(out)) {
+    out = out.replace(runBufferClearPinPattern, runBufferClearPinReplacement);
+  } else {
+    console.warn("[msme runtime patch] runBuffer clear pinpoint patch not applied.");
+  }
+
+  var runProximityClearPinPattern =
+    /msmeBind\("runProximity", "click", function \(\) \{\s*clearResults\(\);/;
+  var runProximityClearPinReplacement = [
+    'msmeBind("runProximity", "click", function () {',
+    "  clearMapClickPlaceGraphics();",
+    "  clearResults();",
+  ].join("\n");
+  if (runProximityClearPinPattern.test(out)) {
+    out = out.replace(runProximityClearPinPattern, runProximityClearPinReplacement);
+  } else {
+    console.warn("[msme runtime patch] runProximity clear pinpoint patch not applied.");
   }
 
   return out;
@@ -2188,6 +2429,12 @@ function installAssemblyLookupBridge() {
 export const initMsmeWebGis = (...args) => {
   ensureArcGisProxyAuthInterceptor();
   installAssemblyLookupBridge();
+  installIdentifyPopupLayoutHook();
+  if (typeof window !== "undefined") {
+    window.configureMsmeMapPopupUi = configureMsmeMapPopupUi;
+    window.repositionIdentifyPopup = repositionIdentifyPopup;
+  }
+  installMapPopupUiSetup();
   return __legacyInitMsmeWebGis(...args);
 };
 

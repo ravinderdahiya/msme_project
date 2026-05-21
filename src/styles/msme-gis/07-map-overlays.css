@@ -32,7 +32,7 @@
   visibility: hidden;
 }
 
-/* Centered “Loading Map” card (GIS shell can add a dim scrim over #viewDiv) */
+/* Centered “Analyzing Data” card (GIS shell can add a dim scrim over #viewDiv) */
 .gis-loading-card {
   display: flex;
   flex-direction: column;
@@ -1042,5 +1042,18 @@
   clip: rect(0, 0, 0, 0);
   white-space: nowrap;
   border: 0;
+}
+
+/* Map identify popup: minimize control; stay anchored above pin (no corner dock) */
+.esri-popup .esri-popup__header-buttons .esri-popup__button,
+.esri-popup .esri-popup__collapse-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.esri-popup .esri-popup__collapse-button {
+  min-width: 32px;
+  min-height: 32px;
 }
 

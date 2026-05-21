@@ -54,9 +54,6 @@ function hasMetricValue(value) {
 function pickLatestCommunitySummary(analysisSnap, mapSnap) {
   var a = analysisSnap && analysisSnap.communitySummary ? analysisSnap.communitySummary : null
   var m = mapSnap && mapSnap.communitySummary ? mapSnap.communitySummary : null
-  var analysisTool = String(analysisSnap && analysisSnap.tool ? analysisSnap.tool : '').toLowerCase()
-
-  if (analysisTool === 'closest' && a) return a
   if (!a && !m) return null
   if (a && !m) return a
   if (m && !a) return m
@@ -66,13 +63,10 @@ function pickLatestCommunitySummary(analysisSnap, mapSnap) {
 
 function pickLatestReportSnapshot(analysisSnap, mapSnap) {
   if (!analysisSnap && !mapSnap) return null
-  var analysisTool = String(analysisSnap && analysisSnap.tool ? analysisSnap.tool : '').toLowerCase()
-  if (analysisTool === 'closest' && analysisSnap) return analysisSnap
   if (analysisSnap && !mapSnap) return analysisSnap
   if (mapSnap && !analysisSnap) return mapSnap
 
-  return parseIsoMs(analysisSnap && analysisSnap.generatedAt) >=
-    parseIsoMs(mapSnap && mapSnap.generatedAt)
+  return parseIsoMs(analysisSnap.generatedAt) >= parseIsoMs(mapSnap.generatedAt)
     ? analysisSnap
     : mapSnap
 }
@@ -852,9 +846,14 @@ export default function CommunitySummaryPanel() {
   )
 
   const isClosestMode = isClosestAnalysisReport(latestReport)
+  const isMapClickPlaceOnly = useMemo(
+    () => isMapClickPlaceOnlyReport(latestReport),
+    [latestReport],
+  )
 
-  const waitingForCounts = !summary && isCommunitySummaryCandidate(latestReport)
-  const displaySummary = summary || lastSummary
+  const waitingForCounts =
+    !isMapClickPlaceOnly && !summary && isCommunitySummaryCandidate(latestReport)
+  const displaySummary = isMapClickPlaceOnly ? null : summary || lastSummary
 
   const placeDetailsFromSnapshot = useMemo(
     () => resolvePlaceDetails(displaySummary, latestReport),
@@ -925,6 +924,14 @@ export default function CommunitySummaryPanel() {
   }, [summary, latestReport])
 
   useEffect(() => {
+    if (isMapClickPlaceOnly) {
+      setLastSummary(null)
+      setSelectedCategoryKeys([])
+      setOpenCategoryKey(null)
+    }
+  }, [isMapClickPlaceOnly, latestReport && latestReport.generatedAt])
+
+  useEffect(() => {
     if (shouldAutoOpenCommunityPanel(latestReport)) {
       setOpen(true)
     }
@@ -951,6 +958,7 @@ export default function CommunitySummaryPanel() {
 
   useEffect(() => {
     var cancelled = false
+    placeLookupCacheRef.current = {}
 
     if (placeDetailsFromSnapshot) {
       setRuntimePlaceDetails(null)
@@ -991,6 +999,7 @@ export default function CommunitySummaryPanel() {
 
   useEffect(() => {
     var cancelled = false
+    assemblyLookupCacheRef.current = {}
 
     if (assemblyDetailsFromSnapshot) {
       setRuntimeAssemblyDetails(null)
@@ -1075,10 +1084,6 @@ export default function CommunitySummaryPanel() {
 
   const hasPlaceDetails = !!placeDetails
   const hasAssemblyDetails = !!assemblyDetails
-  const isMapClickPlaceOnly = useMemo(
-    () => isMapClickPlaceOnlyReport(latestReport),
-    [latestReport],
-  )
   const placeCardShouldRender = useMemo(() => {
     if (hasPlaceDetails) return true
     if (!latestReport) return false

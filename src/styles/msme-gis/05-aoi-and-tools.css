@@ -89,8 +89,33 @@
   flex: 0 0 auto;
 }
 
-#aoiPanel .modal-tabs .inline-tab-panel .aoi-card {
+#aoiPanel .modal-tabs .inline-tab-panel .aoi-card,
+#measurementPanel #measurementToolbar .aoi-card {
   margin: 0;
+}
+
+#measurementPanel input[type='text'] {
+  width: 100%;
+  box-sizing: border-box;
+  margin-bottom: 12px;
+  min-height: 40px;
+  border: 1px solid rgba(182, 204, 223, 0.9);
+  border-radius: 16px;
+  background: linear-gradient(180deg, #ffffff 0%, #f7fbff 100%);
+  padding: 9px 12px;
+  color: #1f3f63;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+#measurementPanel input[type='text']:hover {
+  border-color: rgba(132, 176, 208, 0.95);
+}
+
+#measurementPanel input[type='text']:focus {
+  outline: none;
+  border-color: var(--selection-ring);
+  box-shadow: 0 0 0 4px rgba(29, 127, 208, 0.1);
 }
 
 .aoi-card,
@@ -134,6 +159,7 @@
 }
 
 #aoiPanel label,
+#measurementPanel label,
 .modal-box label,
 .results-class-filter .filter-label,
 .select-tool-dock .dock-lbl {

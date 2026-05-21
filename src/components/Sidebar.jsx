@@ -1,18 +1,26 @@
 ﻿// import ResultsFlyout from './ResultsFlyout.jsx'
-import { useState } from "react";
+import { useEffect } from "react";
 import LandLocationReport from './LandLocationReport.jsx'
 import CommunitySummaryPanel from './CommunitySummaryPanel.jsx'
-import MeasurementDistancePanel from './MeasurementDistancePanel.jsx'
 import GisLegacyPanelsHidden from './gis/GisLegacyPanelsHidden.jsx'
+import {
+  bindMeasurementPanelExclusivity,
+  toggleMeasurementPanel,
+} from '../gis/msme/measurementPanelShell.js'
 
 export default function Sidebar({ t, onOpenAssemblyMap }) {
-  const [measurementOpen, setMeasurementOpen] = useState(false)
-
-  function toggleMeasurementPanel() {
-    setMeasurementOpen(function (prev) {
-      return !prev
-    })
-  }
+  useEffect(function () {
+    bindMeasurementPanelExclusivity()
+    const btn = document.getElementById('btnMeasurementTool')
+    if (!btn) return
+    function onClick() {
+      toggleMeasurementPanel()
+    }
+    btn.addEventListener('click', onClick)
+    return function () {
+      btn.removeEventListener('click', onClick)
+    }
+  }, [])
   function openClosestPanelAndStart() {
     var spatialPanel = document.getElementById("spatialPanel");
     var openSpatialBtn = document.getElementById("btnOpenSpatial");
@@ -121,9 +129,7 @@ export default function Sidebar({ t, onOpenAssemblyMap }) {
                 className="nm-sidebar-item"
                 id="btnMeasurementTool"
                 title={t('railTitleMeasurementTool')}
-                aria-expanded={measurementOpen ? 'true' : 'false'}
-                aria-controls="measurementDistancePanel"
-                onClick={toggleMeasurementPanel}
+                aria-controls="measurementPanel"
               >
                 <span className="nm-sidebar-icon" aria-hidden>
                   <svg viewBox="0 0 24 24" width={18} height={18} focusable="false">
@@ -260,11 +266,6 @@ export default function Sidebar({ t, onOpenAssemblyMap }) {
 
       {/* <ResultsFlyout /> */}
       <CommunitySummaryPanel />
-      <MeasurementDistancePanel
-        open={measurementOpen}
-        onClose={() => setMeasurementOpen(false)}
-        t={t}
-      />
       <LandLocationReport />
     </>
   )

@@ -1,6 +1,7 @@
 /* Global dark theme overrides */
 [data-theme='black'] #spatialPanel,
 [data-theme='black'] #selectToolsPanel,
+[data-theme='black'] #measurementPanel,
 [data-theme='black'] #toolsPanel,
 [data-theme='black'] #aoiPanel,
 [data-theme='black'] #rail,
@@ -33,6 +34,7 @@
 }
 
 [data-theme='black'] #aoiPanel select,
+[data-theme='black'] #measurementPanel input[type='text'],
 [data-theme='black'] .modal-box select,
 [data-theme='black'] .lang-select {
   background: #1d2733;
@@ -63,6 +65,7 @@
 }
 
 [data-theme='black'] #spatialPanel .sp-head,
+[data-theme='black'] #measurementPanel .sp-head,
 [data-theme='black'] #selectToolsPanel .stools-head,
 [data-theme='black'] #aoiPanel .ap-head,
 [data-theme='black'] #toolsPanel .tp-head {
@@ -75,6 +78,7 @@
 }
 
 [data-theme='black'] #spatialPanel .ap-close,
+[data-theme='black'] #measurementPanel .ap-close,
 [data-theme='black'] #selectToolsPanel .ap-close,
 [data-theme='black'] #aoiPanel .ap-close,
 [data-theme='black'] #toolsPanel .ap-close {

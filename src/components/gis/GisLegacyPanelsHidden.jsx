@@ -2,8 +2,11 @@
  * GIS panel DOM — required by initMsmeWebGis (getElementById / LayerList mount).
  * Mounted inside `#rail` beside the nm-sidebar controls; styled by MSMEGisPageShell.css.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { POI_LAYERS } from "../../gis/msme/serviceUrlsAndLayers.js";
+import { haversineMeters } from "../../gis/msme/geometryUtils.js";
+import { closeMeasurementPanel } from "../../gis/msme/measurementPanelShell.js";
+import "../../css/MeasurementDistancePanel.css";
 
 const SPATIAL_DISTANCE_UNIT_OPTIONS = (
   <>
@@ -37,8 +40,58 @@ function populatePoiCheckboxGrid(containerId, checkboxClass, selectAllId) {
   }
 }
 
+function parseMeasureCoord(raw) {
+  const text = String(raw ?? "").trim();
+  if (!text) return null;
+  const n = Number(text);
+  return Number.isFinite(n) ? n : null;
+}
+
+function isValidMeasureLat(lat) {
+  return Number.isFinite(lat) && Math.abs(lat) <= 90;
+}
+
+function isValidMeasureLon(lon) {
+  return Number.isFinite(lon) && Math.abs(lon) <= 180;
+}
+
+function formatMeasureMeters(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (n >= 1000) {
+    return `${(n / 1000).toLocaleString(undefined, { maximumFractionDigits: 2 })} km (${Math.round(n)} m)`;
+  }
+  return `${Math.round(n)} m`;
+}
+
+function formatMeasureKm(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n) || n < 0) return "—";
+  if (n >= 1) {
+    return `${n.toLocaleString(undefined, { maximumFractionDigits: 3 })} km`;
+  }
+  return `${(n * 1000).toLocaleString(undefined, { maximumFractionDigits: 0 })} m`;
+}
+
 export default function GisLegacyPanelsHidden({ t }) {
   const [layerSearch, setLayerSearch] = useState("");
+  const [measureLat1, setMeasureLat1] = useState("");
+  const [measureLon1, setMeasureLon1] = useState("");
+  const [measureLat2, setMeasureLat2] = useState("");
+  const [measureLon2, setMeasureLon2] = useState("");
+  const [measureLineDistanceM, setMeasureLineDistanceM] = useState(null);
+  const [measureLineDrawing, setMeasureLineDrawing] = useState(false);
+
+  const measureDistanceM = useMemo(function () {
+    const aLat = parseMeasureCoord(measureLat1);
+    const aLon = parseMeasureCoord(measureLon1);
+    const bLat = parseMeasureCoord(measureLat2);
+    const bLon = parseMeasureCoord(measureLon2);
+    if (!isValidMeasureLat(aLat) || !isValidMeasureLon(aLon) || !isValidMeasureLat(bLat) || !isValidMeasureLon(bLon)) {
+      return null;
+    }
+    return haversineMeters(aLon, aLat, bLon, bLat);
+  }, [measureLat1, measureLon1, measureLat2, measureLon2]);
 
   useEffect(() => {
     let cancelled = false;
@@ -134,6 +187,65 @@ export default function GisLegacyPanelsHidden({ t }) {
       el.style.display = txt.includes(q) ? "" : "none";
     });
   }, [layerSearch]);
+
+  useEffect(function () {
+    function onLineDistance(ev) {
+      const meters = ev && ev.detail ? ev.detail.meters : null;
+      if (meters == null) {
+        setMeasureLineDistanceM(null);
+        return;
+      }
+      setMeasureLineDistanceM(Number(meters));
+      setMeasureLineDrawing(false);
+    }
+    window.addEventListener("msme-measurement-line-distance", onLineDistance);
+    return function () {
+      window.removeEventListener("msme-measurement-line-distance", onLineDistance);
+    };
+  }, []);
+
+  useEffect(function () {
+    const panel = document.getElementById("measurementPanel");
+    if (!panel) return;
+
+    function onPanelClosed() {
+      setMeasureLineDrawing(false);
+      if (typeof window.msmeGisStopMeasurementLineDraw === "function") {
+        window.msmeGisStopMeasurementLineDraw();
+      }
+    }
+
+    const obs = new MutationObserver(function () {
+      if (panel.classList.contains("collapsed")) onPanelClosed();
+    });
+    obs.observe(panel, { attributes: true, attributeFilter: ["class"] });
+    return function () {
+      obs.disconnect();
+      onPanelClosed();
+    };
+  }, []);
+
+  function startMeasureLineDraw() {
+    if (typeof window.msmeGisStartMeasurementLineDraw !== "function") {
+      window.alert(t("measurementMapNotReady"));
+      return;
+    }
+    const ok = window.msmeGisStartMeasurementLineDraw();
+    if (!ok) {
+      window.alert(t("measurementMapNotReady"));
+      return;
+    }
+    setMeasureLineDrawing(true);
+    setMeasureLineDistanceM(null);
+  }
+
+  function clearMeasureLineDraw() {
+    if (typeof window.msmeGisClearMeasurementLine === "function") {
+      window.msmeGisClearMeasurementLine();
+    }
+    setMeasureLineDrawing(false);
+    setMeasureLineDistanceM(null);
+  }
 
   function resetLayerSearch() {
     setLayerSearch("");
@@ -737,6 +849,106 @@ export default function GisLegacyPanelsHidden({ t }) {
               </span>
               <span className="stools-txt">{t("selectClear")}</span>
             </button>
+          </div>
+        </div>
+      </aside>
+
+      <aside
+        id="measurementPanel"
+        className="measurement-panel collapsed"
+        aria-hidden="true"
+        role="complementary"
+        aria-labelledby="measurementPanelTitle"
+      >
+        <div className="sp-head">
+          <div className="ap-head-row">
+            <h2 id="measurementPanelTitle">{t("measurementPanelTitle")}</h2>
+            <button
+              type="button"
+              className="ap-close"
+              id="btnMeasurementClose"
+              title={t("closePanel")}
+              onClick={closeMeasurementPanel}
+            >
+              &times;
+            </button>
+          </div>
+          <p className="sp-intro">{t("measurementPanelIntro")}</p>
+        </div>
+        <div className="sp-scroll">
+          <div id="measurementToolbar" aria-label={t("measurementPanelTitle")}>
+            <section className="aoi-card">
+              <h3 className="aoi-card-title">{t("measurementPointA")}</h3>
+              <label>{t("measurementLatitude")}</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="29.15"
+                value={measureLat1}
+                onChange={(e) => setMeasureLat1(e.target.value)}
+              />
+              <label>{t("measurementLongitude")}</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="76.82"
+                value={measureLon1}
+                onChange={(e) => setMeasureLon1(e.target.value)}
+              />
+            </section>
+
+            <section className="aoi-card">
+              <h3 className="aoi-card-title">{t("measurementPointB")}</h3>
+              <label>{t("measurementLatitude")}</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="28.46"
+                value={measureLat2}
+                onChange={(e) => setMeasureLat2(e.target.value)}
+              />
+              <label>{t("measurementLongitude")}</label>
+              <input
+                type="text"
+                inputMode="decimal"
+                placeholder="77.03"
+                value={measureLon2}
+                onChange={(e) => setMeasureLon2(e.target.value)}
+              />
+            </section>
+
+            <div className="row measure-distance-row" aria-live="polite">
+              <span className="lbl">{t("measurementDistance")}</span>
+              <span className="val">
+                {measureDistanceM == null ? t("measurementEnterBothPoints") : formatMeasureMeters(measureDistanceM)}
+              </span>
+            </div>
+
+            <p className="aoi-card-desc measure-divider">{t("measurementOr")}</p>
+
+            <section className="aoi-card">
+              <h3 className="aoi-card-title">{t("measurementDrawLine")}</h3>
+              <p className="aoi-card-desc">{t("measurementDrawLineHint")}</p>
+              <div className="actions">
+                <button type="button" className="btn-secondary" onClick={startMeasureLineDraw}>
+                  {t("measurementDrawLineBtn")}
+                </button>
+                <button type="button" className="btn-ghost" onClick={clearMeasureLineDraw}>
+                  {t("measurementClearLine")}
+                </button>
+              </div>
+              {measureLineDrawing ? (
+                <p className="aoi-card-desc">{t("measurementDrawingLine")}</p>
+              ) : null}
+              <div className="row measure-distance-row" aria-live="polite">
+                <span className="lbl">{t("measurementLineDistance")}</span>
+                <span className="val">
+                  {measureLineDistanceM == null
+                    ? t("measurementLineEmpty")
+                    : formatMeasureKm(measureLineDistanceM / 1000)}
+                </span>
+              </div>
+            </section>
           </div>
         </div>
       </aside>

@@ -24,7 +24,7 @@ import { setHttpAuthToken } from "../api/axios";
 import { useIn } from "../in/useIn";
 import { adminLoginApi, googleLoginApi, sendOtpApi, verifyOtpApi } from "../services/authService";
 import { setAuthSession } from "../utils/authStorage";
-import { getPostLoginRoute } from "../utils/authRedirect";
+import { getDepartmentPostLoginRoute, getPostLoginRoute } from "../utils/authRedirect";
 
 const LOGIN_TEXT = {
     en: {
@@ -235,61 +235,61 @@ export default function Login() {
         }
     }
 
-  async function handleVerifyOtp(e) {
-    e.preventDefault();
+    async function handleVerifyOtp(e) {
+        e.preventDefault();
 
-    if (!isValidOtp) {
-        setMessageKey("invalidOtp");
-        setMessageType("error");
-        return;
+        if (!isValidOtp) {
+            setMessageKey("invalidOtp");
+            setMessageType("error");
+            return;
+        }
+
+        try {
+            setLoading(true);
+
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+
+                    console.log(latitude, longitude)
+
+                    const res = await verifyOtpApi(
+                        cleanMobile,
+                        otp,
+                        latitude,
+                        longitude
+                    );
+
+                    setAuthSession({ token: res.token, user: res.user });
+                    setHttpAuthToken(res.token);
+
+                    setMessageKey("loginSuccess");
+                    setMessageType("success");
+
+                    navigate(
+                        getPostLoginRoute(res.user, redirectAfterLogin),
+                        { replace: true }
+                    );
+                },
+                (error) => {
+                    console.log("Location Error:", error);
+
+                    setMessageKey("verifyFailed");
+                    setMessageType("error");
+                }
+            );
+
+        } catch (err) {
+            console.error("OTP verify failed:", err?.response?.data || err?.message || err);
+
+            setMessageKey("verifyFailed");
+            setMessageType("error");
+        } finally {
+            setLoading(false);
+        }
     }
-
-    try {
-        setLoading(true);
-
-        navigator.geolocation.getCurrentPosition(
-            async (position) => {
-
-                const latitude = position.coords.latitude;
-                const longitude = position.coords.longitude;
-
-                console.log(latitude,longitude)
-
-                const res = await verifyOtpApi(
-                    cleanMobile,
-                    otp,
-                    latitude,
-                    longitude
-                );
-
-                setAuthSession({ token: res.token, user: res.user });
-                setHttpAuthToken(res.token);
-
-                setMessageKey("loginSuccess");
-                setMessageType("success");
-
-                navigate(
-                    getPostLoginRoute(res.user, redirectAfterLogin),
-                    { replace: true }
-                );
-            },
-            (error) => {
-                console.log("Location Error:", error);
-
-                setMessageKey("verifyFailed");
-                setMessageType("error");
-            }
-        );
-
-    } catch (err) {
-        console.error("OTP verify failed:", err?.response?.data || err?.message || err);
-
-        setMessageKey("verifyFailed");
-        setMessageType("error");
-    } finally {
-        setLoading(false);
-    }
-}
 
     async function handleDepartmentLogin(e) {
         e.preventDefault();
@@ -303,11 +303,12 @@ export default function Login() {
         try {
             setLoading(true);
             const res = await adminLoginApi(departmentId.trim(), departmentPassword);
-            setAuthSession({ token: res.token, user: res.user });
+            const user = { ...res.user, isDepartment: true };
+            setAuthSession({ token: res.token, user });
             setHttpAuthToken(res.token);
             setMessageKey("loginSuccess");
             setMessageType("success");
-            navigate(getPostLoginRoute(res.user, redirectAfterLogin), { replace: true });
+            navigate(getDepartmentPostLoginRoute(redirectAfterLogin), { replace: true });
         } catch (err) {
             console.log(err.message);
             setMessageKey("invalidAdmin");

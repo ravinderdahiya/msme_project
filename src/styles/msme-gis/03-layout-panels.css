@@ -1,6 +1,7 @@
 /* Common floating panels */
 #spatialPanel,
 #selectToolsPanel,
+#measurementPanel,
 #toolsPanel,
 #aoiPanel {
   position: absolute;
@@ -34,6 +35,7 @@
 
 #spatialPanel,
 #selectToolsPanel,
+#measurementPanel,
 #aoiPanel {
   border-radius: 24px;
   overflow: hidden;
@@ -41,6 +43,7 @@
 
 #spatialPanel.collapsed,
 #selectToolsPanel.collapsed,
+#measurementPanel.collapsed,
 #aoiPanel.collapsed,
 #toolsPanel.collapsed {
   transform: translateX(calc(-1 * (var(--panel-w) + var(--rail-w))));
@@ -49,6 +52,7 @@
 
 #spatialPanel,
 #selectToolsPanel,
+#measurementPanel,
 #aoiPanel {
   transition: transform 0.32s cubic-bezier(0.22, 1, 0.36, 1);
 }
@@ -58,6 +62,7 @@
 }
 
 #spatialPanel .sp-head,
+#measurementPanel .sp-head,
 #selectToolsPanel .stools-head,
 #aoiPanel .ap-head,
 #toolsPanel .tp-head {
@@ -84,6 +89,7 @@
 }
 
 #spatialPanel .sp-intro,
+#measurementPanel .sp-intro,
 #selectToolsPanel .stools-intro,
 #toolsPanel .tp-head p {
   margin: 6px 0 0;
@@ -95,7 +101,8 @@
 #spatialPanel .sp-scroll,
 #aoiPanel .ap-scroll,
 #toolsPanel .tp-scroll,
-#selectToolsPanel .stools-body {
+#selectToolsPanel .stools-body,
+#measurementPanel .sp-scroll {
   flex: 1;
   overflow: auto;
   min-height: 0;
@@ -110,6 +117,7 @@
 
 #spatialPanel .ap-head-row,
 #selectToolsPanel .ap-head-row,
+#measurementPanel .ap-head-row,
 #aoiPanel .ap-head-row {
   display: flex;
   align-items: center;
@@ -128,6 +136,7 @@
 
 #spatialPanel .ap-head-row h2,
 #selectToolsPanel .ap-head-row h2,
+#measurementPanel .ap-head-row h2,
 #aoiPanel .ap-head-row h2,
 #toolsPanel .tp-head h2 {
   margin: 0;
@@ -139,6 +148,7 @@
 
 #spatialPanel .ap-close,
 #selectToolsPanel .ap-close,
+#measurementPanel .ap-close,
 #aoiPanel .ap-close,
 #toolsPanel .ap-close {
   border: 1px solid rgba(168, 196, 220, 0.95);
@@ -159,6 +169,7 @@
 
 #spatialPanel .ap-close:hover,
 #selectToolsPanel .ap-close:hover,
+#measurementPanel .ap-close:hover,
 #aoiPanel .ap-close:hover,
 #toolsPanel .ap-close:hover {
   background: var(--rail-active-bg);

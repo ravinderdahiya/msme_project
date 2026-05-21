@@ -56,7 +56,8 @@ export default function NewAdminPage() {
     try {
       setLoading(true);
       const res = await adminLoginApi(adminId.trim(), adminPassword);
-      setAuthSession({ token: res.token, user: res.user });
+      const user = { ...res.user, isDepartment: true };
+      setAuthSession({ token: res.token, user });
       setHttpAuthToken(res.token);
       navigate(getDefaultRouteForUser(res.user), { replace: true });
     } catch (error) {

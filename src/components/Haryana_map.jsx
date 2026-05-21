@@ -8,7 +8,7 @@ import ShapeSketchButton from './ShapeSketchButton.jsx'
 
 export default function HaryanaMap({ t }) {
   const [legendExpanded, setLegendExpanded] = useState(false)
-  /** After first successful map hide, same overlay is used for fetches — show “Loading data”. */
+  /** After first successful map hide, same overlay is used for fetches — show “Analyzing Data”. */
   const [gisLoaderIsDataPhase, setGisLoaderIsDataPhase] = useState(false)
   const gisBootLoaderDismissed = useRef(false)
 
@@ -87,8 +87,8 @@ export default function HaryanaMap({ t }) {
           <span className="gis-loading-spinner" aria-hidden="true" />
           <h2 className="gis-loading-title">
             {gisLoaderIsDataPhase
-              ? (t && typeof t === 'function' && t('gisLoadingDataTitle')) || 'Loading data'
-              : (t && typeof t === 'function' && t('gisLoadingMapTitle')) || 'Loading Map'}
+              ? (t && typeof t === 'function' && t('gisLoadingDataTitle')) || 'Analyzing Data'
+              : (t && typeof t === 'function' && t('gisLoadingMapTitle')) || 'Analyzing Data'}
           </h2>
           <p
             key={gisLoaderIsDataPhase ? 'gis-ld-data' : 'gis-ld-map'}

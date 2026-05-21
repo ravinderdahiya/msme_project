@@ -12,12 +12,7 @@
   cursor: wait;
 }
 
-/* MSME GIS header: keep only HEPC logo visible (disable flip animation). */
-#appHeader.nmhdr-gis .nmhdr-flip-inner--single {
-  animation: none !important;
-  transform: none !important;
-}
-
+/* MSME GIS header: HEPC ↔ HARSAC flip (animation from NewMainMapHeader.css). */
 #appHeader.nmhdr-gis .nmhdr-flip-face {
   background: rgba(255, 255, 255, 0.95) !important;
   border-color: rgba(15, 35, 64, 0.1) !important;
@@ -218,7 +213,8 @@
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#spatialPanel:not(.collapsed)) #rail.rail-nm.nm-sidebar,
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#aoiPanel:not(.collapsed)) #rail.rail-nm.nm-sidebar,
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#toolsPanel:not(.collapsed)) #rail.rail-nm.nm-sidebar,
-  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#selectToolsPanel:not(.collapsed)) #rail.rail-nm.nm-sidebar {
+  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#selectToolsPanel:not(.collapsed)) #rail.rail-nm.nm-sidebar,
+  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#measurementPanel:not(.collapsed)) #rail.rail-nm.nm-sidebar {
     visibility: visible !important;
     opacity: 1 !important;
     pointer-events: none !important;
@@ -249,14 +245,16 @@
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#spatialPanel:not(.collapsed)) #rail .nm-sidebar-left,
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#aoiPanel:not(.collapsed)) #rail .nm-sidebar-left,
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#toolsPanel:not(.collapsed)) #rail .nm-sidebar-left,
-  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#selectToolsPanel:not(.collapsed)) #rail .nm-sidebar-left {
+  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#selectToolsPanel:not(.collapsed)) #rail .nm-sidebar-left,
+  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#measurementPanel:not(.collapsed)) #rail .nm-sidebar-left {
     display: none !important;
   }
 
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#spatialPanel:not(.collapsed)) #rail .nm-sidebar-gis-panels,
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#aoiPanel:not(.collapsed)) #rail .nm-sidebar-gis-panels,
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#toolsPanel:not(.collapsed)) #rail .nm-sidebar-gis-panels,
-  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#selectToolsPanel:not(.collapsed)) #rail .nm-sidebar-gis-panels {
+  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#selectToolsPanel:not(.collapsed)) #rail .nm-sidebar-gis-panels,
+  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#measurementPanel:not(.collapsed)) #rail .nm-sidebar-gis-panels {
     pointer-events: auto !important;
     position: fixed !important;
     left: var(--msme-gis-shell-pad) !important;
@@ -281,7 +279,8 @@
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#spatialPanel:not(.collapsed))::before,
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#aoiPanel:not(.collapsed))::before,
   #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#toolsPanel:not(.collapsed))::before,
-  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#selectToolsPanel:not(.collapsed))::before {
+  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#selectToolsPanel:not(.collapsed))::before,
+  #msmeGisRoot.msme-gis-page:not(.msme-gis-mobile-drawer-open):has(#measurementPanel:not(.collapsed))::before {
     content: "";
     position: fixed;
     left: 0;

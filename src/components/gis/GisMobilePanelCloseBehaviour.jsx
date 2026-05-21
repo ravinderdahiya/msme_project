@@ -19,6 +19,7 @@ export default function GisMobilePanelCloseBehaviour() {
       aoi: false,
       tools: false,
       selectTools: false,
+      measurement: false,
     };
 
     function resetWhenPanelOpens(panelEl, key) {
@@ -36,12 +37,14 @@ export default function GisMobilePanelCloseBehaviour() {
     const aoi = document.getElementById("aoiPanel");
     const tools = document.getElementById("toolsPanel");
     const selectTools = document.getElementById("selectToolsPanel");
+    const measurement = document.getElementById("measurementPanel");
 
     const observers = [
       resetWhenPanelOpens(spatial, "spatial"),
       resetWhenPanelOpens(aoi, "aoi"),
       resetWhenPanelOpens(tools, "tools"),
       resetWhenPanelOpens(selectTools, "selectTools"),
+      resetWhenPanelOpens(measurement, "measurement"),
     ].filter(Boolean);
 
     function markSpatialInteraction(e) {
@@ -82,6 +85,14 @@ export default function GisMobilePanelCloseBehaviour() {
     function onSelectToolsChange() {
       touched.selectTools = true;
     }
+    function markMeasurementInteraction(e) {
+      if (!measurement?.contains(e.target)) return;
+      if (e.target.closest("#btnMeasurementClose")) return;
+      touched.measurement = true;
+    }
+    function onMeasurementChange() {
+      touched.measurement = true;
+    }
 
     spatial?.addEventListener("click", markSpatialInteraction, true);
     spatial?.addEventListener("change", onSpatialChange);
@@ -98,6 +109,10 @@ export default function GisMobilePanelCloseBehaviour() {
     selectTools?.addEventListener("click", markSelectToolsInteraction, true);
     selectTools?.addEventListener("change", onSelectToolsChange);
     selectTools?.addEventListener("input", onSelectToolsChange);
+
+    measurement?.addEventListener("click", markMeasurementInteraction, true);
+    measurement?.addEventListener("change", onMeasurementChange);
+    measurement?.addEventListener("input", onMeasurementChange);
 
     function makeCloseHandler(panelId, key) {
       return function handleClose() {
@@ -117,16 +132,19 @@ export default function GisMobilePanelCloseBehaviour() {
     const hAoi = makeCloseHandler("aoiPanel", "aoi");
     const hTools = makeCloseHandler("toolsPanel", "tools");
     const hSel = makeCloseHandler("selectToolsPanel", "selectTools");
+    const hMeasurement = makeCloseHandler("measurementPanel", "measurement");
 
     const btnSpatial = document.getElementById("btnSpatialClose");
     const btnNav = document.getElementById("btnNavClose");
     const btnTools = document.getElementById("btnToolsPanelClose");
     const btnSel = document.getElementById("btnSelectToolsClose");
+    const btnMeasurement = document.getElementById("btnMeasurementClose");
 
     btnSpatial?.addEventListener("click", hSpatial);
     btnNav?.addEventListener("click", hAoi);
     btnTools?.addEventListener("click", hTools);
     btnSel?.addEventListener("click", hSel);
+    btnMeasurement?.addEventListener("click", hMeasurement);
 
     return () => {
       observers.forEach((o) => o.disconnect());
@@ -142,6 +160,10 @@ export default function GisMobilePanelCloseBehaviour() {
       selectTools?.removeEventListener("click", markSelectToolsInteraction, true);
       selectTools?.removeEventListener("change", onSelectToolsChange);
       selectTools?.removeEventListener("input", onSelectToolsChange);
+      measurement?.removeEventListener("click", markMeasurementInteraction, true);
+      measurement?.removeEventListener("change", onMeasurementChange);
+      measurement?.removeEventListener("input", onMeasurementChange);
+      btnMeasurement?.removeEventListener("click", hMeasurement);
       btnSpatial?.removeEventListener("click", hSpatial);
       btnNav?.removeEventListener("click", hAoi);
       btnTools?.removeEventListener("click", hTools);

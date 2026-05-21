@@ -1,5 +1,6 @@
 import { Navigate, useLocation } from "react-router-dom";
 import { clearAuthSession, getCurrentUser, getToken } from "../utils/authStorage";
+import { isDepartmentUser } from "../utils/authRedirect";
 
 function isJwtExpired(token) {
   if (!token || typeof token !== "string") return true;
@@ -33,10 +34,20 @@ function ProtectedRoute({ children, requiredRoles = [] }) {
     return <Navigate to={loginTo} replace />;
   }
   if (requiredRoles.length > 0) {
-    const role = String(user?.role || "").toLowerCase();
-    const allowed = requiredRoles.map((item) => String(item).toLowerCase());
-    if (!allowed.includes(role)) {
-      return <Navigate to="/" replace />;
+    const needsAdminArea = requiredRoles.some((item) => {
+      const key = String(item).toLowerCase();
+      return key === "admin" || key === "superadmin";
+    });
+    if (needsAdminArea) {
+      if (!isDepartmentUser(user)) {
+        return <Navigate to="/" replace />;
+      }
+    } else {
+      const role = String(user?.role || "").toLowerCase();
+      const allowed = requiredRoles.map((item) => String(item).toLowerCase());
+      if (!allowed.includes(role)) {
+        return <Navigate to="/" replace />;
+      }
     }
   }
 
