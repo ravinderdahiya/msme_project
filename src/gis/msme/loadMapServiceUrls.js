@@ -1,5 +1,9 @@
 import { getFrontendRuntimeConfig } from "../../services/apiUrlService.js"
 import { MSME_MAP_SERVICE_KEYS, setHsacggmMapServiceUrls } from "./arcgisMapServiceUrls.js"
+import {
+  INVESTHRY_FEATURE_SERVICE_KEYS,
+  setInvesthryFeatureServiceUrls,
+} from "./investhryFeatureServiceUrls.js"
 
 const cache = {
   loaded: false,
@@ -8,7 +12,9 @@ const cache = {
 }
 
 function missingKeysFromMap(mapServices) {
-  return MSME_MAP_SERVICE_KEYS.filter((key) => !String(mapServices?.[key] || "").trim())
+  return [...MSME_MAP_SERVICE_KEYS, ...INVESTHRY_FEATURE_SERVICE_KEYS].filter(
+    (key) => !String(mapServices?.[key] || "").trim(),
+  )
 }
 
 export async function loadMapServiceUrlsFromBackend() {
@@ -22,7 +28,9 @@ export async function loadMapServiceUrlsFromBackend() {
   cache.loadingPromise = (async () => {
     try {
       const payload = await getFrontendRuntimeConfig()
-      const runtimeMap = setHsacggmMapServiceUrls(payload?.mapServices || {})
+      const runtimeMap = payload?.mapServices || {}
+      const hsacggmMapServices = setHsacggmMapServiceUrls(runtimeMap)
+      const investhryFeatureServices = setInvesthryFeatureServiceUrls(runtimeMap)
       const missingKeys = Array.isArray(payload?.missingKeys)
         ? payload.missingKeys
         : missingKeysFromMap(runtimeMap)
@@ -31,6 +39,8 @@ export async function loadMapServiceUrlsFromBackend() {
         ok: true,
         source: payload?.source || "database",
         mapServices: runtimeMap,
+        hsacggmMapServices,
+        investhryFeatureServices,
         missingKeys,
       }
       cache.loaded = true
@@ -38,11 +48,14 @@ export async function loadMapServiceUrlsFromBackend() {
       return result
     } catch (error) {
       setHsacggmMapServiceUrls({})
+      setInvesthryFeatureServiceUrls({})
       const result = {
         ok: false,
         source: "unavailable",
         mapServices: {},
-        missingKeys: [...MSME_MAP_SERVICE_KEYS],
+        hsacggmMapServices: {},
+        investhryFeatureServices: {},
+        missingKeys: [...MSME_MAP_SERVICE_KEYS, ...INVESTHRY_FEATURE_SERVICE_KEYS],
         error,
       }
       cache.loaded = true

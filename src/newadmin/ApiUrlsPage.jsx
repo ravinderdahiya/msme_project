@@ -12,6 +12,7 @@ export default function ApiUrlsPage() {
     const [saving, setSaving] = useState(false);
     const [error, setError] = useState("");
     const [editingId, setEditingId] = useState(null);
+    const [activeView, setActiveView] = useState("table");
     const [form, setForm] = useState({
         key: "",
         name: "",
@@ -86,6 +87,7 @@ export default function ApiUrlsPage() {
             setError("Read-only mode: only admin can edit API URLs.");
             return;
         }
+        setActiveView("add");
         setEditingId(row.id);
         setForm({
             key: row.key || "",
@@ -115,71 +117,97 @@ export default function ApiUrlsPage() {
     };
 
     return (
-        <div className="new-admin-grid one-one">
-            <Card
-                title={editingId ? "Update API URL" : "Add API URL"}
-                subtitle={
-                    isAdminUser
-                        ? "Backend proxy and runtime URLs are controlled from database."
-                        : "Read-only mode: API URLs are visible to users, editing allowed for admin only."
-                }
-            >
-                <form className="api-url-form-grid" onSubmit={handleSubmit}>
-                    <input disabled={!isAdminUser} value={form.key} onChange={(e) => setForm((prev) => ({ ...prev, key: e.target.value }))} placeholder="Key (example: MSME_ADMIN_BOUNDARIES)" />
-                    <input disabled={!isAdminUser} value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Display name" />
-                    <input disabled={!isAdminUser} value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))} placeholder="Category (map/general)" />
-                    <input disabled={!isAdminUser} value={form.url} onChange={(e) => setForm((prev) => ({ ...prev, url: e.target.value }))} placeholder="Full URL" />
-                    <input disabled={!isAdminUser} value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="Description (optional)" />
-                    <label className="api-url-active-check">
-                        <input
-                            disabled={!isAdminUser}
-                            type="checkbox"
-                            checked={form.isActive}
-                            onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
-                        />
-                        Active
-                    </label>
-                    <div className="api-url-form-actions">
-                        <button type="submit" className="new-admin-primary-btn" disabled={saving || !isAdminUser}>
-                            {saving ? "Saving..." : editingId ? "Update" : "Create"}
-                        </button>
-                        {editingId ? (
-                            <button type="button" className="new-admin-filter-btn" disabled={!isAdminUser} onClick={resetForm}>
-                                Cancel
-                            </button>
-                        ) : null}
-                    </div>
-                </form>
-                {error ? <p className="api-url-error">{error}</p> : null}
+        <>
+            <Card title="API URL Views" subtitle="Sub-tab se Add View aur Table View alag-alag open karein.">
+                <div className="api-url-subtabs">
+                    <button
+                        type="button"
+                        className={`api-url-subtab-btn ${activeView === "add" ? "is-active" : ""}`}
+                        onClick={() => setActiveView("add")}
+                    >
+                        Add View
+                    </button>
+                    <button
+                        type="button"
+                        className={`api-url-subtab-btn ${activeView === "table" ? "is-active" : ""}`}
+                        onClick={() => setActiveView("table")}
+                    >
+                        Table View
+                    </button>
+                </div>
             </Card>
 
-            <Card title="Configured API URLs" subtitle="These keys are used by frontend and secure map proxy.">
-                {loading ? (
-                    <p>Loading API URLs...</p>
-                ) : (
-                    <DataTable
-                        columns={["Key", "Name", "Category", "URL", "Status", "Actions"]}
-                        rows={rows}
-                        renderRow={(item) => (
-                            <tr key={item.id}>
-                                <td>{item.key}</td>
-                                <td>{item.name}</td>
-                                <td>{item.category}</td>
-                                <td className="mono-cell">{item.url}</td>
-                                <td><StatusPill value={item.isActive ? "Active" : "Inactive"} /></td>
-                                <td className="actions-cell">
-                                    <button type="button" disabled={!isAdminUser} onClick={() => startEdit(item)}>
-                                        <Settings2 size={15} />
+            <div className={`new-admin-grid one-one ${activeView === "add" || activeView === "table" ? "api-url-grid-single" : ""}`}>
+                {activeView === "add" ? (
+                    <Card
+                        title={editingId ? "Update API URL" : "Add API URL"}
+                        subtitle={
+                            isAdminUser
+                                ? "Backend proxy and runtime URLs are controlled from database."
+                                : "Read-only mode: API URLs are visible to users, editing allowed for admin only."
+                        }
+                    >
+                        <form className="api-url-form-grid" onSubmit={handleSubmit}>
+                            <input disabled={!isAdminUser} value={form.key} onChange={(e) => setForm((prev) => ({ ...prev, key: e.target.value }))} placeholder="Key (example: MSME_ADMIN_BOUNDARIES)" />
+                            <input disabled={!isAdminUser} value={form.name} onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))} placeholder="Display name" />
+                            <input disabled={!isAdminUser} value={form.category} onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))} placeholder="Category (map/general)" />
+                            <input disabled={!isAdminUser} value={form.url} onChange={(e) => setForm((prev) => ({ ...prev, url: e.target.value }))} placeholder="Full URL" />
+                            <input disabled={!isAdminUser} value={form.description} onChange={(e) => setForm((prev) => ({ ...prev, description: e.target.value }))} placeholder="Description (optional)" />
+                            <label className="api-url-active-check">
+                                <input
+                                    disabled={!isAdminUser}
+                                    type="checkbox"
+                                    checked={form.isActive}
+                                    onChange={(e) => setForm((prev) => ({ ...prev, isActive: e.target.checked }))}
+                                />
+                                Active
+                            </label>
+                            <div className="api-url-form-actions">
+                                <button type="submit" className="new-admin-primary-btn" disabled={saving || !isAdminUser}>
+                                    {saving ? "Saving..." : editingId ? "Update" : "Create"}
+                                </button>
+                                {editingId ? (
+                                    <button type="button" className="new-admin-filter-btn" disabled={!isAdminUser} onClick={resetForm}>
+                                        Cancel
                                     </button>
-                                    <button type="button" disabled={!isAdminUser} onClick={() => handleDelete(item.id)}>
-                                        <Trash2 size={15} />
-                                    </button>
-                                </td>
-                            </tr>
+                                ) : null}
+                            </div>
+                        </form>
+                        {error ? <p className="api-url-error">{error}</p> : null}
+                    </Card>
+                ) : null}
+
+                {activeView === "table" ? (
+                    <Card title="Configured API URLs" subtitle="These keys are used by frontend and secure map proxy.">
+                        {loading ? (
+                            <p>Loading API URLs...</p>
+                        ) : (
+                            <DataTable
+                                columns={["Key", "Name", "Category", "URL", "Status", "Actions"]}
+                                rows={rows}
+                                renderRow={(item) => (
+                                    <tr key={item.id}>
+                                        <td>{item.key}</td>
+                                        <td>{item.name}</td>
+                                        <td>{item.category}</td>
+                                        <td className="mono-cell">{item.url}</td>
+                                        <td><StatusPill value={item.isActive ? "Active" : "Inactive"} /></td>
+                                        <td className="actions-cell">
+                                            <button type="button" disabled={!isAdminUser} onClick={() => startEdit(item)}>
+                                                <Settings2 size={15} />
+                                            </button>
+                                            <button type="button" disabled={!isAdminUser} onClick={() => handleDelete(item.id)}>
+                                                <Trash2 size={15} />
+                                            </button>
+                                        </td>
+                                    </tr>
+                                )}
+                            />
                         )}
-                    />
-                )}
-            </Card>
-        </div>
+                    </Card>
+                ) : null}
+            </div>
+            {activeView === "table" && error ? <p className="api-url-error">{error}</p> : null}
+        </>
     );
 }

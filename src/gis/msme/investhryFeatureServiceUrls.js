@@ -1,23 +1,33 @@
-/** Invest Haryana hosted FeatureServer roots (Vidhan Sabha / MSME policy layers). */
-export const INVESTHRY_FEATURE_SERVICE_URLS = {
-  VIDHANSABHA_CORE_AREA_VIEW:
-    'https://investhry.harsac.in/server/rest/services/Hosted/Vidhansabha_CoreArea_view/FeatureServer',
-  VIDHANSABHA_CORE_AREA:
-    'https://investhry.harsac.in/server/rest/services/Hosted/Vidhansabha_CoreArea/FeatureServer',
-  DISTRICT_WISE_AREA:
-    'https://investhry.harsac.in/server/rest/services/Hosted/District_WiseArea/FeatureServer',
-  ASSEMBLY_DEMOGRAPHY:
-    'https://investhry.harsac.in/server/rest/services/Hosted/AssemblyDemography/FeatureServer',
-  NO_MSME_AREA:
-    'https://investhry.harsac.in/server/rest/services/Hosted/NoMsmeArea/FeatureServer',
-  ASSEMBLY_BND_WITH_BLOCK_HEAP:
-    'https://investhry.harsac.in/server/rest/services/Hosted/Assembly_bnd_with_block_heap/FeatureServer',
-  BLOCK_BOUNDARY:
-    'https://investhry.harsac.in/server/rest/services/Hosted/Block_Boundary/FeatureServer',
-  ASSEMBLY_BOUNDARY:
-    'https://investhry.harsac.in/server/rest/services/Hosted/Assembly_Boundary/FeatureServer',
-  HARYANA_ASSEMBLY_BND:
-    'https://investhry.harsac.in/server/rest/services/Hosted/Haryana_Assembly_Bnd/FeatureServer',
-  VIDHANSABHA_MAP:
-    'https://investhry.harsac.in/server/rest/services/Vidhansabha/Vidhansabha_map/FeatureServer',
+/** Runtime Invest Haryana FeatureServer roots (loaded from backend database config). */
+export const INVESTHRY_FEATURE_SERVICE_KEYS = [
+  "VIDHANSABHA_CORE_AREA_VIEW",
+  "VIDHANSABHA_CORE_AREA",
+  "DISTRICT_WISE_AREA",
+  "ASSEMBLY_DEMOGRAPHY",
+  "NO_MSME_AREA",
+  "ASSEMBLY_BND_WITH_BLOCK_HEAP",
+  "BLOCK_BOUNDARY",
+  "ASSEMBLY_BOUNDARY",
+  "HARYANA_ASSEMBLY_BND",
+  "VIDHANSABHA_MAP",
+]
+
+export const INVESTHRY_FEATURE_SERVICE_URLS = {}
+
+const normalizeUrl = (value) => String(value || "").trim().replace(/\/+$/, "")
+
+export function setInvesthryFeatureServiceUrls(mapServices) {
+  const source = mapServices && typeof mapServices === "object" ? mapServices : {}
+  Object.keys(INVESTHRY_FEATURE_SERVICE_URLS).forEach((key) => {
+    delete INVESTHRY_FEATURE_SERVICE_URLS[key]
+  })
+
+  INVESTHRY_FEATURE_SERVICE_KEYS.forEach((key) => {
+    const url = normalizeUrl(source[key])
+    if (url) {
+      INVESTHRY_FEATURE_SERVICE_URLS[key] = url
+    }
+  })
+
+  return { ...INVESTHRY_FEATURE_SERVICE_URLS }
 }
