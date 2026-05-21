@@ -1,10 +1,18 @@
 ﻿// import ResultsFlyout from './ResultsFlyout.jsx'
-import { Menu } from "lucide-react";
+import { useState } from "react";
 import LandLocationReport from './LandLocationReport.jsx'
 import CommunitySummaryPanel from './CommunitySummaryPanel.jsx'
+import MeasurementDistancePanel from './MeasurementDistancePanel.jsx'
 import GisLegacyPanelsHidden from './gis/GisLegacyPanelsHidden.jsx'
 
 export default function Sidebar({ t, onOpenAssemblyMap }) {
+  const [measurementOpen, setMeasurementOpen] = useState(false)
+
+  function toggleMeasurementPanel() {
+    setMeasurementOpen(function (prev) {
+      return !prev
+    })
+  }
   function openClosestPanelAndStart() {
     var spatialPanel = document.getElementById("spatialPanel");
     var openSpatialBtn = document.getElementById("btnOpenSpatial");
@@ -25,17 +33,6 @@ export default function Sidebar({ t, onOpenAssemblyMap }) {
   function openAssemblyMapInline() {
     if (typeof onOpenAssemblyMap === "function") {
       onOpenAssemblyMap();
-    }
-  }
-
-  function openMeasureTool() {
-    var selectToolsPanel = document.getElementById("selectToolsPanel");
-    var selectToolBtn = document.getElementById("btnSelectTool");
-    if (selectToolsPanel && selectToolsPanel.classList.contains("collapsed") && selectToolBtn) {
-      selectToolBtn.click();
-    }
-    if (window.msmeGisStartSketch && typeof window.msmeGisStartSketch === "function") {
-      window.msmeGisStartSketch("polyline");
     }
   }
 
@@ -118,6 +115,39 @@ export default function Sidebar({ t, onOpenAssemblyMap }) {
                   <small>{t('railTitleClosestPoint')}</small>
                 </span>
               </button> */}
+
+              <button
+                type="button"
+                className="nm-sidebar-item"
+                id="btnMeasurementTool"
+                title={t('railTitleMeasurementTool')}
+                aria-expanded={measurementOpen ? 'true' : 'false'}
+                aria-controls="measurementDistancePanel"
+                onClick={toggleMeasurementPanel}
+              >
+                <span className="nm-sidebar-icon" aria-hidden>
+                  <svg viewBox="0 0 24 24" width={18} height={18} focusable="false">
+                    <path
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      d="M5 7h14M7 9v2M11 9v4M15 9v2M19 9v4"
+                    />
+                    <path
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.8"
+                      strokeLinecap="round"
+                      d="M5 7l2-2M19 7l-2-2"
+                    />
+                  </svg>
+                </span>
+                <span>
+                  <strong>{t('railMeasurementTool')}</strong>
+                  <small>{t('railTitleMeasurementTool')}</small>
+                </span>
+              </button>
 
               <button
                 type="button"
@@ -230,6 +260,11 @@ export default function Sidebar({ t, onOpenAssemblyMap }) {
 
       {/* <ResultsFlyout /> */}
       <CommunitySummaryPanel />
+      <MeasurementDistancePanel
+        open={measurementOpen}
+        onClose={() => setMeasurementOpen(false)}
+        t={t}
+      />
       <LandLocationReport />
     </>
   )

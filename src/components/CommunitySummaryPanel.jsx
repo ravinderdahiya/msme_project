@@ -1,4 +1,19 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  coercePlaceDetails,
+  extractPointForPlaceLookup,
+  mergePlaceDetails,
+  queryPlaceDetailsByPointWgs84,
+  resolvePlaceLookupPointFromGeometry,
+} from '../gis/msme/placeDetailsHelpers.js'
+import {
+  autoSelectVidhanSabhaInUi,
+  coerceAssemblyDetails,
+  extractAssemblyGeometryCandidates,
+  mergeAssemblyDetails,
+  queryAssemblyDetailsByGeometry,
+  queryAssemblyDetailsByPointWgs84,
+} from '../gis/msme/assemblyDetailsHelpers.js'
 import '../css/CommunitySummaryPanel.css'
 
 function parseIsoMs(iso) {
@@ -22,10 +37,26 @@ function formatMeters(value) {
   return `${Math.round(n)} m`
 }
 
+function formatMetricValue(value, suffix) {
+  if (value == null || value === '') return '-'
+  var num = Number(value)
+  if (Number.isFinite(num)) {
+    if (Number.isInteger(num)) return `${num}${suffix || ''}`
+    return `${num.toFixed(1)}${suffix || ''}`
+  }
+  return `${String(value)}${suffix || ''}`
+}
+
+function hasMetricValue(value) {
+  return !(value == null || value === '')
+}
+
 function pickLatestCommunitySummary(analysisSnap, mapSnap) {
   var a = analysisSnap && analysisSnap.communitySummary ? analysisSnap.communitySummary : null
   var m = mapSnap && mapSnap.communitySummary ? mapSnap.communitySummary : null
+  var analysisTool = String(analysisSnap && analysisSnap.tool ? analysisSnap.tool : '').toLowerCase()
 
+  if (analysisTool === 'closest' && a) return a
   if (!a && !m) return null
   if (a && !m) return a
   if (m && !a) return m
@@ -35,6 +66,8 @@ function pickLatestCommunitySummary(analysisSnap, mapSnap) {
 
 function pickLatestReportSnapshot(analysisSnap, mapSnap) {
   if (!analysisSnap && !mapSnap) return null
+  var analysisTool = String(analysisSnap && analysisSnap.tool ? analysisSnap.tool : '').toLowerCase()
+  if (analysisTool === 'closest' && analysisSnap) return analysisSnap
   if (analysisSnap && !mapSnap) return analysisSnap
   if (mapSnap && !analysisSnap) return mapSnap
 
@@ -44,10 +77,36 @@ function pickLatestReportSnapshot(analysisSnap, mapSnap) {
     : mapSnap
 }
 
+function isClosestAnalysisReport(reportSnap) {
+  return !!(
+    reportSnap &&
+    reportSnap.reportKind === 'analysis' &&
+    String(reportSnap.tool || '').toLowerCase() === 'closest'
+  )
+}
+
+function getClosestRowCount(row) {
+  if (!row) return 0
+  if (row.nearestItem) return 1
+  return getCategoryItems(row).length > 0 ? 1 : 0
+}
+
+function isMapClickPlaceOnlyReport(reportSnap) {
+  return !!(
+    reportSnap &&
+    reportSnap.reportKind === 'map-selection' &&
+    reportSnap.placeOnly === true &&
+    !reportSnap.accumulate
+  )
+}
+
 function isCommunitySummaryCandidate(reportSnap) {
   if (!reportSnap) return false
   if (reportSnap.communitySummary) return true
-  if (reportSnap.reportKind === 'map-selection') return true
+  if (reportSnap.reportKind === 'map-selection') {
+    if (reportSnap.placeOnly) return false
+    return !!reportSnap.accumulate
+  }
   var countNum = Number(reportSnap.count)
   var hasCount = Number.isFinite(countNum) && countNum >= 0
   var nearestDistanceNum = Number(reportSnap.nearestDistanceM)
@@ -76,11 +135,25 @@ function isCommunitySummaryCandidate(reportSnap) {
   return false
 }
 
+function reportHasPlaceLookupContext(reportSnap) {
+  if (!reportSnap) return false
+  if (extractPointForPlaceLookup(null, reportSnap)) return true
+  return !!(
+    reportSnap.summaryGeometryJson ||
+    reportSnap.queryGeometryJson ||
+    reportSnap.analysisGeometryJson ||
+    reportSnap.geometryJson
+  )
+}
+
 function shouldAutoOpenCommunityPanel(reportSnap) {
   if (!reportSnap) return false
+  if (resolvePlaceDetails(null, reportSnap)) return true
+  if (resolveAssemblyDetails(null, reportSnap)) return true
+  if (reportHasPlaceLookupContext(reportSnap)) return true
   var isAnalysis = reportSnap.reportKind === 'analysis'
   var tool = String(reportSnap.tool || '').toLowerCase()
-  if (isAnalysis && (tool === 'closest' || tool === 'proximity')) {
+  if (isAnalysis && (tool === 'closest' || tool === 'proximity' || tool === 'buffer')) {
     var countNum = Number(reportSnap.count)
     var hasCount = Number.isFinite(countNum) && countNum >= 0
     var nearestDistanceNum = Number(reportSnap.nearestDistanceM)
@@ -366,6 +439,50 @@ function getLocationLabel(summary, report) {
   return 'Selected area'
 }
 
+function resolvePlaceDetails(summary, report) {
+  var candidates = []
+  if (summary && summary.placeDetails) candidates.push(summary.placeDetails)
+  if (summary && summary.domContext && summary.domContext.placeDetails) {
+    candidates.push(summary.domContext.placeDetails)
+  }
+  if (report && report.placeDetails) candidates.push(report.placeDetails)
+  if (report && report.domContext && report.domContext.placeDetails) {
+    candidates.push(report.domContext.placeDetails)
+  }
+  if (report && Array.isArray(report.clicks) && report.clicks.length > 0) {
+    var lastClick = report.clicks[report.clicks.length - 1]
+    if (lastClick && lastClick.placeDetails) candidates.push(lastClick.placeDetails)
+  }
+
+  for (var i = 0; i < candidates.length; i += 1) {
+    var details = coercePlaceDetails(candidates[i])
+    if (details) return details
+  }
+  return null
+}
+
+function resolveAssemblyDetails(summary, report) {
+  var candidates = []
+  if (summary && summary.assemblyDetails) candidates.push(summary.assemblyDetails)
+  if (summary && summary.domContext && summary.domContext.assemblyDetails) {
+    candidates.push(summary.domContext.assemblyDetails)
+  }
+  if (report && report.assemblyDetails) candidates.push(report.assemblyDetails)
+  if (report && report.domContext && report.domContext.assemblyDetails) {
+    candidates.push(report.domContext.assemblyDetails)
+  }
+  if (report && Array.isArray(report.clicks) && report.clicks.length > 0) {
+    var lastClick = report.clicks[report.clicks.length - 1]
+    if (lastClick && lastClick.assemblyDetails) candidates.push(lastClick.assemblyDetails)
+  }
+
+  for (var i = 0; i < candidates.length; i += 1) {
+    var details = coerceAssemblyDetails(candidates[i])
+    if (details) return details
+  }
+  return null
+}
+
 function getCategoryItems(row) {
   if (!row) return []
 
@@ -537,6 +654,119 @@ function csvEscape(value) {
   return text
 }
 
+const PLACE_DETAIL_FIELDS = [
+  { key: 'district', label: 'District', icon: 'map' },
+  { key: 'tehsil', label: 'Tehsil', icon: 'building' },
+  { key: 'village', label: 'Village', icon: 'home' },
+  { key: 'block', label: 'Block', icon: 'grid' },
+  { key: 'ward', label: 'Ward', icon: 'people' },
+  { key: 'pincode', label: 'Pincode', icon: 'pin' },
+]
+
+const ASSEMBLY_METRIC_ROWS = [
+  { key: 'proposedPolicy', label: 'Proposed Policy', suffix: '', tone: '#7c3aed', bg: '#ede9fe' },
+  { key: 'coreAreaPct', label: 'Core Area %', suffix: '%', tone: '#2563eb', bg: '#dbeafe' },
+  { key: 'intermediateAreaPct', label: 'Intermediate Area %', suffix: '%', tone: '#0891b2', bg: '#cffafe' },
+  { key: 'subPrimeAreaPct', label: 'Sub Prime Area %', suffix: '%', tone: '#ea580c', bg: '#ffedd5' },
+  { key: 'mcPct', label: 'MC %', suffix: '%', tone: '#0d9488', bg: '#ccfbf1' },
+  { key: 'existingIndustry', label: 'Existing Industry', suffix: '', tone: '#64748b', bg: '#f1f5f9' },
+]
+
+function PlaceDetailFieldIcon({ type }) {
+  var stroke = {
+    stroke: 'currentColor',
+    strokeWidth: 1.8,
+    strokeLinecap: 'round',
+    strokeLinejoin: 'round',
+    fill: 'none',
+  }
+  switch (type) {
+    case 'building':
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M3 21h18M5 21V7l7-4 7 4v14M9 21v-4h6v4" {...stroke} />
+        </svg>
+      )
+    case 'home':
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M3 10.5L12 3l9 7.5V21H3zM9 21v-6h6v6" {...stroke} />
+        </svg>
+      )
+    case 'grid':
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <rect x="3" y="3" width="7" height="7" rx="1" {...stroke} />
+          <rect x="14" y="3" width="7" height="7" rx="1" {...stroke} />
+          <rect x="3" y="14" width="7" height="7" rx="1" {...stroke} />
+          <rect x="14" y="14" width="7" height="7" rx="1" {...stroke} />
+        </svg>
+      )
+    case 'people':
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <circle cx="9" cy="8" r="3" {...stroke} />
+          <circle cx="17" cy="9" r="2.5" {...stroke} />
+          <path d="M3 21c0-3.3 2.7-6 6-6M14 21c0-2.5 1.5-4.5 3.5-5" {...stroke} />
+        </svg>
+      )
+    case 'pin':
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M12 21s-6-5.2-6-10a6 6 0 1112 0c0 4.8-6 10-6 10z" {...stroke} />
+          <circle cx="12" cy="11" r="2" {...stroke} />
+        </svg>
+      )
+    default:
+      return (
+        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+          <path d="M12 21s-6-5.2-6-10a6 6 0 1112 0c0 4.8-6 10-6 10z" {...stroke} />
+          <circle cx="12" cy="11" r="2" {...stroke} />
+        </svg>
+      )
+  }
+}
+
+function SectionTitleIcon({ kind }) {
+  if (kind === 'assembly') {
+    return (
+      <span className="community-ba-section-icon community-ba-section-icon--assembly" aria-hidden="true">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+          <path
+            d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-4h6v4"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinejoin="round"
+          />
+        </svg>
+      </span>
+    )
+  }
+  return (
+    <span className="community-ba-section-icon community-ba-section-icon--place" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none">
+        <path
+          d="M12 21s-6-5.2-6-10a6 6 0 1112 0c0 4.8-6 10-6 10z"
+          stroke="currentColor"
+          strokeWidth="1.8"
+        />
+        <circle cx="12" cy="11" r="2.5" fill="currentColor" />
+      </svg>
+    </span>
+  )
+}
+
+function AssemblyMetricIcon({ tone }) {
+  return (
+    <span className="community-ba-assembly-metric__icon" style={{ color: tone }} aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none">
+        <rect x="4" y="4" width="16" height="16" rx="3" stroke="currentColor" strokeWidth="1.6" />
+        <path d="M8 12h8M12 8v8" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
+      </svg>
+    </span>
+  )
+}
+
 export default function CommunitySummaryPanel() {
   const [analysisSnap, setAnalysisSnap] = useState(() =>
     typeof window !== 'undefined' &&
@@ -556,17 +786,38 @@ export default function CommunitySummaryPanel() {
   const [lastSummary, setLastSummary] = useState(null)
   const [openCategoryKey, setOpenCategoryKey] = useState(null)
   const [selectedCategoryKeys, setSelectedCategoryKeys] = useState([])
+  const [runtimePlaceDetails, setRuntimePlaceDetails] = useState(null)
+  const [runtimeAssemblyDetails, setRuntimeAssemblyDetails] = useState(null)
+  const [resolvedLookupPoint, setResolvedLookupPoint] = useState(null)
+  const placeLookupCacheRef = useRef({})
+  const assemblyLookupCacheRef = useRef({})
+  const autoAssemblySelectionRef = useRef('')
 
   useEffect(() => {
     function refreshSnapshots() {
       if (typeof window === 'undefined') return
 
-      if (typeof window.msmeGisGetAnalysisReportSnapshot === 'function') {
-        setAnalysisSnap(window.msmeGisGetAnalysisReportSnapshot())
-      }
+      var nextAnalysis =
+        typeof window.msmeGisGetAnalysisReportSnapshot === 'function'
+          ? window.msmeGisGetAnalysisReportSnapshot()
+          : null
+      var nextMap =
+        typeof window.msmeGisGetMapSelectionReportSnapshot === 'function'
+          ? window.msmeGisGetMapSelectionReportSnapshot()
+          : null
 
-      if (typeof window.msmeGisGetMapSelectionReportSnapshot === 'function') {
-        setMapSnap(window.msmeGisGetMapSelectionReportSnapshot())
+      setAnalysisSnap(nextAnalysis)
+      setMapSnap(nextMap)
+
+      var latest =
+        nextAnalysis && nextMap
+          ? parseIsoMs(nextAnalysis.generatedAt) >= parseIsoMs(nextMap.generatedAt)
+            ? nextAnalysis
+            : nextMap
+          : nextAnalysis || nextMap
+
+      if (shouldAutoOpenCommunityPanel(latest)) {
+        setOpen(true)
       }
     }
 
@@ -600,8 +851,48 @@ export default function CommunitySummaryPanel() {
     [analysisSnap, mapSnap],
   )
 
+  const isClosestMode = isClosestAnalysisReport(latestReport)
+
   const waitingForCounts = !summary && isCommunitySummaryCandidate(latestReport)
   const displaySummary = summary || lastSummary
+
+  const placeDetailsFromSnapshot = useMemo(
+    () => resolvePlaceDetails(displaySummary, latestReport),
+    [displaySummary, latestReport],
+  )
+  const directPlaceLookupPoint = useMemo(
+    () => extractPointForPlaceLookup(displaySummary, latestReport),
+    [displaySummary, latestReport],
+  )
+  const placeDetails = useMemo(
+    () => mergePlaceDetails(placeDetailsFromSnapshot, runtimePlaceDetails),
+    [placeDetailsFromSnapshot, runtimePlaceDetails],
+  )
+  const assemblyDetailsFromSnapshot = useMemo(
+    () => resolveAssemblyDetails(displaySummary, latestReport),
+    [displaySummary, latestReport],
+  )
+  const assemblyDetails = useMemo(
+    () => mergeAssemblyDetails(assemblyDetailsFromSnapshot, runtimeAssemblyDetails),
+    [assemblyDetailsFromSnapshot, runtimeAssemblyDetails],
+  )
+  const assemblyDistrictLabel = useMemo(
+    () =>
+      (assemblyDetails && assemblyDetails.district) || (placeDetails && placeDetails.district) || '-',
+    [assemblyDetails, placeDetails],
+  )
+  const hasAssemblyMetricDetails = useMemo(() => {
+    if (!assemblyDetails) return false
+    return (
+      hasMetricValue(assemblyDetails.proposedPolicy) ||
+      hasMetricValue(assemblyDetails.intermediateAreaPct) ||
+      hasMetricValue(assemblyDetails.coreAreaPct) ||
+      hasMetricValue(assemblyDetails.subPrimeAreaPct) ||
+      hasMetricValue(assemblyDetails.mcPct) ||
+      hasMetricValue(assemblyDetails.existingIndustry)
+    )
+  }, [assemblyDetails])
+  const hasAssemblyName = !!(assemblyDetails && assemblyDetails.vidhanSabha)
 
   const isStaleUpdating =
     waitingForCounts &&
@@ -615,7 +906,21 @@ export default function CommunitySummaryPanel() {
       if (shouldAutoOpenCommunityPanel(latestReport)) {
         setOpen(true)
       }
-      setSelectedCategoryKeys([])
+      if (isClosestAnalysisReport(latestReport)) {
+        var seenClosest = {}
+        var closestKeys = []
+        var closestCats = Array.isArray(summary.categories) ? summary.categories : []
+        closestCats.forEach((row) => {
+          var key = String(row && row.key ? row.key : '').toLowerCase()
+          if (!key || seenClosest[key]) return
+          if (!getClosestRowCount(row)) return
+          seenClosest[key] = true
+          closestKeys.push(key)
+        })
+        setSelectedCategoryKeys(closestKeys)
+      } else {
+        setSelectedCategoryKeys([])
+      }
     }
   }, [summary, latestReport])
 
@@ -626,11 +931,191 @@ export default function CommunitySummaryPanel() {
   }, [latestReport])
 
   useEffect(() => {
+    var cancelled = false
+    if (directPlaceLookupPoint) {
+      setResolvedLookupPoint(directPlaceLookupPoint)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    resolvePlaceLookupPointFromGeometry(displaySummary, latestReport).then((p) => {
+      if (cancelled) return
+      setResolvedLookupPoint(p || null)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [displaySummary, latestReport, directPlaceLookupPoint])
+
+  useEffect(() => {
+    var cancelled = false
+
+    if (placeDetailsFromSnapshot) {
+      setRuntimePlaceDetails(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    if (!resolvedLookupPoint) {
+      setRuntimePlaceDetails(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    var cacheKey = `${resolvedLookupPoint.lat.toFixed(6)},${resolvedLookupPoint.lon.toFixed(6)}`
+    if (placeLookupCacheRef.current[cacheKey]) {
+      setRuntimePlaceDetails(placeLookupCacheRef.current[cacheKey])
+      return () => {
+        cancelled = true
+      }
+    }
+
+    queryPlaceDetailsByPointWgs84(resolvedLookupPoint).then((details) => {
+      if (cancelled) return
+      if (!details) {
+        setRuntimePlaceDetails(null)
+        return
+      }
+      placeLookupCacheRef.current[cacheKey] = details
+      setRuntimePlaceDetails(details)
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [placeDetailsFromSnapshot, resolvedLookupPoint])
+
+  useEffect(() => {
+    var cancelled = false
+
+    if (assemblyDetailsFromSnapshot) {
+      setRuntimeAssemblyDetails(null)
+      return () => {
+        cancelled = true
+      }
+    }
+
+    var geometryCandidates = extractAssemblyGeometryCandidates(displaySummary, latestReport)
+
+    function tryGeometryFallback(onResolved) {
+      if (!Array.isArray(geometryCandidates) || geometryCandidates.length === 0) {
+        onResolved(null)
+        return
+      }
+      var idx = 0
+      function runNext() {
+        if (cancelled) return
+        if (idx >= geometryCandidates.length) {
+          onResolved(null)
+          return
+        }
+        var rawGeometry = geometryCandidates[idx]
+        idx += 1
+        queryAssemblyDetailsByGeometry(rawGeometry).then((details) => {
+          if (cancelled) return
+          if (details) {
+            onResolved(details)
+            return
+          }
+          runNext()
+        })
+      }
+      runNext()
+    }
+
+    if (!resolvedLookupPoint) {
+      tryGeometryFallback((details) => {
+        if (cancelled) return
+        setRuntimeAssemblyDetails(details || null)
+      })
+      return () => {
+        cancelled = true
+      }
+    }
+
+    var cacheKey = `${resolvedLookupPoint.lat.toFixed(6)},${resolvedLookupPoint.lon.toFixed(6)}`
+    if (assemblyLookupCacheRef.current[cacheKey]) {
+      setRuntimeAssemblyDetails(assemblyLookupCacheRef.current[cacheKey])
+      return () => {
+        cancelled = true
+      }
+    }
+
+    queryAssemblyDetailsByPointWgs84(resolvedLookupPoint).then((details) => {
+      if (cancelled) return
+      if (details) {
+        assemblyLookupCacheRef.current[cacheKey] = details
+        setRuntimeAssemblyDetails(details)
+        return
+      }
+      tryGeometryFallback((fallbackDetails) => {
+        if (cancelled) return
+        if (fallbackDetails) {
+          assemblyLookupCacheRef.current[cacheKey] = fallbackDetails
+          setRuntimeAssemblyDetails(fallbackDetails)
+          return
+        }
+        setRuntimeAssemblyDetails(null)
+      })
+    })
+
+    return () => {
+      cancelled = true
+    }
+  }, [assemblyDetailsFromSnapshot, resolvedLookupPoint, displaySummary, latestReport])
+
+  useEffect(() => {
     if (typeof window === 'undefined') return
     window.msmeGisSelectedCommunityCategoryKeys = selectedCategoryKeys.slice()
   }, [selectedCategoryKeys])
 
-  if (!displaySummary && !waitingForCounts) return null
+  const hasPlaceDetails = !!placeDetails
+  const hasAssemblyDetails = !!assemblyDetails
+  const isMapClickPlaceOnly = useMemo(
+    () => isMapClickPlaceOnlyReport(latestReport),
+    [latestReport],
+  )
+  const placeCardShouldRender = useMemo(() => {
+    if (hasPlaceDetails) return true
+    if (!latestReport) return false
+    if (latestReport.reportKind === 'map-selection') return true
+    if (resolvedLookupPoint) return true
+    if (reportHasPlaceLookupContext(latestReport)) return true
+    if (latestReport.reportKind === 'analysis') return true
+    return false
+  }, [hasPlaceDetails, latestReport, resolvedLookupPoint])
+  const assemblyCardShouldRender = useMemo(() => {
+    if (hasAssemblyDetails) return true
+    if (!latestReport) return false
+    if (latestReport.reportKind === 'map-selection') return true
+    if (resolvedLookupPoint) return true
+    if (reportHasPlaceLookupContext(latestReport)) return true
+    if (latestReport.reportKind === 'analysis') return true
+    return false
+  }, [hasAssemblyDetails, latestReport, resolvedLookupPoint])
+
+  useEffect(() => {
+    if (!assemblyDetails) return
+    var key = `${assemblyDetails.vidhanSabhaCode || ''}|${assemblyDetails.vidhanSabha || ''}|${assemblyDetails.district || ''}`
+    if (!key || key === '||') return
+    if (autoAssemblySelectionRef.current === key) return
+    autoAssemblySelectionRef.current = key
+    autoSelectVidhanSabhaInUi(assemblyDetails)
+  }, [assemblyDetails])
+
+  const shouldShowPanelShell =
+    !!displaySummary ||
+    waitingForCounts ||
+    hasPlaceDetails ||
+    hasAssemblyDetails ||
+    placeCardShouldRender ||
+    assemblyCardShouldRender
+
+  if (!shouldShowPanelShell) return null
   if (!open) {
     return (
       <button
@@ -657,12 +1142,17 @@ export default function CommunitySummaryPanel() {
     ? displaySummary.categories
     : LOADING_ROWS
 
-  const rows = displaySummary ? allRows.filter((row) => hasCategoryData(row)) : allRows
+  // Show every category from a completed summary (including 0). While loading, show placeholders.
+  const rows = displaySummary ? allRows : allRows
 
   const hasUnavailable = allRows.some((r) => r && r.available === false)
 
   const totalCountNum = rows.reduce((sum, row) => {
-    var value = row && Number.isFinite(Number(row.count)) ? Number(row.count) : 0
+    var value = isClosestMode
+      ? getClosestRowCount(row)
+      : row && Number.isFinite(Number(row.count))
+        ? Number(row.count)
+        : 0
     return sum + value
   }, 0)
 
@@ -679,6 +1169,7 @@ export default function CommunitySummaryPanel() {
       : latestReport && latestReport.radiusM
 
   const locationLabel = getLocationLabel(displaySummary, latestReport)
+
   const selectableCategoryKeys = rows
     .map((row) => String(row && row.key ? row.key : '').toLowerCase())
     .filter((key) => key)
@@ -806,30 +1297,62 @@ export default function CommunitySummaryPanel() {
       var focusItems = buildFocusItemsForRow(row, keyLower)
       focusItems.forEach((focusItem) => {
         var coords = getItemCoordinates(focusItem.item)
-        if (!coords) return
+        var lat = Number(focusItem.lat)
+        var lng = Number(focusItem.lng)
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          if (!coords) return
+          lat = coords.lat
+          lng = coords.lng
+        }
         var name = focusItem.name
-        var dedupeKey = `${keyLower}|${name}|${coords.lat.toFixed(6)},${coords.lng.toFixed(6)}`
+        var dedupeKey = `${keyLower}|${name}|${lat.toFixed(6)},${lng.toFixed(6)}`
         if (seen[dedupeKey]) return
         seen[dedupeKey] = true
         combined.push({
           name,
-          lat: coords.lat,
-          lng: coords.lng,
+          lat,
+          lng,
           category: keyLower,
           item: focusItem.item,
         })
       })
     })
 
-    window.dispatchEvent(
-      new CustomEvent('msme-gis-focus-community-category', {
-        detail: {
-          category: selectedCategoryKeys.length === 1 ? selectedCategoryKeys[0] : 'multi',
-          label: allowedLabels.length > 0 ? allowedLabels.join(' + ') : 'selected categories',
-          items: combined,
-          total: combined.length,
-        },
-      }),
+    if (combined.length > 0) {
+      window.dispatchEvent(
+        new CustomEvent('msme-gis-focus-community-category', {
+          detail: {
+            category: selectedCategoryKeys.length === 1 ? selectedCategoryKeys[0] : 'multi',
+            label: allowedLabels.length > 0 ? allowedLabels.join(' + ') : 'selected categories',
+            items: combined,
+            total: combined.length,
+            showAllRoutes: true,
+          },
+        }),
+      )
+      return
+    }
+
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.msmeGisDrawCommunityRoutesForCategories === 'function'
+    ) {
+      window
+        .msmeGisDrawCommunityRoutesForCategories(selectedCategoryKeys, {
+          showAllRoutes: true,
+        })
+        .then(function (ok) {
+          if (!ok) {
+            window.alert(
+              'No POI coordinates found in buffer for selected categories. Increase closest/buffer distance and try again.',
+            )
+          }
+        })
+      return
+    }
+
+    window.alert(
+      'No POI coordinates available for the selected categories. Run buffer or closest analysis first.',
     )
   }
 
@@ -1006,7 +1529,78 @@ export default function CommunitySummaryPanel() {
         </div>
       </div>
 
-      <div className="community-ba-toolbar">
+      <div className="community-ba-scroll">
+      {placeCardShouldRender ? (
+        <section className="community-ba-section community-ba-place-card" aria-label="Pinned place details">
+          <h4 className="community-ba-section__title">
+            <SectionTitleIcon kind="place" />
+            Pinned Place Details
+          </h4>
+          <div className="community-ba-place-grid">
+            {PLACE_DETAIL_FIELDS.map((field) => (
+              <div key={field.key} className="community-ba-place-field">
+                <span className="community-ba-place-field__icon">
+                  <PlaceDetailFieldIcon type={field.icon} />
+                </span>
+                <div className="community-ba-place-field__text">
+                  <strong>{field.label}</strong>
+                  <span>{(placeDetails && placeDetails[field.key]) || '-'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {assemblyCardShouldRender ? (
+        <section className="community-ba-section community-ba-assembly-card" aria-label="Vidhan Sabha profile">
+          <h4 className="community-ba-section__title">
+            <SectionTitleIcon kind="assembly" />
+            Vidhan Sabha Profile
+          </h4>
+          <div className="community-ba-assembly-header">
+            <p className="community-ba-assembly-name">
+              {(assemblyDetails && assemblyDetails.vidhanSabha) || '—'}
+            </p>
+            <p className="community-ba-assembly-sub">
+              District: {assemblyDistrictLabel}
+            </p>
+          </div>
+          <div className="community-ba-assembly-grid">
+            {ASSEMBLY_METRIC_ROWS.map((metric) => (
+              <article
+                key={metric.key}
+                className="community-ba-assembly-metric"
+                style={{ background: metric.bg }}
+              >
+                <AssemblyMetricIcon tone={metric.tone} />
+                <strong>{metric.label}</strong>
+                <span>
+                  {metric.suffix
+                    ? formatMetricValue(assemblyDetails && assemblyDetails[metric.key], metric.suffix)
+                    : (assemblyDetails && assemblyDetails[metric.key]) || '-'}
+                </span>
+              </article>
+            ))}
+          </div>
+          {!hasAssemblyName ? (
+            <p className="community-ba-assembly-note">
+              <span className="community-ba-assembly-note__dot" aria-hidden="true" />
+              Is clicked point par Vidhan Sabha match nahi mila (outside Haryana ho sakta hai).
+            </p>
+          ) : null}
+          {hasAssemblyName && !hasAssemblyMetricDetails ? (
+            <p className="community-ba-assembly-note">
+              <span className="community-ba-assembly-note__dot" aria-hidden="true" />
+              Detailed policy/area metrics is waqt map service me available nahi hain.
+            </p>
+          ) : null}
+        </section>
+      ) : null}
+
+      {!isMapClickPlaceOnly ? (
+      <>
+      <section className="community-ba-section community-ba-toolbar">
         <div className="community-ba-toolbar-meta">
           <span className="community-ba-toolbar-list-icon" aria-hidden="true">
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none">
@@ -1101,7 +1695,7 @@ export default function CommunitySummaryPanel() {
             <span className="community-ba-tool-btn__lbl">Download CSV</span>
           </button>
         </div>
-      </div>
+      </section>
 
       <div className="community-summary-body">
         <div className="community-ba-intro-card">
@@ -1132,21 +1726,32 @@ export default function CommunitySummaryPanel() {
           <p className="community-summary-loading">
             {isStaleUpdating
               ? 'Updating latest counts...'
-              : 'Loading community counts...'}
+              : 'Loading community counts (schools, hospitals, utilities nearby)...'}
+          </p>
+        ) : null}
+
+        {displaySummary && !waitingForCounts && totalCountNum === 0 ? (
+          <p className="community-summary-loading">
+            {isClosestMode
+              ? `No nearest facility found in ${radiusM ? `${Math.round(Number(radiusM))} m` : 'this'} closest buffer. Increase closest distance and click the map again.`
+              : `No nearby facilities found in ${radiusM ? `${Math.round(Number(radiusM))} m` : 'this'} radius. Increase search distance in cadastral settings and click the map again.`}
           </p>
         ) : null}
 
         <div className="community-ba-cards">
           {rows.map((row, idx) => {
-            var count =
-              row && Number.isFinite(Number(row.count)) ? Number(row.count) : 0
+            var count = isClosestMode
+              ? getClosestRowCount(row)
+              : row && Number.isFinite(Number(row.count))
+                ? Number(row.count)
+                : 0
             var label = row && row.label ? row.label : 'Category'
             var key = String(row && row.key ? row.key : idx)
             var keyLower = key.toLowerCase()
-            var showLoadingBadge = !displaySummary
+            var showLoadingBadge = !displaySummary || waitingForCounts
             var color = getCategoryColor(idx)
             var items = getCategoryItems(row)
-            var canExpandList = items.length > 0
+            var canExpandList = !isClosestMode && items.length > 0
             var canFocusCategory = buildFocusItemsForRow(row, keyLower).length > 0
             var isExpanded = openCategoryKey === keyLower
             var nearestItem = row && row.nearestItem ? row.nearestItem : null
@@ -1187,7 +1792,9 @@ export default function CommunitySummaryPanel() {
                   disabled={!canFocusCategory && !canExpandList}
                 >
                   <strong style={{ color }}>{showLoadingBadge ? '...' : count}</strong>
-                  <span style={{ color }}>{label}</span>
+                  <span style={{ color }}>
+                    {isClosestMode ? (count > 0 ? 'Nearest' : 'None') : label}
+                  </span>
                   {canExpandList ? (
                     <span className="community-ba-card__view-pill">
                       {isExpanded ? 'Hide list' : 'View list'}
@@ -1248,9 +1855,10 @@ export default function CommunitySummaryPanel() {
             i
           </span>
           <span className="community-ba-footer-meta__text">
-            Updated: {formatUpdatedAt(updatedAt)}
-            {radiusM ? ` | Radius: ${radiusM} m` : ''}
-            {` | Total: ${totalCount}`}
+            Select categories and click on the map to view the data.
+            {updatedAt ? ` Updated ${formatUpdatedAt(updatedAt)}.` : ''}
+            {radiusM ? ` Radius ${radiusM} m.` : ''}
+            {displaySummary ? ` Total ${totalCount}.` : ''}
           </span>
         </p>
 
@@ -1260,6 +1868,9 @@ export default function CommunitySummaryPanel() {
             they appear as 0.
           </p>
         ) : null}
+      </div>
+      </>
+      ) : null}
       </div>
     </aside>
   )

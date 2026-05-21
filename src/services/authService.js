@@ -6,8 +6,8 @@ export const sendOtpApi = async  (mobile) =>{
     return res.data
 }
 
-export const verifyOtpApi = async (mobile, otp) => {
-    const res = await http.post("/otp/verify-otp",{mobile, otp});
+export const verifyOtpApi = async (mobile, otp , latitude, longitude) => {
+    const res = await http.post("/otp/verify-otp",{mobile, otp, latitude, longitude});
     return res.data
 }
 

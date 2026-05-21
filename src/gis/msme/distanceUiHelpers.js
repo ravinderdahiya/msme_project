@@ -32,13 +32,20 @@ export function setBufferQueryRadiusMeters(nextMeters) {
   return setSliderDistanceValue("bufMarkQueryRadius", "bufMarkQueryRadiusVal", nextMeters, 5000);
 }
 
+export function convertDistanceToMeters(raw, unit) {
+  var value = Number(raw);
+  if (!isFinite(value) || value <= 0) return NaN;
+  var u = String(unit || "m").toLowerCase();
+  if (u === "km") return Math.round(value * 1000);
+  if (u === "yd" || u === "yard" || u === "yards") return Math.round(value * 0.9144);
+  if (u === "ft" || u === "feet" || u === "foot") return Math.round(value * 0.3048);
+  return Math.round(value);
+}
+
 export function readDistanceMetersFromNumUnit(numId, unitId, fallbackMeters) {
   var raw = Number((document.getElementById(numId) || {}).value);
   var unit = String(((document.getElementById(unitId) || {}).value) || "m").toLowerCase();
-  var m = NaN;
-  if (isFinite(raw) && raw > 0) {
-    m = unit === "km" ? Math.round(raw * 1000) : Math.round(raw);
-  }
+  var m = convertDistanceToMeters(raw, unit);
   if (!isFinite(m) || m <= 0) m = Number(fallbackMeters);
   if (!isFinite(m) || m <= 0) m = 1000;
   return Math.round(m);
@@ -63,7 +70,7 @@ export function readClosestDistanceMetersFromUi() {
   var rawNum = numEl ? Number(numEl.value) : NaN;
   var unit = unitEl ? String(unitEl.value || "m").toLowerCase() : "m";
   if (isFinite(rawNum) && rawNum > 0) {
-    dMeters = unit === "km" ? Math.round(rawNum * 1000) : Math.round(rawNum);
+    dMeters = convertDistanceToMeters(rawNum, unit);
   }
   if (!isFinite(dMeters) || dMeters <= 0) {
     var el = document.getElementById("closestDist");

@@ -80,6 +80,7 @@ const LOGIN_TEXT = {
         otpSent: "OTP sent successfully",
         otpSentAgain: "OTP sent again successfully",
         sendFailed: "Failed to send OTP",
+        smsDeliveryFailed: "OTP generated but SMS not delivered. Please try again.",
         invalidOtp: "Please enter the 6 digit OTP.",
         verifyFailed: "Invalid OTP",
         loginSuccess: "Login successful",
@@ -136,6 +137,7 @@ const LOGIN_TEXT = {
         otpSent: "OTP सफलतापूर्वक भेजा गया",
         otpSentAgain: "OTP फिर से सफलतापूर्वक भेजा गया",
         sendFailed: "OTP भेजने में विफल",
+        smsDeliveryFailed: "OTP बना है लेकिन SMS डिलीवर नहीं हुआ। कृपया दोबारा प्रयास करें।",
         invalidOtp: "कृपया 6 अंकों का OTP दर्ज करें.",
         verifyFailed: "OTP अमान्य है",
         loginSuccess: "लॉगिन सफल",
@@ -213,7 +215,13 @@ export default function Login() {
 
         try {
             setLoading(true);
-            await sendOtpApi(cleanMobile);
+            const res = await sendOtpApi(cleanMobile);
+            if (!res?.smsSent) {
+                setOtpSent(false);
+                setMessageKey("smsDeliveryFailed");
+                setMessageType("error");
+                return;
+            }
             setOtpSent(true);
             setResendTimer(30);
             setMessageKey(otpSent ? "otpSentAgain" : "otpSent");
@@ -227,31 +235,61 @@ export default function Login() {
         }
     }
 
-    async function handleVerifyOtp(e) {
-        e.preventDefault();
+  async function handleVerifyOtp(e) {
+    e.preventDefault();
 
-        if (!isValidOtp) {
-            setMessageKey("invalidOtp");
-            setMessageType("error");
-            return;
-        }
-
-        try {
-            setLoading(true);
-            const res = await verifyOtpApi(cleanMobile, otp);
-            setAuthSession({ token: res.token, user: res.user });
-            setHttpAuthToken(res.token);
-            setMessageKey("loginSuccess");
-            setMessageType("success");
-            navigate(getPostLoginRoute(res.user, redirectAfterLogin), { replace: true });
-        } catch (err) {
-            console.error("OTP verify failed:", err?.response?.data || err?.message || err);
-            setMessageKey("verifyFailed");
-            setMessageType("error");
-        } finally {
-            setLoading(false);
-        }
+    if (!isValidOtp) {
+        setMessageKey("invalidOtp");
+        setMessageType("error");
+        return;
     }
+
+    try {
+        setLoading(true);
+
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+
+                const latitude = position.coords.latitude;
+                const longitude = position.coords.longitude;
+
+                console.log(latitude,longitude)
+
+                const res = await verifyOtpApi(
+                    cleanMobile,
+                    otp,
+                    latitude,
+                    longitude
+                );
+
+                setAuthSession({ token: res.token, user: res.user });
+                setHttpAuthToken(res.token);
+
+                setMessageKey("loginSuccess");
+                setMessageType("success");
+
+                navigate(
+                    getPostLoginRoute(res.user, redirectAfterLogin),
+                    { replace: true }
+                );
+            },
+            (error) => {
+                console.log("Location Error:", error);
+
+                setMessageKey("verifyFailed");
+                setMessageType("error");
+            }
+        );
+
+    } catch (err) {
+        console.error("OTP verify failed:", err?.response?.data || err?.message || err);
+
+        setMessageKey("verifyFailed");
+        setMessageType("error");
+    } finally {
+        setLoading(false);
+    }
+}
 
     async function handleDepartmentLogin(e) {
         e.preventDefault();
