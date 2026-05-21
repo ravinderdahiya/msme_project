@@ -1,17 +1,17 @@
 /** Map services: public hsacggm (/arcgis proxy in local dev). Same for all users. */
 import { resolveMapServiceUrl } from "./resolveMapServiceUrl.js"
 
-export const BASE_MS = resolveMapServiceUrl("MSME_BASE_REFERENCE")
-export const ADMIN_MS = resolveMapServiceUrl("MSME_ADMIN_BOUNDARIES")
-export const ENV_MS = resolveMapServiceUrl("MSME_ENVIRONMENT")
-export const INV_MS = resolveMapServiceUrl("MSME_INVESTMENT")
-export const SOC_MS = resolveMapServiceUrl("MSME_SOCIAL")
-export const TRANS_MS = resolveMapServiceUrl("MSME_TRANSPORT")
-export const UTIL_MS = resolveMapServiceUrl("MSME_UTILITIES")
-export const CAD_MS = resolveMapServiceUrl("MSME_CADASTRAL")
-export const CON_MS = resolveMapServiceUrl("MSME_CONSTITUENCY")
+export let BASE_MS = ""
+export let ADMIN_MS = ""
+export let ENV_MS = ""
+export let INV_MS = ""
+export let SOC_MS = ""
+export let TRANS_MS = ""
+export let UTIL_MS = ""
+export let CAD_MS = ""
+export let CON_MS = ""
 
-export const IDENTIFY_URLS = [BASE_MS, ADMIN_MS, ENV_MS, INV_MS, SOC_MS, TRANS_MS, UTIL_MS, CAD_MS, CON_MS]
+export let IDENTIFY_URLS = []
 
 export const LAYER_DISTRICT = 1
 export const LAYER_TEHSIL = 3
@@ -81,26 +81,49 @@ export function approxModeFromAdminLayerId(layerId) {
 }
 
 /** POI layers for proximity (MapServer layer ids). */
-export const POI_LAYERS = [
-  { id: 'p_t0', url: TRANS_MS, layerId: 0, label: 'Airports' },
-  { id: 'p_t1', url: TRANS_MS, layerId: 1, label: 'Bus stops' },
-  { id: 'p_t4', url: TRANS_MS, layerId: 4, label: 'Roads (line)' },
-  { id: 'p_inv', url: INV_MS, layerId: 0, label: 'Industrial sites' },
-  { id: 'p_soc', url: SOC_MS, layerId: 0, label: 'Social infrastructure' },
-  { id: 'p_u0', url: UTIL_MS, layerId: 0, label: 'Mobile towers' },
-  { id: 'p_u3', url: UTIL_MS, layerId: 3, label: 'Water network' },
-]
+export let POI_LAYERS = []
 
 /** Intersect constraint polygon layers. */
-export const INT_LAYERS = [
-  { id: 'i_for', url: ENV_MS, layerId: 0, label: 'Forest area' },
-  { id: 'i_wl', url: ENV_MS, layerId: 2, label: 'Potential waterbodies' },
-]
+export let INT_LAYERS = []
 
 /** Utilities for multi-layer query (lines). */
-export const UTIL_LINES = [
-  { id: 'u_w', url: UTIL_MS, layerId: 3, label: 'Water network' },
-  { id: 'u_g1', url: UTIL_MS, layerId: 1, label: 'BPCL line' },
-  { id: 'u_g2', url: UTIL_MS, layerId: 2, label: 'IOC gas line' },
-  { id: 'u_s6', url: UTIL_MS, layerId: 6, label: 'Sewerage line' },
-]
+export let UTIL_LINES = []
+
+export function refreshResolvedMapServiceUrls() {
+  BASE_MS = resolveMapServiceUrl("MSME_BASE_REFERENCE")
+  ADMIN_MS = resolveMapServiceUrl("MSME_ADMIN_BOUNDARIES")
+  ENV_MS = resolveMapServiceUrl("MSME_ENVIRONMENT")
+  INV_MS = resolveMapServiceUrl("MSME_INVESTMENT")
+  SOC_MS = resolveMapServiceUrl("MSME_SOCIAL")
+  TRANS_MS = resolveMapServiceUrl("MSME_TRANSPORT")
+  UTIL_MS = resolveMapServiceUrl("MSME_UTILITIES")
+  CAD_MS = resolveMapServiceUrl("MSME_CADASTRAL")
+  CON_MS = resolveMapServiceUrl("MSME_CONSTITUENCY")
+
+  IDENTIFY_URLS = [BASE_MS, ADMIN_MS, ENV_MS, INV_MS, SOC_MS, TRANS_MS, UTIL_MS, CAD_MS, CON_MS]
+
+  POI_LAYERS = [
+    { id: 'p_t0', url: TRANS_MS, layerId: 0, label: 'Airports' },
+    { id: 'p_t1', url: TRANS_MS, layerId: 1, label: 'Bus stops' },
+    { id: 'p_t4', url: TRANS_MS, layerId: 4, label: 'Roads (line)' },
+    { id: 'p_inv', url: INV_MS, layerId: 0, label: 'Industrial sites' },
+    { id: 'p_soc', url: SOC_MS, layerId: 0, label: 'Social infrastructure' },
+    { id: 'p_u0', url: UTIL_MS, layerId: 0, label: 'Mobile towers' },
+    { id: 'p_u3', url: UTIL_MS, layerId: 3, label: 'Water network' },
+  ]
+
+  INT_LAYERS = [
+    { id: 'i_for', url: ENV_MS, layerId: 0, label: 'Forest area' },
+    { id: 'i_wl', url: ENV_MS, layerId: 2, label: 'Potential waterbodies' },
+  ]
+
+  UTIL_LINES = [
+    { id: 'u_w', url: UTIL_MS, layerId: 3, label: 'Water network' },
+    { id: 'u_g1', url: UTIL_MS, layerId: 1, label: 'BPCL line' },
+    { id: 'u_g2', url: UTIL_MS, layerId: 2, label: 'IOC gas line' },
+    { id: 'u_s6', url: UTIL_MS, layerId: 6, label: 'Sewerage line' },
+  ]
+}
+
+// Initialize eagerly so existing imports keep current behavior before backend config fetch.
+refreshResolvedMapServiceUrls()

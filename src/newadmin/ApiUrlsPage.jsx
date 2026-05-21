@@ -76,7 +76,8 @@ export default function ApiUrlsPage() {
             resetForm();
         } catch (err) {
             console.error(err);
-            setError("Failed to save API URL.");
+            const backendMessage = err?.response?.data?.message;
+            setError(backendMessage || "Failed to save API URL.");
         } finally {
             setSaving(false);
         }
@@ -112,7 +113,8 @@ export default function ApiUrlsPage() {
             await loadRows();
         } catch (err) {
             console.error(err);
-            setError("Failed to delete API URL.");
+            const backendMessage = err?.response?.data?.message;
+            setError(backendMessage || "Failed to delete API URL.");
         }
     };
 

@@ -1,5 +1,6 @@
 import { getFrontendRuntimeConfig } from "../../services/apiUrlService.js"
 import { MSME_MAP_SERVICE_KEYS, setHsacggmMapServiceUrls } from "./arcgisMapServiceUrls.js"
+import { refreshResolvedMapServiceUrls } from "./serviceUrlsAndLayers.js"
 import {
   INVESTHRY_FEATURE_SERVICE_KEYS,
   setInvesthryFeatureServiceUrls,
@@ -31,6 +32,7 @@ export async function loadMapServiceUrlsFromBackend() {
       const runtimeMap = payload?.mapServices || {}
       const hsacggmMapServices = setHsacggmMapServiceUrls(runtimeMap)
       const investhryFeatureServices = setInvesthryFeatureServiceUrls(runtimeMap)
+      refreshResolvedMapServiceUrls()
       const missingKeys = Array.isArray(payload?.missingKeys)
         ? payload.missingKeys
         : missingKeysFromMap(runtimeMap)
@@ -49,6 +51,7 @@ export async function loadMapServiceUrlsFromBackend() {
     } catch (error) {
       setHsacggmMapServiceUrls({})
       setInvesthryFeatureServiceUrls({})
+      refreshResolvedMapServiceUrls()
       const result = {
         ok: false,
         source: "unavailable",
@@ -58,7 +61,8 @@ export async function loadMapServiceUrlsFromBackend() {
         missingKeys: [...MSME_MAP_SERVICE_KEYS, ...INVESTHRY_FEATURE_SERVICE_KEYS],
         error,
       }
-      cache.loaded = true
+      // Keep failure responses out of the long-lived cache so startup race/network blips can recover.
+      cache.loaded = false
       cache.lastResult = result
       return result
     } finally {
