@@ -54,7 +54,9 @@ function hasMetricValue(value) {
 function pickLatestCommunitySummary(analysisSnap, mapSnap) {
   var a = analysisSnap && analysisSnap.communitySummary ? analysisSnap.communitySummary : null
   var m = mapSnap && mapSnap.communitySummary ? mapSnap.communitySummary : null
+  var analysisTool = String(analysisSnap && analysisSnap.tool ? analysisSnap.tool : '').toLowerCase()
 
+  if (analysisTool === 'closest' && a) return a
   if (!a && !m) return null
   if (a && !m) return a
   if (m && !a) return m
@@ -64,6 +66,8 @@ function pickLatestCommunitySummary(analysisSnap, mapSnap) {
 
 function pickLatestReportSnapshot(analysisSnap, mapSnap) {
   if (!analysisSnap && !mapSnap) return null
+  var analysisTool = String(analysisSnap && analysisSnap.tool ? analysisSnap.tool : '').toLowerCase()
+  if (analysisTool === 'closest' && analysisSnap) return analysisSnap
   if (analysisSnap && !mapSnap) return analysisSnap
   if (mapSnap && !analysisSnap) return mapSnap
 
@@ -73,10 +77,36 @@ function pickLatestReportSnapshot(analysisSnap, mapSnap) {
     : mapSnap
 }
 
+function isClosestAnalysisReport(reportSnap) {
+  return !!(
+    reportSnap &&
+    reportSnap.reportKind === 'analysis' &&
+    String(reportSnap.tool || '').toLowerCase() === 'closest'
+  )
+}
+
+function getClosestRowCount(row) {
+  if (!row) return 0
+  if (row.nearestItem) return 1
+  return getCategoryItems(row).length > 0 ? 1 : 0
+}
+
+function isMapClickPlaceOnlyReport(reportSnap) {
+  return !!(
+    reportSnap &&
+    reportSnap.reportKind === 'map-selection' &&
+    reportSnap.placeOnly === true &&
+    !reportSnap.accumulate
+  )
+}
+
 function isCommunitySummaryCandidate(reportSnap) {
   if (!reportSnap) return false
   if (reportSnap.communitySummary) return true
-  if (reportSnap.reportKind === 'map-selection') return true
+  if (reportSnap.reportKind === 'map-selection') {
+    if (reportSnap.placeOnly) return false
+    return !!reportSnap.accumulate
+  }
   var countNum = Number(reportSnap.count)
   var hasCount = Number.isFinite(countNum) && countNum >= 0
   var nearestDistanceNum = Number(reportSnap.nearestDistanceM)
@@ -105,12 +135,25 @@ function isCommunitySummaryCandidate(reportSnap) {
   return false
 }
 
+function reportHasPlaceLookupContext(reportSnap) {
+  if (!reportSnap) return false
+  if (extractPointForPlaceLookup(null, reportSnap)) return true
+  return !!(
+    reportSnap.summaryGeometryJson ||
+    reportSnap.queryGeometryJson ||
+    reportSnap.analysisGeometryJson ||
+    reportSnap.geometryJson
+  )
+}
+
 function shouldAutoOpenCommunityPanel(reportSnap) {
   if (!reportSnap) return false
   if (resolvePlaceDetails(null, reportSnap)) return true
+  if (resolveAssemblyDetails(null, reportSnap)) return true
+  if (reportHasPlaceLookupContext(reportSnap)) return true
   var isAnalysis = reportSnap.reportKind === 'analysis'
   var tool = String(reportSnap.tool || '').toLowerCase()
-  if (isAnalysis && (tool === 'closest' || tool === 'proximity')) {
+  if (isAnalysis && (tool === 'closest' || tool === 'proximity' || tool === 'buffer')) {
     var countNum = Number(reportSnap.count)
     var hasCount = Number.isFinite(countNum) && countNum >= 0
     var nearestDistanceNum = Number(reportSnap.nearestDistanceM)
@@ -754,12 +797,27 @@ export default function CommunitySummaryPanel() {
     function refreshSnapshots() {
       if (typeof window === 'undefined') return
 
-      if (typeof window.msmeGisGetAnalysisReportSnapshot === 'function') {
-        setAnalysisSnap(window.msmeGisGetAnalysisReportSnapshot())
-      }
+      var nextAnalysis =
+        typeof window.msmeGisGetAnalysisReportSnapshot === 'function'
+          ? window.msmeGisGetAnalysisReportSnapshot()
+          : null
+      var nextMap =
+        typeof window.msmeGisGetMapSelectionReportSnapshot === 'function'
+          ? window.msmeGisGetMapSelectionReportSnapshot()
+          : null
 
-      if (typeof window.msmeGisGetMapSelectionReportSnapshot === 'function') {
-        setMapSnap(window.msmeGisGetMapSelectionReportSnapshot())
+      setAnalysisSnap(nextAnalysis)
+      setMapSnap(nextMap)
+
+      var latest =
+        nextAnalysis && nextMap
+          ? parseIsoMs(nextAnalysis.generatedAt) >= parseIsoMs(nextMap.generatedAt)
+            ? nextAnalysis
+            : nextMap
+          : nextAnalysis || nextMap
+
+      if (shouldAutoOpenCommunityPanel(latest)) {
+        setOpen(true)
       }
     }
 
@@ -792,6 +850,8 @@ export default function CommunitySummaryPanel() {
     () => pickLatestReportSnapshot(analysisSnap, mapSnap),
     [analysisSnap, mapSnap],
   )
+
+  const isClosestMode = isClosestAnalysisReport(latestReport)
 
   const waitingForCounts = !summary && isCommunitySummaryCandidate(latestReport)
   const displaySummary = summary || lastSummary
@@ -846,7 +906,21 @@ export default function CommunitySummaryPanel() {
       if (shouldAutoOpenCommunityPanel(latestReport)) {
         setOpen(true)
       }
-      setSelectedCategoryKeys([])
+      if (isClosestAnalysisReport(latestReport)) {
+        var seenClosest = {}
+        var closestKeys = []
+        var closestCats = Array.isArray(summary.categories) ? summary.categories : []
+        closestCats.forEach((row) => {
+          var key = String(row && row.key ? row.key : '').toLowerCase()
+          if (!key || seenClosest[key]) return
+          if (!getClosestRowCount(row)) return
+          seenClosest[key] = true
+          closestKeys.push(key)
+        })
+        setSelectedCategoryKeys(closestKeys)
+      } else {
+        setSelectedCategoryKeys([])
+      }
     }
   }, [summary, latestReport])
 
@@ -1001,22 +1075,28 @@ export default function CommunitySummaryPanel() {
 
   const hasPlaceDetails = !!placeDetails
   const hasAssemblyDetails = !!assemblyDetails
+  const isMapClickPlaceOnly = useMemo(
+    () => isMapClickPlaceOnlyReport(latestReport),
+    [latestReport],
+  )
   const placeCardShouldRender = useMemo(() => {
     if (hasPlaceDetails) return true
     if (!latestReport) return false
     if (latestReport.reportKind === 'map-selection') return true
-    if (latestReport.reportKind !== 'analysis') return false
-    var tool = String(latestReport.tool || '').toLowerCase()
-    return tool === 'closest' || tool === 'proximity' || tool === 'buffer'
-  }, [hasPlaceDetails, latestReport])
+    if (resolvedLookupPoint) return true
+    if (reportHasPlaceLookupContext(latestReport)) return true
+    if (latestReport.reportKind === 'analysis') return true
+    return false
+  }, [hasPlaceDetails, latestReport, resolvedLookupPoint])
   const assemblyCardShouldRender = useMemo(() => {
     if (hasAssemblyDetails) return true
     if (!latestReport) return false
     if (latestReport.reportKind === 'map-selection') return true
-    if (latestReport.reportKind !== 'analysis') return false
-    var tool = String(latestReport.tool || '').toLowerCase()
-    return tool === 'closest' || tool === 'proximity' || tool === 'buffer'
-  }, [hasAssemblyDetails, latestReport])
+    if (resolvedLookupPoint) return true
+    if (reportHasPlaceLookupContext(latestReport)) return true
+    if (latestReport.reportKind === 'analysis') return true
+    return false
+  }, [hasAssemblyDetails, latestReport, resolvedLookupPoint])
 
   useEffect(() => {
     if (!assemblyDetails) return
@@ -1027,7 +1107,15 @@ export default function CommunitySummaryPanel() {
     autoSelectVidhanSabhaInUi(assemblyDetails)
   }, [assemblyDetails])
 
-  if (!displaySummary && !waitingForCounts && !hasPlaceDetails && !hasAssemblyDetails) return null
+  const shouldShowPanelShell =
+    !!displaySummary ||
+    waitingForCounts ||
+    hasPlaceDetails ||
+    hasAssemblyDetails ||
+    placeCardShouldRender ||
+    assemblyCardShouldRender
+
+  if (!shouldShowPanelShell) return null
   if (!open) {
     return (
       <button
@@ -1054,12 +1142,17 @@ export default function CommunitySummaryPanel() {
     ? displaySummary.categories
     : LOADING_ROWS
 
-  const rows = displaySummary ? allRows.filter((row) => hasCategoryData(row)) : allRows
+  // Show every category from a completed summary (including 0). While loading, show placeholders.
+  const rows = displaySummary ? allRows : allRows
 
   const hasUnavailable = allRows.some((r) => r && r.available === false)
 
   const totalCountNum = rows.reduce((sum, row) => {
-    var value = row && Number.isFinite(Number(row.count)) ? Number(row.count) : 0
+    var value = isClosestMode
+      ? getClosestRowCount(row)
+      : row && Number.isFinite(Number(row.count))
+        ? Number(row.count)
+        : 0
     return sum + value
   }, 0)
 
@@ -1204,30 +1297,62 @@ export default function CommunitySummaryPanel() {
       var focusItems = buildFocusItemsForRow(row, keyLower)
       focusItems.forEach((focusItem) => {
         var coords = getItemCoordinates(focusItem.item)
-        if (!coords) return
+        var lat = Number(focusItem.lat)
+        var lng = Number(focusItem.lng)
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          if (!coords) return
+          lat = coords.lat
+          lng = coords.lng
+        }
         var name = focusItem.name
-        var dedupeKey = `${keyLower}|${name}|${coords.lat.toFixed(6)},${coords.lng.toFixed(6)}`
+        var dedupeKey = `${keyLower}|${name}|${lat.toFixed(6)},${lng.toFixed(6)}`
         if (seen[dedupeKey]) return
         seen[dedupeKey] = true
         combined.push({
           name,
-          lat: coords.lat,
-          lng: coords.lng,
+          lat,
+          lng,
           category: keyLower,
           item: focusItem.item,
         })
       })
     })
 
-    window.dispatchEvent(
-      new CustomEvent('msme-gis-focus-community-category', {
-        detail: {
-          category: selectedCategoryKeys.length === 1 ? selectedCategoryKeys[0] : 'multi',
-          label: allowedLabels.length > 0 ? allowedLabels.join(' + ') : 'selected categories',
-          items: combined,
-          total: combined.length,
-        },
-      }),
+    if (combined.length > 0) {
+      window.dispatchEvent(
+        new CustomEvent('msme-gis-focus-community-category', {
+          detail: {
+            category: selectedCategoryKeys.length === 1 ? selectedCategoryKeys[0] : 'multi',
+            label: allowedLabels.length > 0 ? allowedLabels.join(' + ') : 'selected categories',
+            items: combined,
+            total: combined.length,
+            showAllRoutes: true,
+          },
+        }),
+      )
+      return
+    }
+
+    if (
+      typeof window !== 'undefined' &&
+      typeof window.msmeGisDrawCommunityRoutesForCategories === 'function'
+    ) {
+      window
+        .msmeGisDrawCommunityRoutesForCategories(selectedCategoryKeys, {
+          showAllRoutes: true,
+        })
+        .then(function (ok) {
+          if (!ok) {
+            window.alert(
+              'No POI coordinates found in buffer for selected categories. Increase closest/buffer distance and try again.',
+            )
+          }
+        })
+      return
+    }
+
+    window.alert(
+      'No POI coordinates available for the selected categories. Run buffer or closest analysis first.',
     )
   }
 
@@ -1473,6 +1598,8 @@ export default function CommunitySummaryPanel() {
         </section>
       ) : null}
 
+      {!isMapClickPlaceOnly ? (
+      <>
       <section className="community-ba-section community-ba-toolbar">
         <div className="community-ba-toolbar-meta">
           <span className="community-ba-toolbar-list-icon" aria-hidden="true">
@@ -1599,21 +1726,32 @@ export default function CommunitySummaryPanel() {
           <p className="community-summary-loading">
             {isStaleUpdating
               ? 'Updating latest counts...'
-              : 'Loading community counts...'}
+              : 'Loading community counts (schools, hospitals, utilities nearby)...'}
+          </p>
+        ) : null}
+
+        {displaySummary && !waitingForCounts && totalCountNum === 0 ? (
+          <p className="community-summary-loading">
+            {isClosestMode
+              ? `No nearest facility found in ${radiusM ? `${Math.round(Number(radiusM))} m` : 'this'} closest buffer. Increase closest distance and click the map again.`
+              : `No nearby facilities found in ${radiusM ? `${Math.round(Number(radiusM))} m` : 'this'} radius. Increase search distance in cadastral settings and click the map again.`}
           </p>
         ) : null}
 
         <div className="community-ba-cards">
           {rows.map((row, idx) => {
-            var count =
-              row && Number.isFinite(Number(row.count)) ? Number(row.count) : 0
+            var count = isClosestMode
+              ? getClosestRowCount(row)
+              : row && Number.isFinite(Number(row.count))
+                ? Number(row.count)
+                : 0
             var label = row && row.label ? row.label : 'Category'
             var key = String(row && row.key ? row.key : idx)
             var keyLower = key.toLowerCase()
-            var showLoadingBadge = !displaySummary
+            var showLoadingBadge = !displaySummary || waitingForCounts
             var color = getCategoryColor(idx)
             var items = getCategoryItems(row)
-            var canExpandList = items.length > 0
+            var canExpandList = !isClosestMode && items.length > 0
             var canFocusCategory = buildFocusItemsForRow(row, keyLower).length > 0
             var isExpanded = openCategoryKey === keyLower
             var nearestItem = row && row.nearestItem ? row.nearestItem : null
@@ -1654,7 +1792,9 @@ export default function CommunitySummaryPanel() {
                   disabled={!canFocusCategory && !canExpandList}
                 >
                   <strong style={{ color }}>{showLoadingBadge ? '...' : count}</strong>
-                  <span style={{ color }}>{label}</span>
+                  <span style={{ color }}>
+                    {isClosestMode ? (count > 0 ? 'Nearest' : 'None') : label}
+                  </span>
                   {canExpandList ? (
                     <span className="community-ba-card__view-pill">
                       {isExpanded ? 'Hide list' : 'View list'}
@@ -1729,6 +1869,8 @@ export default function CommunitySummaryPanel() {
           </p>
         ) : null}
       </div>
+      </>
+      ) : null}
       </div>
     </aside>
   )

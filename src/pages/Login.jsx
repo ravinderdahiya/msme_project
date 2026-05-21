@@ -80,6 +80,7 @@ const LOGIN_TEXT = {
         otpSent: "OTP sent successfully",
         otpSentAgain: "OTP sent again successfully",
         sendFailed: "Failed to send OTP",
+        smsDeliveryFailed: "OTP generated but SMS not delivered. Please try again.",
         invalidOtp: "Please enter the 6 digit OTP.",
         verifyFailed: "Invalid OTP",
         loginSuccess: "Login successful",
@@ -136,6 +137,7 @@ const LOGIN_TEXT = {
         otpSent: "OTP सफलतापूर्वक भेजा गया",
         otpSentAgain: "OTP फिर से सफलतापूर्वक भेजा गया",
         sendFailed: "OTP भेजने में विफल",
+        smsDeliveryFailed: "OTP बना है लेकिन SMS डिलीवर नहीं हुआ। कृपया दोबारा प्रयास करें।",
         invalidOtp: "कृपया 6 अंकों का OTP दर्ज करें.",
         verifyFailed: "OTP अमान्य है",
         loginSuccess: "लॉगिन सफल",
@@ -213,7 +215,13 @@ export default function Login() {
 
         try {
             setLoading(true);
-            await sendOtpApi(cleanMobile);
+            const res = await sendOtpApi(cleanMobile);
+            if (!res?.smsSent) {
+                setOtpSent(false);
+                setMessageKey("smsDeliveryFailed");
+                setMessageType("error");
+                return;
+            }
             setOtpSent(true);
             setResendTimer(30);
             setMessageKey(otpSent ? "otpSentAgain" : "otpSent");

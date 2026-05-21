@@ -141,6 +141,11 @@ import {
   buildSimpleIdentifyPopupHtml,
   computeUnionGeometryFromFlats,
 } from "./identifyFeatureHelpers.js";
+import {
+  extractPlaceDetailsFromIdentifyFlat,
+  mergePlaceDetails,
+  queryPlaceDetailsByPointWgs84,
+} from "./placeDetailsHelpers.js";
 import { gisPh, setRefreshGisPlaceholderLabelsImpl, applyMsmeGisUiStrings } from "./uiLabels.js";
 import {
   getEsriRouteSolveUrl,
@@ -159,6 +164,8 @@ import {
 } from "./routingHelpers.js";
 
 import { HSACGGM_MAP_SERVICE_URLS } from "./arcgisMapServiceUrls.js";
+import analysisPlaceContextSnippet from "./analysisPlaceContextSnippet.js";
+import { queryAssemblyDetailsByPointWgs84 } from "./assemblyDetailsHelpers.js";
 import c1 from "./runtimeChunks/chunk01.js";
 import c2 from "./runtimeChunks/chunk02.js";
 import c3 from "./runtimeChunks/chunk03.js";
@@ -190,6 +197,48 @@ function applyArcGisIdentityPolicy() {
 }
 
 applyArcGisIdentityPolicy();
+
+function openIdentifyMapPopup(view, mapPoint, lat, lon, primaryLayerName, distM, flat) {
+  if (!view || view.destroyed || !mapPoint || !view.popup) return;
+  try {
+    var syncPlace = extractPlaceDetailsFromIdentifyFlat(flat || [], ADMIN_MS);
+    var popupHtml = buildSimpleIdentifyPopupHtml(
+      lat,
+      lon,
+      primaryLayerName,
+      distM,
+      gisPh("mapPopupTitle"),
+      syncPlace,
+    );
+    view.popup.open({
+      title: "",
+      content: popupHtml,
+      location: mapPoint,
+    });
+    queryPlaceDetailsByPointWgs84({ lat: lat, lon: lon })
+      .then(function (queried) {
+        if (!view || view.destroyed || !view.popup || !view.popup.visible) return;
+        var merged = mergePlaceDetails(syncPlace, queried);
+        if (!merged) return;
+        var updatedHtml = buildSimpleIdentifyPopupHtml(
+          lat,
+          lon,
+          primaryLayerName,
+          distM,
+          gisPh("mapPopupTitle"),
+          merged,
+        );
+        try {
+          view.popup.content = updatedHtml;
+        } catch (eUp) {
+          console.warn("[identify popup update]", eUp);
+        }
+      })
+      .catch(function () {});
+  } catch (ePop) {
+    console.warn("[popup]", ePop);
+  }
+}
 
 function patchLegacyMapServiceUrls(source) {
   if (!source) return source;
@@ -990,6 +1039,109 @@ function patchLegacySource(source) {
     "    return false;",
     "  });",
     "};",
+    "",
+    "function resolveCommunityQueryGeometry32643() {",
+    "  var report = window.msmeGisGetAnalysisReportSnapshot ? window.msmeGisGetAnalysisReportSnapshot() : null;",
+    "  var ctx = lastBufferExportContext || {};",
+    "  var candidates = [];",
+    "  if (report) {",
+    "    candidates.push(report.queryGeometryJson, report.summaryGeometryJson, report.analysisGeometryJson);",
+    "  }",
+    "  candidates.push(ctx.queryGeometryJson, ctx.summaryGeometryJson);",
+    "  for (var i = 0; i < candidates.length; i++) {",
+    "    var gj = candidates[i];",
+    "    if (!gj) continue;",
+    "    try {",
+    "      var g = geomFromJSON(gj);",
+    "      if (!g) continue;",
+    "      var g326 = toEngineSR(ensureSR32643(g));",
+    "      if (g326 && geometryIsUsable(g326)) return g326;",
+    "    } catch (eGeom0) {}",
+    "  }",
+    "  if (bufferMarkPoint32643 && bufferMarkPoint32643.type === \"point\") {",
+    "    var rad = Number(report && report.radiusM);",
+    "    if (!isFinite(rad) || rad <= 0) rad = Number(ctx && ctx.radiusM);",
+    "    if (!isFinite(rad) || rad <= 0) {",
+    "      try { rad = readClosestDistanceMetersFromUi(); } catch (eRadUi) { rad = NaN; }",
+    "    }",
+    "    if (!isFinite(rad) || rad <= 0) rad = 1500;",
+    "    var buf = createSafeBuffer32643(bufferMarkPoint32643, rad);",
+    "    if (buf) return buf;",
+    "  }",
+    "  return null;",
+    "}",
+    "",
+    "window.msmeGisDrawCommunityRoutesForCategories = function (categoryKeys, opts) {",
+    "  opts = opts || {};",
+    "  var keysLower = {};",
+    "  (Array.isArray(categoryKeys) ? categoryKeys : []).forEach(function (k) {",
+    "    var kk = String(k || \"\").toLowerCase();",
+    "    if (kk) keysLower[kk] = true;",
+    "  });",
+    "  if (!Object.keys(keysLower).length) {",
+    '    setStatus("Select at least one community category first.");',
+    "    return Promise.resolve(false);",
+    "  }",
+    "  var anchor = resolveBufferCenterPoint32643();",
+    "  if (!anchor || anchor.type !== \"point\") {",
+    '    setStatus("Center point available nahi hai. Pehle buffer ya closest point select karein.");',
+    "    return Promise.resolve(false);",
+    "  }",
+    "  return projection.load().then(function () {",
+    "    var queryGeom = resolveCommunityQueryGeometry32643();",
+    "    if (!queryGeom) {",
+    '      setStatus("Buffer geometry not available. Run buffer/closest again.");',
+    "      return false;",
+    "    }",
+    "    var specs = COMMUNITY_SUMMARY_LAYER_SPECS.filter(function (spec) {",
+    "      return keysLower[String(spec && spec.key ? spec.key : \"\").toLowerCase()];",
+    "    });",
+    "    if (!specs.length) {",
+    '      setStatus("No matching community categories for route drawing.");',
+    "      return false;",
+    "    }",
+    '    setStatus("Fetching POI coordinates for routes...");',
+    "    return Promise.all(specs.map(function (spec) {",
+    "      return fetchCommunityCategoryItems(spec, queryGeom).then(function (data) {",
+    "        return { spec: spec, data: data || { items: [] } };",
+    "      });",
+    "    })).then(function (rows) {",
+    "      var combined = [];",
+    "      var seen = {};",
+    "      rows.forEach(function (row) {",
+    "        var spec = row && row.spec ? row.spec : null;",
+    "        var data = row && row.data ? row.data : { items: [] };",
+    "        var catKey = String(spec && spec.key ? spec.key : \"\").toLowerCase();",
+    "        var items = Array.isArray(data.items) ? data.items : [];",
+    "        items.forEach(function (item, idx) {",
+    "          var lat = Number(item && item.lat);",
+    "          var lng = Number(item && item.lng);",
+    "          if (!isFinite(lat) || !isFinite(lng)) return;",
+    "          var name = String((item && item.name) || (spec && spec.label ? spec.label + \" \" + (idx + 1) : \"Location \" + (idx + 1)));",
+    "          var dedupeKey = catKey + \"|\" + name + \"|\" + lat.toFixed(6) + \",\" + lng.toFixed(6);",
+    "          if (seen[dedupeKey]) return;",
+    "          seen[dedupeKey] = true;",
+    "          combined.push({ name: name, lat: lat, lng: lng, category: catKey, item: item });",
+    "        });",
+    "      });",
+    "      if (!combined.length) {",
+    '        setStatus("No POI coordinates found in buffer for selected categories.");',
+    "        return false;",
+    "      }",
+    "      return drawCommunityCategoryConnectors({",
+    '        category: "multi",',
+    '        label: "selected categories",',
+    "        items: combined,",
+    "        total: combined.length,",
+    "        showAllRoutes: !!(opts && opts.showAllRoutes)",
+    "      });",
+    "    });",
+    "  }).catch(function (eRoutes) {",
+    '    console.warn("[community routes bridge]", eRoutes);',
+    '    setStatus("Could not draw POI routes. See console.");',
+    "    return false;",
+    "  });",
+    "};",
   ].join("\n");
   if (communitySummaryBridgePattern.test(out)) {
     out = out.replace(communitySummaryBridgePattern, communitySummaryBridgeReplacement);
@@ -1100,22 +1252,6 @@ function patchLegacySource(source) {
     out = out.replace(sketchInwardQueryPattern, sketchInwardQueryReplacement);
   } else {
     console.warn("[msme runtime patch] sketch inward buffer query patch not applied.");
-  }
-
-  // Ignore plain random map clicks unless identify tools are explicitly active.
-  var mapClickSelectGuardPattern =
-    /if \(!mapSelectionAccumulateMode\) \{\s*identifyLayer\.removeAll\(\);/;
-  var mapClickSelectGuardReplacement = [
-    "if (!selectParcelToolActive && !mapSelectionAccumulateMode) {",
-    "    return;",
-    "  }",
-    "  if (!mapSelectionAccumulateMode) {",
-    "    identifyLayer.removeAll();",
-  ].join("\n");
-  if (mapClickSelectGuardPattern.test(out)) {
-    out = out.replace(mapClickSelectGuardPattern, mapClickSelectGuardReplacement);
-  } else {
-    console.warn("[msme runtime patch] map click select guard patch not applied.");
   }
 
   // Expose MapView for React UI (custom basemap dropdown) — first UI mount on the main map view.
@@ -1367,6 +1503,625 @@ function patchLegacySource(source) {
     console.warn("[msme runtime patch] fetchBrowser geolocation error patch not applied.");
   }
 
+  var analysisPlaceInjectPattern = /function publishBufferCommunitySummaryInBackground\(baseReportPayload, summaryGeom32643, ctxRef\) \{/;
+  if (analysisPlaceInjectPattern.test(out)) {
+    out = out.replace(
+      analysisPlaceInjectPattern,
+      analysisPlaceContextSnippet + "\nfunction publishBufferCommunitySummaryInBackground(baseReportPayload, summaryGeom32643, ctxRef) {",
+    );
+  } else {
+    console.warn("[msme runtime patch] analysis place context inject not applied.");
+  }
+
+  var bufferBgEnrichPattern =
+    /enriched\.communitySummary = communitySummary;\s*publishAnalysisReportSnapshot\(enriched\);/;
+  var bufferBgEnrichReplacement = [
+    "enriched.communitySummary = communitySummary;",
+    "    var anchorBg = (bufferMarkPoint32643 && bufferMarkPoint32643.type === \"point\") ? bufferMarkPoint32643 : null;",
+    "    enrichReportSnapshotWithPlaceContext(enriched, anchorBg, summaryGeom32643).then(function (finalSnap) {",
+    "      publishAnalysisReportSnapshot(finalSnap);",
+    "      try {",
+    '        if (typeof window !== "undefined" && window.dispatchEvent) {',
+    '          window.dispatchEvent(new CustomEvent("msme-community-panel-open"));',
+    "        }",
+    "      } catch (eOpen) {}",
+    "    });",
+  ].join("\n");
+  if (bufferBgEnrichPattern.test(out)) {
+    out = out.replace(bufferBgEnrichPattern, bufferBgEnrichReplacement);
+  } else {
+    console.warn("[msme runtime patch] buffer background place context patch not applied.");
+  }
+
+  var bufferPublishPattern =
+    /var baseReport = publishAnalysisToolResult\("buffer", msg, \{\s*count: stats\.n,\s*distanceM: distM,\s*searchRadiusM: searchRadiusM,\s*roadSource: roadSourceText\s*\}\);\s*if \(stats\.summaryGeometry32643\) \{\s*publishBufferCommunitySummaryInBackground\(baseReport, stats\.summaryGeometry32643, lastBufferExportContext\);\s*\}/;
+  var bufferPublishReplacement = [
+    'var anchorBuf = (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") ? bufferMarkPoint32643 : null;',
+    '    var bufToolId = (typeof window !== "undefined" && window.__msmeGisActiveAnalysisTool) ? String(window.__msmeGisActiveAnalysisTool) : "buffer";',
+    '    try { if (typeof window !== "undefined") window.__msmeGisActiveAnalysisTool = null; } catch (eToolId) {}',
+    "    publishAnalysisToolResultWithPlaceContext(bufToolId, msg, {",
+    "      count: stats.n,",
+    "      distanceM: distM,",
+    "      searchRadiusM: searchRadiusM,",
+    "      roadSource: roadSourceText",
+    "    }, anchorBuf, stats.summaryGeometry32643, distM).then(function (baseReport) {",
+    "      if (stats.summaryGeometry32643 && baseReport) {",
+    "        publishBufferCommunitySummaryInBackground(baseReport, stats.summaryGeometry32643, lastBufferExportContext);",
+    "      }",
+    "    });",
+  ].join("\n");
+  if (bufferPublishPattern.test(out)) {
+    out = out.replace(bufferPublishPattern, bufferPublishReplacement);
+  } else {
+    console.warn("[msme runtime patch] buffer publish place context patch not applied.");
+  }
+
+  var proxSuccessPublishPattern =
+    /var baseProxReport = publishAnalysisToolResult\("proximity", msgP, \{ count: hits, maxDistanceM: maxD, radiusM: maxD \}\);\s*var proxSummaryGeom = proxPreview32643 \|\| buildFallbackAnchorBuffer32643\(qg, maxD\);\s*if \(proxSummaryGeom\) \{\s*publishBufferCommunitySummaryInBackground\(baseProxReport, proxSummaryGeom, null\);\s*\}/;
+  var proxSuccessPublishReplacement = [
+    'var proxAnchor = (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") ? bufferMarkPoint32643 : null;',
+    "      var proxSummaryGeom = proxPreview32643 || buildFallbackAnchorBuffer32643(qg, maxD);",
+    "      publishAnalysisToolResultWithPlaceContext(\"proximity\", msgP, { count: hits, maxDistanceM: maxD, radiusM: maxD }, proxAnchor, proxSummaryGeom, maxD).then(function (baseProxReport) {",
+    "        if (proxSummaryGeom && baseProxReport) {",
+    "          publishBufferCommunitySummaryInBackground(baseProxReport, proxSummaryGeom, null);",
+    "        }",
+    "      });",
+  ].join("\n");
+  if (proxSuccessPublishPattern.test(out)) {
+    out = out.replace(proxSuccessPublishPattern, proxSuccessPublishReplacement);
+  } else {
+    console.warn("[msme runtime patch] proximity success place context patch not applied.");
+  }
+
+  var proxNoHitPublishPattern =
+    /var proxNoHitReport = publishAnalysisToolResult\("proximity", msgP0, \{ count: 0, maxDistanceM: maxD, radiusM: maxD \}\);\s*var proxSummaryGeom0 = proxPreview32643 \|\| buildFallbackAnchorBuffer32643\(qg, maxD\);\s*if \(proxSummaryGeom0\) \{\s*publishBufferCommunitySummaryInBackground\(proxNoHitReport, proxSummaryGeom0, null\);\s*\}/;
+  var proxNoHitPublishReplacement = [
+    'var proxAnchor0 = (bufferMarkPoint32643 && bufferMarkPoint32643.type === "point") ? bufferMarkPoint32643 : null;',
+    "      var proxSummaryGeom0 = proxPreview32643 || buildFallbackAnchorBuffer32643(qg, maxD);",
+    "      publishAnalysisToolResultWithPlaceContext(\"proximity\", msgP0, { count: 0, maxDistanceM: maxD, radiusM: maxD }, proxAnchor0, proxSummaryGeom0, maxD).then(function (proxNoHitReport) {",
+    "        if (proxSummaryGeom0 && proxNoHitReport) {",
+    "          publishBufferCommunitySummaryInBackground(proxNoHitReport, proxSummaryGeom0, null);",
+    "        }",
+    "      });",
+  ].join("\n");
+  if (proxNoHitPublishPattern.test(out)) {
+    out = out.replace(proxNoHitPublishPattern, proxNoHitPublishReplacement);
+  } else {
+    console.warn("[msme runtime patch] proximity no-hit place context patch not applied.");
+  }
+
+  var closestPublishPattern =
+    /publishAnalysisToolResult\("closest", msg, \{\s*count: communitySummary \? communitySummary\.totalCount : 0,\s*radiusM: radius,\s*communitySummary: communitySummary,\s*summaryGeometryJson: summaryGeom32643 && summaryGeom32643\.toJSON \? summaryGeom32643\.toJSON\(\) : null,\s*queryGeometryJson: summaryGeom32643 && summaryGeom32643\.toJSON \? summaryGeom32643\.toJSON\(\) : null\s*\}\);\s*if \(communitySummary\) \{\s*setStatus\("Closest point analysis complete\. Community panel updated\."\);\s*\} else \{\s*setStatus\("Closest point analysis complete\. Community summary unavailable\."\);\s*\}\s*return true;/;
+  var closestPublishReplacement = [
+    "return publishAnalysisToolResultWithPlaceContext(\"closest\", msg, {",
+    "      count: communitySummary ? communitySummary.totalCount : 0,",
+    "      radiusM: radius,",
+    "      communitySummary: communitySummary",
+    "    }, anchor32643Point, summaryGeom32643, radius).then(function () {",
+    "      if (communitySummary) {",
+    "        try {",
+    "          communitySummary.radiusM = radius;",
+    '          communitySummary.source = "closest-point";',
+    "        } catch (eRadMeta) {}",
+    "        showClosestResultsOnMap(anchor32643Point, summaryGeom32643, communitySummary, radius);",
+    '        setStatus("Closest point analysis complete. Community panel updated.");',
+    "      } else {",
+    '        setStatus("Closest point analysis complete. Community summary unavailable.");',
+    "      }",
+    "      return true;",
+    "    });",
+  ].join("\n");
+  if (closestPublishPattern.test(out)) {
+    out = out.replace(closestPublishPattern, closestPublishReplacement);
+  } else {
+    console.warn("[msme runtime patch] closest publish place context patch not applied.");
+  }
+
+  var closestSummaryItemsPattern =
+    /items\.forEach\(function \(item\) \{\r\n          var lat = Number\(item && item\.lat\);\r\n          var lng = Number\(item && item\.lng\);\r\n          if \(!isFinite\(lat\) \|\| !isFinite\(lng\)\) return;\r\n          var p4326 = new Point\(\{ x: lng, y: lat, spatialReference: SR4326 \}\);\r\n          var p32643 = projection\.project\(p4326, SR_METER\) \|\| null;\r\n          if \(!p32643 \|\| p32643\.type !== "point"\) return;\r\n          var dM = geometryEngine\.distance\(anchorPoint32643, p32643, "meters"\);\r\n          if \(!isFinite\(dM\)\) return;\r\n          if \(nearestItem == null \|\| nearestDistM == null \|\| dM < nearestDistM\) \{\r\n            nearestItem = \{\r\n              id: item\.id,\r\n              name: item\.name,\r\n              lat: item\.lat,\r\n              lng: item\.lng,\r\n              properties: item\.properties \|\| \{\}\r\n            \};\r\n            nearestDistM = dM;\r\n          \}\r\n        \}\);\r\n        var nearestList = nearestItem \? \[nearestItem\] : \[\];\r\n        var rawCount = Number\(data && data\.count\);\r\n        return \{\r\n          key: spec\.key,\r\n          label: spec\.label,\r\n          count: nearestItem \? 1 : 0,\r\n          rawCount: isFinite\(rawCount\) \? rawCount : 0,\r\n          items: nearestList,\r\n          nearestItem: nearestItem,\r\n          nearestDistanceM: nearestDistM != null \? Math\.round\(nearestDistM\) : null,\r\n          available: true/;
+  var closestSummaryItemsReplacement = [
+    "        var nearestItem = null;",
+    "        var nearestDistM = null;",
+    "        items.forEach(function (item) {",
+    "          var lat = Number(item && item.lat);",
+    "          var lng = Number(item && item.lng);",
+    "          if (!isFinite(lat) || !isFinite(lng)) return;",
+    "          var p4326 = new Point({ x: lng, y: lat, spatialReference: SR4326 });",
+    "          var p32643 = projection.project(p4326, SR_METER) || null;",
+    '          if (!p32643 || p32643.type !== "point") return;',
+    "          try {",
+    "            if (!geometryEngine.intersects(g32643, p32643)) return;",
+    "          } catch (eInt0) {}",
+    '          var dM = geometryEngine.distance(anchorPoint32643, p32643, "meters");',
+    "          if (!isFinite(dM)) return;",
+    "          if (nearestItem == null || nearestDistM == null || dM < nearestDistM) {",
+    "            nearestItem = {",
+    "              id: item.id,",
+    "              name: item.name,",
+    "              lat: item.lat,",
+    "              lng: item.lng,",
+    "              properties: item.properties || {}",
+    "            };",
+    "            nearestDistM = dM;",
+    "          }",
+    "        });",
+    "        var nearestList = nearestItem ? [nearestItem] : [];",
+    "        var rawCount = Number(data && data.count);",
+    "        return {",
+    "          key: spec.key,",
+    "          label: spec.label,",
+    "          count: nearestItem ? 1 : 0,",
+    "          rawCount: isFinite(rawCount) ? rawCount : 0,",
+    "          items: nearestList,",
+    "          nearestItem: nearestItem,",
+    "          nearestDistanceM: nearestDistM != null ? Math.round(nearestDistM) : null,",
+    "          available: true",
+  ].join("\n");
+  if (closestSummaryItemsPattern.test(out)) {
+    out = out.replace(closestSummaryItemsPattern, closestSummaryItemsReplacement);
+  } else {
+    console.warn("[msme runtime patch] closest summary all-items patch not applied.");
+  }
+
+  var closestMapHelpersPattern = /function runClosestFromPickedPoint\(anchor32643Point, radiusM\) \{/;
+  var closestMapHelpersReplacement = [
+    "function collectClosestMapFocusItems(communitySummary) {",
+    "  var combined = [];",
+    "  if (!communitySummary || !Array.isArray(communitySummary.categories)) return combined;",
+    "  communitySummary.categories.forEach(function (row) {",
+    "    var catKey = String(row && row.key ? row.key : \"\").toLowerCase();",
+    "    var nearest = row && row.nearestItem ? row.nearestItem : null;",
+    "    if (!nearest) {",
+    "      var rowItems = row && Array.isArray(row.items) ? row.items : [];",
+    "      nearest = rowItems.length ? rowItems[0] : null;",
+    "    }",
+    "    if (!nearest) return;",
+    "    var lat = Number(nearest && nearest.lat);",
+    "    var lng = Number(nearest && nearest.lng);",
+    "    if (!isFinite(lat) || !isFinite(lng)) return;",
+    "    var name = String(",
+    "      (nearest && (nearest.name || nearest.label)) ||",
+    "        (row && row.label ? row.label : catKey)",
+    "    );",
+    "    combined.push({ name: name, lat: lat, lng: lng, category: catKey, item: nearest });",
+    "  });",
+    "  return combined;",
+    "}",
+    "",
+    "function showClosestResultsOnMap(anchor32643Point, summaryGeom32643, communitySummary, radiusM) {",
+    "  if (!anchor32643Point || !summaryGeom32643) return;",
+    "  projection.load().then(function () {",
+    "    try {",
+    "      if (identifyLayer && summaryGeom32643) {",
+    "        var bufWeb = projection.project(summaryGeom32643, SR_WEB);",
+    "        if (bufWeb) {",
+    "          identifyLayer.add(new Graphic({",
+    "            geometry: bufWeb,",
+    "            symbol: symCadNearBuffer,",
+    '            attributes: { type: "closest-buffer-overlay", radiusM: radiusM }',
+    "          }));",
+    "        }",
+    "      }",
+    "    } catch (eBuf0) {",
+    '      console.warn("[closest map buffer]", eBuf0);',
+    "    }",
+    "    var focusItems = collectClosestMapFocusItems(communitySummary);",
+    "    if (!focusItems.length) return;",
+    '    if (typeof window !== "undefined" && window.dispatchEvent) {',
+    '      window.dispatchEvent(new CustomEvent("msme-gis-focus-community-category", {',
+    "        detail: {",
+    '          category: "multi",',
+    '          label: "Closest in buffer",',
+    "          items: focusItems,",
+    "          total: focusItems.length,",
+    "        },",
+    "      }));",
+    '      window.dispatchEvent(new CustomEvent("msme-community-panel-open"));',
+    "    }",
+    "  }).catch(function (eMap0) {",
+    '    console.warn("[closest map show]", eMap0);',
+    "  });",
+    "}",
+    "",
+    "function runClosestFromPickedPoint(anchor32643Point, radiusM) {",
+  ].join("\n");
+  if (closestMapHelpersPattern.test(out)) {
+    out = out.replace(closestMapHelpersPattern, closestMapHelpersReplacement);
+  } else {
+    console.warn("[msme runtime patch] closest map helpers patch not applied.");
+  }
+
+  var showAllPoiMaxRenderPattern = /var maxRender = 80;\r?\n  var limit = Math\.min\(allItems\.length, maxRender\);/;
+  var showAllPoiMaxRenderReplacement = [
+    "var maxRender = (detail && detail.showAllRoutes)",
+    "    ? Math.min(600, Math.max(80, allItems.length))",
+    "    : 80;",
+    "  var limit = Math.min(allItems.length, maxRender);",
+  ].join("\n");
+  if (showAllPoiMaxRenderPattern.test(out)) {
+    out = out.replace(showAllPoiMaxRenderPattern, showAllPoiMaxRenderReplacement);
+  } else {
+    console.warn("[msme runtime patch] show-all POI maxRender patch not applied.");
+  }
+
+  var showAllPoiRoadGraphPattern =
+    /return drawOsrmRoutesBatch\(validItems\)\.then\(function \(osrmState\) \{\r?\n    if \(!osrmState \|\| !osrmState\.unresolved \|\| !osrmState\.unresolved\.length\) \{\r?\n      return finalizeGraphics\(\{ routed: \(osrmState && osrmState\.routed\) \|\| 0, fallback: 0 \}\);\r?\n    \}\r?\n    return queryLayer\(TRANS_MS, LAYER_ROADS_LINE, Object\.assign\(\{/;
+  var showAllPoiRoadGraphReplacement = [
+    "function queryRoadGraphAndDrawAllPois(itemsForRoute, routedSeed) {",
+    "    return queryLayer(TRANS_MS, LAYER_ROADS_LINE, Object.assign({",
+    '      where: "1=1",',
+    "      returnGeometry: true,",
+    '      outFields: "OBJECTID",',
+    "      resultRecordCount: 2200",
+    "    }, geometryToQueryParams(routeQueryExtent))).then(function (data) {",
+    "      var roads = (data && data.features) || [];",
+    "      if (!roads.length) {",
+    "        return finalizeGraphics({",
+    "          routed: routedSeed || 0,",
+    "          fallback: drawStraightFallbackForAll(itemsForRoute)",
+    "        });",
+    "      }",
+    "      var graph = buildRoadGraph(roads, 8);",
+    "      if (!graph || !graph.keys || !graph.keys.length) {",
+    "        return finalizeGraphics({",
+    "          routed: routedSeed || 0,",
+    "          fallback: drawStraightFallbackForAll(itemsForRoute)",
+    "        });",
+    "      }",
+    "      return drawFromRoadGraph(graph, itemsForRoute, routedSeed || 0);",
+    "    }).catch(function () {",
+    "      return finalizeGraphics({",
+    "        routed: routedSeed || 0,",
+    "        fallback: drawStraightFallbackForAll(itemsForRoute)",
+    "      });",
+    "    });",
+    "  }",
+    "",
+    "  if (detail && detail.showAllRoutes && validItems.length > 0) {",
+    '    setStatus("Drawing routes to center for " + validItems.length + " POIs...");',
+    "    return queryRoadGraphAndDrawAllPois(validItems, 0).then(function () {",
+    "      return doneZoom.then(function () { return true; });",
+    "    });",
+    "  }",
+    "",
+    "  return drawOsrmRoutesBatch(validItems).then(function (osrmState) {",
+    "    if (!osrmState || !osrmState.unresolved || !osrmState.unresolved.length) {",
+    "      return finalizeGraphics({ routed: (osrmState && osrmState.routed) || 0, fallback: 0 });",
+    "    }",
+    "    return queryLayer(TRANS_MS, LAYER_ROADS_LINE, Object.assign({",
+  ].join("\n");
+  if (showAllPoiRoadGraphPattern.test(out)) {
+    out = out.replace(showAllPoiRoadGraphPattern, showAllPoiRoadGraphReplacement);
+  } else {
+    console.warn("[msme runtime patch] show-all POI road graph patch not applied.");
+  }
+
+  var mapSelectionPublishPattern =
+    /publishMapSelectionReportSnapshot\(\{\s*generatedAt: new Date\(\)\.toISOString\(\),\s*reportKind: "map-selection",\s*selectionSource: selectionSource \|\| "map-click",\s*accumulate: mapSelectionAccumulateMode,\s*clicks: clicksPayload,\s*lat: lat,\s*lon: lon,\s*radiusM: radiusM,\s*atClickRows: atClickRows,\s*nearbyRows: nearbyRows,\s*communitySummary: null,\s*domContext: \{\}\s*\}\);/;
+  var mapSelectionPublishReplacement = [
+    "publishMapSelectionReportSnapshot({",
+    "      generatedAt: new Date().toISOString(),",
+    '      reportKind: "map-selection",',
+    '      selectionSource: selectionSource || "map-click",',
+    "      accumulate: mapSelectionAccumulateMode,",
+    "      clicks: clicksPayload,",
+    "      lat: lat,",
+    "      lon: lon,",
+    "      radiusM: radiusM,",
+    "      atClickRows: atClickRows,",
+    "      nearbyRows: nearbyRows,",
+    "      communitySummary: null,",
+    "      domContext: {}",
+    "    });",
+    "    try {",
+    '      if (typeof window !== "undefined" && window.dispatchEvent) {',
+    '        window.dispatchEvent(new CustomEvent("msme-community-panel-open"));',
+    "      }",
+    "    } catch (eMapOpen) {}",
+  ].join("\n");
+  if (mapSelectionPublishPattern.test(out)) {
+    out = out.replace(mapSelectionPublishPattern, mapSelectionPublishReplacement);
+  } else {
+    console.warn("[msme runtime patch] map selection panel open patch not applied.");
+  }
+
+  var identifyPopupPattern =
+    /var popupHtml = buildSimpleIdentifyPopupHtml\(lat, lon, popName, popDist, gisPh\("mapPopupTitle"\)\);\s*if \(selectionSource !== "map-click" && view\.popup && mapPoint\) \{\s*view\.popup\.open\(\{\s*title: "",\s*content: popupHtml,\s*location: mapPoint\s*\}\);\s*\}/;
+  var identifyPopupReplacement =
+    'if (view && view.popup && mapPoint) {\n        openIdentifyMapPopup(view, mapPoint, lat, lon, popName, popDist, flat);\n      }';
+  if (identifyPopupPattern.test(out)) {
+    out = out.replace(identifyPopupPattern, identifyPopupReplacement);
+  } else {
+    console.warn("[msme runtime patch] identify popup place-details patch not applied.");
+  }
+
+  var quickProxPickPattern =
+    /\} else if \(shouldProxRun\) \{\s*var curProxDist = parseInt\(\(document\.getElementById\("proxDist"\) \|\| \{\}\)\.value, 10\);\s*if \(!isFinite\(curProxDist\) \|\| curProxDist <= 0\) curProxDist = 2000;\s*setStatus\("Point set\. Running Proximity analysis \(" \+ curProxDist \+ " m\)\.\.\."\);\s*var proxBtn = document\.getElementById\("runProximity"\);\s*if \(proxBtn\) proxBtn\.click\(\);\s*\}/;
+  var quickProxPickReplacement = [
+    "} else if (shouldProxRun) {",
+    "        var curProxDist = readProximityDistanceMetersFromUi();",
+    "        if (!isFinite(curProxDist) || curProxDist <= 0) curProxDist = 2000;",
+    "        setProximityDistanceMeters(curProxDist);",
+    "        setBufferDistanceMeters(curProxDist);",
+    '        var bufDistEl = document.getElementById("bufDist");',
+    '        if (bufDistEl) bufDistEl.value = String(curProxDist);',
+    '        if (typeof window !== "undefined") window.__msmeGisActiveAnalysisTool = "proximity";',
+    '        setStatus("Point set. Running Proximity buffer (" + curProxDist + " m)...");',
+    '        var runBtn = document.getElementById("runBuffer");',
+    "        if (runBtn) runBtn.click();",
+    "      }",
+  ].join("\n");
+  if (quickProxPickPattern.test(out)) {
+    out = out.replace(quickProxPickPattern, quickProxPickReplacement);
+  } else {
+    console.warn("[msme runtime patch] quick proximity uses buffer patch not applied.");
+  }
+
+  var communityShownCountPattern =
+    /var shownCount = isFinite\(plotted\) \? plotted : \(isFinite\(raw\) \? raw : 0\);/g;
+  if (communityShownCountPattern.test(out)) {
+    communityShownCountPattern.lastIndex = 0;
+    out = out.replace(
+      communityShownCountPattern,
+      "var shownCount = Math.max(isFinite(plotted) ? plotted : 0, isFinite(raw) ? raw : 0);",
+    );
+  } else {
+    console.warn("[msme runtime patch] community shownCount patch not applied.");
+  }
+
+  var mapClickRadiusPattern =
+    /var radiusM = 3000;\s*try \{\s*radiusM = readCadNearRadiusMeters\(\);\s*\} catch \(e2\) \{\}/;
+  var mapClickRadiusReplacement = [
+    "var radiusM = 5000;",
+    "  try {",
+    "    var pickedRadius = readCadNearRadiusMeters();",
+    "    if (isFinite(pickedRadius) && pickedRadius > 0) radiusM = Math.max(5000, Math.round(pickedRadius));",
+    "  } catch (e2) {}",
+  ].join("\n");
+  if (mapClickRadiusPattern.test(out)) {
+    out = out.replace(mapClickRadiusPattern, mapClickRadiusReplacement);
+  } else {
+    console.warn("[msme runtime patch] map-click community radius patch not applied.");
+  }
+
+  var mapPointSummaryPublishPattern =
+    /publishMapSelectionReportSnapshot\(\{\s*generatedAt: new Date\(\)\.toISOString\(\),\s*reportKind: "map-selection",\s*selectionSource: summaryMeta && summaryMeta\.selectionSource \? summaryMeta\.selectionSource : "map-click",\s*accumulate: mapSelectionAccumulateMode,\s*clicks: clicksPayload,\s*lat: summaryMeta && summaryMeta\.lat != null \? summaryMeta\.lat : null,\s*lon: summaryMeta && summaryMeta\.lon != null \? summaryMeta\.lon : null,\s*radiusM: radius,\s*atClickRows: summaryMeta && summaryMeta\.atClickRows \? summaryMeta\.atClickRows : \[\],\s*nearbyRows: summaryMeta && summaryMeta\.nearbyRows \? summaryMeta\.nearbyRows : \[\],\s*communitySummary: communitySummary,\s*domContext: \{\}\s*\}\);/;
+  var mapPointSummaryPublishReplacement = [
+    "var mapSelPayload = {",
+    "      generatedAt: new Date().toISOString(),",
+    '      reportKind: "map-selection",',
+    '      selectionSource: summaryMeta && summaryMeta.selectionSource ? summaryMeta.selectionSource : "map-click",',
+    "      accumulate: mapSelectionAccumulateMode,",
+    "      clicks: clicksPayload,",
+    "      lat: summaryMeta && summaryMeta.lat != null ? summaryMeta.lat : null,",
+    "      lon: summaryMeta && summaryMeta.lon != null ? summaryMeta.lon : null,",
+    "      radiusM: radius,",
+    "      atClickRows: summaryMeta && summaryMeta.atClickRows ? summaryMeta.atClickRows : [],",
+    "      nearbyRows: summaryMeta && summaryMeta.nearbyRows ? summaryMeta.nearbyRows : [],",
+    "      communitySummary: communitySummary,",
+    "      domContext: {}",
+    "    };",
+    "    enrichReportSnapshotWithPlaceContext(mapSelPayload, anchor32643Point, summaryGeom).then(function (finalMapSel) {",
+    "      publishMapSelectionReportSnapshot(finalMapSel);",
+    "      try {",
+    '        if (typeof window !== "undefined" && window.dispatchEvent) {',
+    '          window.dispatchEvent(new CustomEvent("msme-community-panel-open"));',
+    "        }",
+    "      } catch (eMapSumOpen) {}",
+    "    });",
+  ].join("\n");
+  if (mapPointSummaryPublishPattern.test(out)) {
+    out = out.replace(mapPointSummaryPublishPattern, mapPointSummaryPublishReplacement);
+  } else {
+    console.warn("[msme runtime patch] map point summary publish patch not applied.");
+  }
+
+  var mapClickPinSymPattern =
+    /var communityZoomLabelGraphic = null;\r\n\r\nfunction clearResults\(\) \{ resultsLayer\.removeAll\(\); \}/;
+  var mapClickPinSymReplacement = [
+    "var communityZoomLabelGraphic = null;",
+    "var symMapClickPin = new SimpleMarkerSymbol({",
+    '  style: "circle",',
+    "  color: [98, 54, 191, 0.98],",
+    "  size: 13,",
+    '  outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 2 })',
+    "});",
+    "",
+    "function setMapClickSelectionGraphics(mapPoint, anchor32643, radiusM, selectionSource) {",
+    '  if (String(selectionSource || "") !== "map-click") return;',
+    "  if (!identifyLayer || !anchor32643) return;",
+    "  var rad = Number(radiusM);",
+    "  if (!isFinite(rad) || rad <= 0) rad = 5000;",
+    "  try {",
+    "    var buf32643 = geometryEngine.buffer(anchor32643, rad, \"meters\");",
+    "    if (buf32643) {",
+    "      var bufWeb = projection.project(buf32643, SR_WEB);",
+    "      if (bufWeb) {",
+    "        identifyLayer.add(new Graphic({",
+    "          geometry: bufWeb,",
+    "          symbol: symCadNearBuffer,",
+    '          attributes: { type: "map-click-radius", radiusM: rad }',
+    "        }));",
+    "      }",
+    "    }",
+    "  } catch (eRad0) {",
+    '    console.warn("[map click radius]", eRad0);',
+    "  }",
+    "  try {",
+    "    var pinWeb = null;",
+    '    if (mapPoint && mapPoint.type === "point") {',
+    "      pinWeb =",
+    "        mapPoint.spatialReference && Number(mapPoint.spatialReference.wkid) === 3857",
+    "          ? mapPoint",
+    "          : projection.project(mapPoint, SR_WEB);",
+    "    }",
+    "    if (!pinWeb) pinWeb = projection.project(anchor32643, SR_WEB);",
+    "    if (pinWeb) {",
+    "      identifyLayer.add(new Graphic({",
+    "        geometry: pinWeb,",
+    "        symbol: symMapClickPin,",
+    '        attributes: { type: "map-click-pin" }',
+    "      }));",
+    "    }",
+    "  } catch (ePin0) {",
+    '    console.warn("[map click pin]", ePin0);',
+    "  }",
+    "}",
+    "",
+    "function clearResults() { resultsLayer.removeAll(); }",
+  ].join("\n");
+  if (mapClickPinSymPattern.test(out)) {
+    out = out.replace(mapClickPinSymPattern, mapClickPinSymReplacement);
+  } else {
+    console.warn("[msme runtime patch] map click pin symbol patch not applied.");
+  }
+
+  var mapClickPinCallPattern =
+    /  \} catch \(e2\) \{\}\s*\r?\n\r?\n  return queryNearbyRowsFromPoint\(anchor32643, radiusM\)\.then/;
+  var mapClickPinCallReplacement = [
+    "  } catch (e2) {}",
+    "",
+    "  setMapClickSelectionGraphics(mapPoint, anchor32643, radiusM, selectionSource);",
+    "",
+    "  return queryNearbyRowsFromPoint(anchor32643, radiusM).then",
+  ].join("\n");
+  if (mapClickPinCallPattern.test(out)) {
+    out = out.replace(mapClickPinCallPattern, mapClickPinCallReplacement);
+  } else {
+    console.warn("[msme runtime patch] map click pin draw patch not applied.");
+  }
+
+  var mapClickInstantPinPattern =
+    /var anchor32643 = projection\.project\(mapPoint, SR_METER\);\s*lastIdentifyAnchor32643 = anchor32643;\s*return Promise\.all\(IDENTIFY_URLS\.map/;
+  var mapClickInstantPinReplacement = [
+    "var anchor32643 = projection.project(mapPoint, SR_METER);",
+    "    lastIdentifyAnchor32643 = anchor32643;",
+    "    var mapClickRadiusM = 5000;",
+    "    try {",
+    "      var pickedMapRad = readCadNearRadiusMeters();",
+    "      if (isFinite(pickedMapRad) && pickedMapRad > 0) mapClickRadiusM = Math.max(5000, Math.round(pickedMapRad));",
+    "    } catch (eMapRad0) {}",
+    '    setMapClickSelectionGraphics(mapPoint, anchor32643, mapClickRadiusM, "map-click");',
+    "    return Promise.all(IDENTIFY_URLS.map",
+  ].join("\n");
+  if (mapClickInstantPinPattern.test(out)) {
+    out = out.replace(mapClickInstantPinPattern, mapClickInstantPinReplacement);
+  } else {
+    console.warn("[msme runtime patch] map click instant pin patch not applied.");
+  }
+
+  var mapClickPlaceOnlyFnPattern = /function finalizeIdentifyResults\(anchor32643, mapPoint, flat, selectionSource\) \{/;
+  var mapClickPlaceOnlyFnReplacement = [
+    "function finishMapClickPlaceResults(anchor32643, mapPoint, flat, lat, lon, radiusM) {",
+    "  identifyLayer.removeAll();",
+    "  connectorLayer.removeAll();",
+    "  setMapClickSelectionGraphics(mapPoint, anchor32643, radiusM, \"map-click\");",
+    "  var primaryNb = flat.filter(function (r) { return !isBoundaryLayerName(r.layerName); });",
+    "  var popName = \"Selected location\";",
+    "  var popDist = null;",
+    "  if (primaryNb.length) {",
+    "    var pr = primaryNb[0];",
+    "    popName = pr.layerName || popName;",
+    "    var gjp = pr.feature && pr.feature.geometry;",
+    "    var gp = gjp ? geomFromJSON(gjp) : null;",
+    "    if (gp && geometryIsUsable(gp)) {",
+    "      coerceMissingSpatialReference(gp, SR_WEB);",
+    "      var gp326 = toEngineSR(gp);",
+    "      popDist = distanceFromPointToGeometry(anchor32643, gp326);",
+    "      if (popDist != null && popDist > 5e6) popDist = null;",
+    "    }",
+    "  }",
+    "  if (view && view.popup && mapPoint) {",
+    "    openIdentifyMapPopup(view, mapPoint, lat, lon, popName, popDist, flat);",
+    "  }",
+    "  mapIdentifyClickSessions = [{",
+    "    flat: flat,",
+    "    anchor32643: anchor32643,",
+    "    mapPoint: mapPoint,",
+    "    lat: lat,",
+    "    lon: lon,",
+    "    radiusM: radiusM,",
+    "    atClickRows: [],",
+    "    nearbyRows: [],",
+    "    communitySummary: null",
+    "  }];",
+    "  var placePayload = {",
+    "    generatedAt: new Date().toISOString(),",
+    "    reportKind: \"map-selection\",",
+    "    selectionSource: \"map-click\",",
+    "    placeOnly: true,",
+    "    accumulate: false,",
+    "    lat: lat,",
+    "    lon: lon,",
+    "    radiusM: radiusM,",
+    "    atClickRows: [],",
+    "    nearbyRows: [],",
+    "    clicks: [{ clickIndex: 1, lat: lat, lon: lon, radiusM: radiusM }],",
+    "    communitySummary: null,",
+    "    domContext: {}",
+    "  };",
+    "  return enrichReportSnapshotWithPlaceContext(placePayload, anchor32643, null).then(function (finalSnap) {",
+    "    function publishMapClickSnap(snap) {",
+    "      publishMapSelectionReportSnapshot(snap);",
+    "      try {",
+    "        if (typeof window !== \"undefined\" && window.dispatchEvent) {",
+    "          window.dispatchEvent(new CustomEvent(\"msme-community-panel-open\"));",
+    "        }",
+    "      } catch (eMapOpen) {}",
+    "      setStatus(\"Location: \" + lat.toFixed(5) + \"°, \" + lon.toFixed(5) + \"°\");",
+    "      return snap;",
+    "    }",
+    "    if (typeof window.msmeGisQueryAssemblyDetailsByPointWgs84 === \"function\") {",
+    "      return window.msmeGisQueryAssemblyDetailsByPointWgs84({ lat: lat, lon: lon }).then(function (assemblyDetails) {",
+    "        if (assemblyDetails) {",
+    "          finalSnap.assemblyDetails = assemblyDetails;",
+    "          if (!finalSnap.domContext) finalSnap.domContext = {};",
+    "          finalSnap.domContext.assemblyDetails = assemblyDetails;",
+    "        }",
+    "        return publishMapClickSnap(finalSnap);",
+    "      }).catch(function () {",
+    "        return publishMapClickSnap(finalSnap);",
+    "      });",
+    "    }",
+    "    return publishMapClickSnap(finalSnap);",
+    "  });",
+    "}",
+    "",
+    "function finalizeIdentifyResults(anchor32643, mapPoint, flat, selectionSource) {",
+  ].join("\n");
+  if (mapClickPlaceOnlyFnPattern.test(out)) {
+    out = out.replace(mapClickPlaceOnlyFnPattern, mapClickPlaceOnlyFnReplacement);
+  } else {
+    console.warn("[msme runtime patch] map click place-only helper patch not applied.");
+  }
+
+  var mapClickPlaceOnlyEarlyPattern =
+    /} else if \(selectionSource === \"map-click\" && !mapSelectionAccumulateMode\) \{\s*mapIdentifyClickSessions = \[\];\s*\}\s*\r?\n\r?\n  var cadHits = flat\.filter/;
+  var mapClickPlaceOnlyEarlyReplacement = [
+    "} else if (selectionSource === \"map-click\" && !mapSelectionAccumulateMode) {",
+    "    mapIdentifyClickSessions = [];",
+    "  }",
+    "",
+    "  if (selectionSource === \"map-click\" && !mapSelectionAccumulateMode && !selectParcelToolActive) {",
+    "    var llMap = projection.project(mapPoint, SR4326);",
+    "    var latMap = llMap.y;",
+    "    var lonMap = llMap.x;",
+    "    var radiusMap = 5000;",
+    "    try {",
+    "      var pickedMapR = readCadNearRadiusMeters();",
+    "      if (isFinite(pickedMapR) && pickedMapR > 0) radiusMap = Math.max(5000, Math.round(pickedMapR));",
+    "    } catch (eMapR0) {}",
+    "    return finishMapClickPlaceResults(anchor32643, mapPoint, flat, latMap, lonMap, radiusMap);",
+    "  }",
+    "",
+    "  var cadHits = flat.filter",
+  ].join("\n");
+  if (mapClickPlaceOnlyEarlyPattern.test(out)) {
+    out = out.replace(mapClickPlaceOnlyEarlyPattern, mapClickPlaceOnlyEarlyReplacement);
+  } else {
+    console.warn("[msme runtime patch] map click place-only early return patch not applied.");
+  }
+
   return out;
 }
 
@@ -1423,10 +2178,22 @@ function ensureArcGisProxyAuthInterceptor() {
   window.__msmeArcGisProxyAuthInstalled = true;
 }
 
+function installAssemblyLookupBridge() {
+  if (typeof window === "undefined") return;
+  if (window.__msmeAssemblyLookupBridgeInstalled) return;
+  window.__msmeAssemblyLookupBridgeInstalled = true;
+  window.msmeGisQueryAssemblyDetailsByPointWgs84 = queryAssemblyDetailsByPointWgs84;
+}
+
 export const initMsmeWebGis = (...args) => {
   ensureArcGisProxyAuthInterceptor();
+  installAssemblyLookupBridge();
   return __legacyInitMsmeWebGis(...args);
 };
+
+if (typeof window !== "undefined") {
+  installAssemblyLookupBridge();
+}
 
 const TRACK_TOOL_BUTTON_ID = "btnTrackPickPoint";
 const TRACK_TOOL_LAYER_ID = LAYER_ROADS_LINE; // Transportation_Infrastructure -> Roads (Line)
@@ -2179,4 +2946,198 @@ function installRailTrackBufferTool() {
   }, 800);
 }
 
+function installMeasurementLineTool() {
+  if (typeof window === "undefined") return;
+  if (window.__msmeMeasurementLineToolInstalled) return;
+  window.__msmeMeasurementLineToolInstalled = true;
+
+  var state = {
+    viewRef: null,
+    graphicsLayer: null,
+    sketchVM: null,
+    createHandle: null,
+    drawing: false,
+    prevCursor: "",
+  };
+
+  function publishLineDistance(meters) {
+    var m = Number(meters);
+    var detail = {
+      meters: Number.isFinite(m) && m >= 0 ? m : null,
+      km: Number.isFinite(m) && m >= 0 ? m / 1000 : null,
+    };
+    try {
+      window.dispatchEvent(new CustomEvent("msme-measurement-line-distance", { detail: detail }));
+    } catch (e0) {}
+  }
+
+  function setStatus(msg) {
+    var statusEl = document.getElementById("status");
+    if (statusEl) statusEl.textContent = String(msg || "");
+  }
+
+  function ensureGraphicsLayer(view) {
+    if (!view || !view.map) return null;
+    if (state.graphicsLayer && !state.graphicsLayer.destroyed) {
+      if (!view.map.layers.includes(state.graphicsLayer)) {
+        try {
+          view.map.add(state.graphicsLayer);
+        } catch (e0) {}
+      }
+      return state.graphicsLayer;
+    }
+    state.graphicsLayer = new GraphicsLayer({
+      id: "__msmeMeasurementLineLayer",
+      title: "Measurement line",
+      listMode: "hide",
+    });
+    try {
+      view.map.add(state.graphicsLayer);
+    } catch (e1) {}
+    return state.graphicsLayer;
+  }
+
+  function computeLineLengthMeters(geom) {
+    if (!geom || geom.type !== "polyline") return null;
+    var g4326 = null;
+    try {
+      g4326 = projection.project(geom, SR4326);
+    } catch (e0) {
+      g4326 = null;
+    }
+    if (g4326) {
+      var km = geometryEngine.geodesicLength(g4326, "kilometers");
+      if (Number.isFinite(km) && km >= 0) return km * 1000;
+    }
+    try {
+      var g326 = toEngineSR(geom);
+      if (g326) {
+        var planar = geometryEngine.planarLength(g326, "meters");
+        if (Number.isFinite(planar) && planar >= 0) return planar;
+      }
+    } catch (e1) {}
+    return null;
+  }
+
+  function measureGraphicGeometry(geom) {
+    if (!geom) return;
+    projection.load().then(function () {
+      var meters = computeLineLengthMeters(geom);
+      publishLineDistance(meters);
+      if (Number.isFinite(meters) && meters >= 0) {
+        setStatus(
+          "Line distance: " +
+            (meters >= 1000
+              ? (meters / 1000).toFixed(2) + " km"
+              : Math.round(meters) + " m"),
+        );
+      }
+    });
+  }
+
+  function ensureSketch(view) {
+    var layer = ensureGraphicsLayer(view);
+    if (!layer || !view) return null;
+    if (state.sketchVM && !state.sketchVM.destroyed) return state.sketchVM;
+
+    state.sketchVM = new SketchViewModel({
+      view: view,
+      layer: layer,
+      polylineSymbol: new SimpleLineSymbol({
+        color: [0, 109, 91, 1],
+        width: 3,
+        style: "solid",
+      }),
+    });
+
+    if (state.createHandle) {
+      try {
+        state.createHandle.remove();
+      } catch (e0) {}
+    }
+
+    state.createHandle = state.sketchVM.on("create", function (ev) {
+      if (!ev || !ev.graphic) return;
+      if (ev.state === "active" && ev.graphic.geometry) {
+        measureGraphicGeometry(ev.graphic.geometry);
+        return;
+      }
+      if (ev.state !== "complete") return;
+      state.drawing = false;
+      try {
+        if (view && view.container) view.container.style.cursor = state.prevCursor || "";
+      } catch (e1) {}
+      measureGraphicGeometry(ev.graphic.geometry);
+    });
+
+    return state.sketchVM;
+  }
+
+  function stopDrawing() {
+    state.drawing = false;
+    if (state.sketchVM) {
+      try {
+        state.sketchVM.cancel();
+      } catch (e0) {}
+    }
+    var view = window.__msmeGisMapView;
+    if (view && view.container) {
+      try {
+        view.container.style.cursor = state.prevCursor || "";
+      } catch (e1) {}
+    }
+  }
+
+  window.msmeGisStartMeasurementLineDraw = function () {
+    var view = window.__msmeGisMapView;
+    if (!view || view.destroyed) {
+      setStatus("Measurement line: map not ready.");
+      return false;
+    }
+    var sketch = ensureSketch(view);
+    if (!sketch) return false;
+    stopDrawing();
+    if (state.graphicsLayer) {
+      try {
+        state.graphicsLayer.removeAll();
+      } catch (e0) {}
+    }
+    publishLineDistance(null);
+    state.prevCursor = (view.container && view.container.style.cursor) || "";
+    if (view.container) view.container.style.cursor = "crosshair";
+    state.drawing = true;
+    sketch.create("polyline");
+    setStatus("Measurement: click map points, double-click to finish line.");
+    return true;
+  };
+
+  window.msmeGisStopMeasurementLineDraw = function () {
+    stopDrawing();
+    return true;
+  };
+
+  window.msmeGisClearMeasurementLine = function () {
+    stopDrawing();
+    if (state.graphicsLayer) {
+      try {
+        state.graphicsLayer.removeAll();
+      } catch (e0) {}
+    }
+    publishLineDistance(null);
+    setStatus("");
+    return true;
+  };
+
+  function syncViewRef() {
+    var view = window.__msmeGisMapView;
+    if (state.viewRef === view) return;
+    state.viewRef = view || null;
+    stopDrawing();
+    if (view) ensureGraphicsLayer(view);
+  }
+
+  window.setInterval(syncViewRef, 800);
+}
+
+installMeasurementLineTool();
 installRailTrackBufferTool();

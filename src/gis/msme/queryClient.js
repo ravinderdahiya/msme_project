@@ -2,12 +2,12 @@ import esriRequest from '@arcgis/core/request.js'
 import { getToken } from "../../utils/authStorage.js"
 import { handleGisUnauthorized } from "../../utils/gisAuthFailure.js"
 import { HSACGGM_MAP_SERVICE_URLS } from "./arcgisMapServiceUrls.js"
-import { toDevArcGisProxyUrl } from "./resolveMapServiceUrl.js"
+import { toDevArcGisProxyUrl, toDevInvesthryProxyUrl } from "./resolveMapServiceUrl.js"
 
 let arcgisRequestsInFlight = 0
 let arcgisActiveNetworkRequests = 0
 const arcgisPendingNetworkRequests = []
-const MAX_PARALLEL_ARCGIS_REQUESTS = 3
+const MAX_PARALLEL_ARCGIS_REQUESTS = 6
 
 function runWithArcgisRequestSlot(task) {
   return new Promise((resolve, reject) => {
@@ -121,6 +121,10 @@ function mapQueryPublicFallbackUrl(requestUrl) {
 
   if (import.meta.env.DEV && /^https?:\/\/hsacggm\.in/i.test(path)) {
     return toDevArcGisProxyUrl(path) + suffix
+  }
+
+  if (import.meta.env.DEV && /^https?:\/\/investhry\.harsac\.in/i.test(path)) {
+    return toDevInvesthryProxyUrl(path) + suffix
   }
 
   return ""

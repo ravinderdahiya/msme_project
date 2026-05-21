@@ -140,11 +140,42 @@ export function escapeHtml(s) {
     .replace(/"/g, '&quot;')
 }
 
-export function buildSimpleIdentifyPopupHtml(lat, lon, primaryLayerName, distM, mapPopupTitleFallback) {
+function buildIdentifyPlaceRowsHtml(placeDetails) {
+  if (!placeDetails || typeof placeDetails !== 'object') return ''
+  var rows = [
+    ['District', placeDetails.district],
+    ['Tehsil', placeDetails.tehsil],
+    ['Village', placeDetails.village],
+    ['PINCODE', placeDetails.pincode],
+  ]
+  var html = ''
+  rows.forEach(function (row) {
+    var label = escapeHtml(row[0])
+    var value = row[1] ? escapeHtml(row[1]) : '—'
+    html +=
+      '<p style="margin:4px 0 0;color:#3c4043;font-size:11px;">' +
+      '<span style="color:#80868b;font-weight:500;">' +
+      label +
+      ':</span> ' +
+      value +
+      '</p>'
+  })
+  return html
+}
+
+export function buildSimpleIdentifyPopupHtml(
+  lat,
+  lon,
+  primaryLayerName,
+  distM,
+  mapPopupTitleFallback,
+  placeDetails,
+) {
   var title = primaryLayerName
     ? escapeHtml(primaryLayerName)
     : escapeHtml(mapPopupTitleFallback || 'Features at this location')
   var distStr = distM != null && isFinite(distM) && distM < 1e6 ? Math.round(distM) + ' m' : '—'
+  var placeRows = buildIdentifyPlaceRowsHtml(placeDetails)
   return (
     '<div style="font-size:12px;line-height:1.45;max-width:260px;padding:2px 0;">' +
     '<p style="margin:0 0 4px;font-weight:600;color:#202124;font-size:13px;">' +
@@ -156,7 +187,9 @@ export function buildSimpleIdentifyPopupHtml(lat, lon, primaryLayerName, distM, 
     lon.toFixed(5) +
     '° · ' +
     distStr +
-    '</p></div>'
+    '</p>' +
+    placeRows +
+    '</div>'
   )
 }
 

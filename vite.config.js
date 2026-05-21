@@ -57,6 +57,15 @@ export default defineConfig(({ mode }) => {
           proxyTimeout: 120000,
           rewrite: (path) => path.replace(/^\/arcgis/, ''),
         },
+        '/investhry': {
+          target: 'https://investhry.harsac.in',
+          changeOrigin: true,
+          secure: false,
+          agent: arcgisProxyAgent,
+          timeout: 120000,
+          proxyTimeout: 120000,
+          rewrite: (path) => path.replace(/^\/investhry/, ''),
+        },
         '/user': {
           target: backendTarget,
           changeOrigin: true,

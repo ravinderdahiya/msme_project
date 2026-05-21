@@ -1,5 +1,6 @@
 import { queryLayer } from './queryClient.js'
 import { CON_MS, LAYER_CON_ASSEMBLY } from './serviceUrlsAndLayers.js'
+import { getAssemblyInvesthryQuerySources } from './assemblyInvesthrySources.js'
 import { normalizePlaceValue, pickPlaceField } from './placeDetailsHelpers.js'
 
 function normalizePercent(value) {
@@ -71,20 +72,48 @@ export function coerceAssemblyDetails(source) {
 
   var vidhanSabha = pickPlaceField(source, [
     'ac_name',
+    'acname',
+    'AC_NAME',
     'const_name',
     'constituency',
     'vidhan_sabha',
+    'vidhansabha',
     'assembly_name',
+    'ASSEMBLY_NAME',
+    'vs_name',
     'name',
+    'NAME',
   ])
-  var vidhanSabhaCode = pickPlaceField(source, ['ac_no', 'ac_code', 'const_id', 'assembly_code', 'code'])
-  var district = pickPlaceField(source, ['n_d_name', 'district', 'district_name', 'dist_name'])
+  var vidhanSabhaCode = pickPlaceField(source, [
+    'ac_no',
+    'acno',
+    'AC_NO',
+    'ac_code',
+    'const_id',
+    'assembly_code',
+    'assembly_no',
+    'code',
+    'CODE',
+  ])
+  var district = pickPlaceField(source, [
+    'n_d_name',
+    'district',
+    'district_name',
+    'dist_name',
+    'DISTRICT',
+    'DISTRICT_NAME',
+    'DIST_NAME',
+  ])
   var proposedPolicy = pickPlaceField(source, [
     'proposed_new_policy',
     'new_policy',
     'policy_year',
     'policy',
     'proposed_policy',
+    'PROPOSED_POLICY',
+    'PROPOSED_NEW_POLICY',
+    'POLICY_YEAR',
+    'POLICY',
   ])
   var intermediateAreaPct = normalizePercent(
     pickPlaceField(source, [
@@ -94,10 +123,27 @@ export function coerceAssemblyDetails(source) {
       'intermediate',
       'int_area_pct',
       'ia_pct',
+      'INTERMEDIATE_AREA_PCT',
+      'INTERMEDIATE_PCT',
+      'INTERMEDIATE_AREA',
+      'intermediatearea',
+      'intermediate_area',
     ]),
   )
   var coreAreaPct = normalizePercent(
-    pickPlaceField(source, ['core_area_pct', 'core_area_perc', 'core_pct', 'core_area', 'ca_pct']),
+    pickPlaceField(source, [
+      'core_area_pct',
+      'core_area_perc',
+      'core_pct',
+      'core_area',
+      'ca_pct',
+      'CORE_AREA_PCT',
+      'CORE_PCT',
+      'CORE_AREA',
+      'corearea',
+      'CoreArea',
+      'core_per',
+    ]),
   )
   var subPrimeAreaPct = normalizePercent(
     pickPlaceField(source, [
@@ -108,10 +154,24 @@ export function coerceAssemblyDetails(source) {
       'sub_prime',
       'subprime',
       'spa_pct',
+      'SUB_PRIME_AREA_PCT',
+      'SUBPRIME_PCT',
+      'SUB_PRIME_PCT',
+      'subprime_area',
+      'sub_prime_area',
     ]),
   )
   var mcPct = normalizePercent(
-    pickPlaceField(source, ['mc_pct', 'mc_percentage', 'municipal_pct', 'municipal_corporation_pct']),
+    pickPlaceField(source, [
+      'mc_pct',
+      'mc_percentage',
+      'municipal_pct',
+      'municipal_corporation_pct',
+      'MC_PCT',
+      'MC_PERCENTAGE',
+      'MC_PER',
+      'mc_per',
+    ]),
   )
   var existingIndustry = normalizeCount(
     pickPlaceField(source, [
@@ -121,6 +181,10 @@ export function coerceAssemblyDetails(source) {
       'industry_count',
       'no_of_industry',
       'total_industry',
+      'EXISTING_INDUSTRY',
+      'EXISTING_INDUSTRIES',
+      'EXISTINGINDUSTRY',
+      'NO_OF_INDUSTRY',
     ]),
   )
 
@@ -172,35 +236,76 @@ export function mergeAssemblyDetails(base, extra) {
   return coerceAssemblyDetails(merged)
 }
 
-export function queryAssemblyDetailsByPointWgs84(point) {
-  var normalized = toNormalizedPoint(point)
-  if (!normalized) return Promise.resolve(null)
+function mergeAssemblyDetailsList(list) {
+  var merged = null
+  ;(list || []).forEach(function (row) {
+    merged = mergeAssemblyDetails(merged, row)
+  })
+  return merged
+}
 
-  return queryLayer(CON_MS, LAYER_CON_ASSEMBLY, {
+function attrsFromQueryResult(data) {
+  var feature = data && Array.isArray(data.features) ? data.features[0] : null
+  return feature && feature.attributes ? feature.attributes : null
+}
+
+function queryFeatureServerAtPoint(serviceUrl, layerId, geometryType, geometry, inSR) {
+  if (!serviceUrl) return Promise.resolve(null)
+  return queryLayer(serviceUrl, layerId, {
     where: '1=1',
-    geometryType: 'esriGeometryPoint',
-    geometry: `${normalized.lon},${normalized.lat}`,
-    inSR: 4326,
+    geometryType: geometryType,
+    geometry: geometry,
+    inSR: inSR,
     spatialRel: 'esriSpatialRelIntersects',
     outFields: '*',
     returnGeometry: false,
     resultRecordCount: 1,
   })
     .then(function (data) {
-      var feature = data && Array.isArray(data.features) ? data.features[0] : null
-      var attrs = feature && feature.attributes ? feature.attributes : null
-      return coerceAssemblyDetails(attrs)
+      return coerceAssemblyDetails(attrsFromQueryResult(data))
     })
     .catch(function () {
       return null
     })
 }
 
-export function queryAssemblyDetailsByGeometry(geometryJsonLike) {
-  var geom = parseGeometryJson(geometryJsonLike)
-  if (!geom) return Promise.resolve(null)
-  var geometryType = geometryTypeForQuery(geom)
-  if (!geometryType) return Promise.resolve(null)
+function queryInvesthryAssemblySourcesAtPoint(normalized, inSR) {
+  var sources = getAssemblyInvesthryQuerySources()
+  if (!sources.length) return Promise.resolve(null)
+
+  var geometry = `${normalized.lon},${normalized.lat}`
+
+  return Promise.all(
+    sources.map(function (src) {
+      return queryFeatureServerAtPoint(src.url, src.layerId, 'esriGeometryPoint', geometry, inSR)
+    }),
+  ).then(function (rows) {
+    return mergeAssemblyDetailsList(rows)
+  })
+}
+
+function queryLegacyConstituencyAtPoint(layerId, geometryType, geometry, inSR) {
+  if (!CON_MS) return Promise.resolve(null)
+  return queryFeatureServerAtPoint(CON_MS, layerId, geometryType, geometry, inSR)
+}
+
+function queryAllAssemblySourcesAtPoint(normalized, inSR) {
+  var geometry = `${normalized.lon},${normalized.lat}`
+  return queryInvesthryAssemblySourcesAtPoint(normalized, inSR).then(function (investhryDetails) {
+    return queryLegacyConstituencyAtPoint(
+      LAYER_CON_ASSEMBLY,
+      'esriGeometryPoint',
+      geometry,
+      inSR,
+    ).then(function (legacyDetails) {
+      return mergeAssemblyDetails(investhryDetails, legacyDetails)
+    })
+  })
+}
+
+function queryInvesthryAssemblySourcesByGeometry(geom, geometryType, inSr) {
+  var sources = getAssemblyInvesthryQuerySources()
+  if (!sources.length) return Promise.resolve(null)
 
   var query = {
     where: '1=1',
@@ -211,18 +316,102 @@ export function queryAssemblyDetailsByGeometry(geometryJsonLike) {
     returnGeometry: false,
     resultRecordCount: 1,
   }
-  var inSr = inSrFromGeometry(geom)
   if (inSr) query.inSR = inSr
 
-  return queryLayer(CON_MS, LAYER_CON_ASSEMBLY, query)
-    .then(function (data) {
-      var feature = data && Array.isArray(data.features) ? data.features[0] : null
-      var attrs = feature && feature.attributes ? feature.attributes : null
-      return coerceAssemblyDetails(attrs)
-    })
-    .catch(function () {
-      return null
-    })
+  return Promise.all(
+    sources.map(function (src) {
+      if (!src.url) return Promise.resolve(null)
+      return queryLayer(src.url, src.layerId, query)
+        .then(function (data) {
+          return coerceAssemblyDetails(attrsFromQueryResult(data))
+        })
+        .catch(function () {
+          return null
+        })
+    }),
+  ).then(function (rows) {
+    return mergeAssemblyDetailsList(rows)
+  })
+}
+
+export function queryAssemblyDetailsByPointWgs84(point) {
+  var normalized = toNormalizedPoint(point)
+  if (!normalized) return Promise.resolve(null)
+
+  return queryAllAssemblySourcesAtPoint(normalized, 4326).then(function (details4326) {
+    if (details4326 && details4326.vidhanSabha && hasAssemblyMetricValues(details4326)) {
+      return details4326
+    }
+
+    return import('@arcgis/core/geometry/projection')
+      .then(function (projection) {
+        return projection.load().then(function () {
+          return import('@arcgis/core/geometry/Point.js').then(function (PointMod) {
+            var Point = PointMod.default || PointMod
+            var wgs = new Point({
+              x: normalized.lon,
+              y: normalized.lat,
+              spatialReference: { wkid: 4326 },
+            })
+            var projected = projection.project(wgs, { wkid: 32643 })
+            if (!projected || projected.x == null || projected.y == null) return details4326
+            var normalized32643 = { lat: projected.y, lon: projected.x }
+            return queryAllAssemblySourcesAtPoint(normalized32643, 32643).then(function (
+              details32643,
+            ) {
+              return mergeAssemblyDetails(details4326, details32643)
+            })
+          })
+        })
+      })
+      .catch(function () {
+        return details4326
+      })
+  })
+}
+
+export function queryAssemblyDetailsByGeometry(geometryJsonLike) {
+  var geom = parseGeometryJson(geometryJsonLike)
+  if (!geom) return Promise.resolve(null)
+  var geometryType = geometryTypeForQuery(geom)
+  if (!geometryType) return Promise.resolve(null)
+
+  var inSr = inSrFromGeometry(geom)
+  var query = {
+    where: '1=1',
+    geometryType: geometryType,
+    geometry: JSON.stringify(geom),
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: '*',
+    returnGeometry: false,
+    resultRecordCount: 1,
+  }
+  if (inSr) query.inSR = inSr
+
+  return queryInvesthryAssemblySourcesByGeometry(geom, geometryType, inSr).then(function (
+    investhryDetails,
+  ) {
+    if (!CON_MS) return investhryDetails
+    return queryLayer(CON_MS, LAYER_CON_ASSEMBLY, query)
+      .then(function (data) {
+        return mergeAssemblyDetails(investhryDetails, coerceAssemblyDetails(attrsFromQueryResult(data)))
+      })
+      .catch(function () {
+        return investhryDetails
+      })
+  })
+}
+
+function hasAssemblyMetricValues(details) {
+  if (!details) return false
+  return (
+    details.proposedPolicy != null ||
+    details.intermediateAreaPct != null ||
+    details.coreAreaPct != null ||
+    details.subPrimeAreaPct != null ||
+    details.mcPct != null ||
+    details.existingIndustry != null
+  )
 }
 
 export function extractAssemblyGeometryCandidates(summary, report) {
