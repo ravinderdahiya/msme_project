@@ -36,7 +36,7 @@ export default function NewAdminLayout() {
             <aside className="new-admin-sidebar">
                 <div className="new-admin-brand">
                     <div className="new-admin-brand-mark">
-                        <img src="/hepc-logo.png" alt="MSME" />
+                        <img src="/images/hepc-logo.png" alt="MSME" />
                     </div>
                     <div>
                         <strong>MSME</strong>

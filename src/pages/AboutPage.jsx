@@ -45,10 +45,10 @@ const BrandLogo = () => (
     <div className="ap-flip-logo" aria-hidden="true">
         <div className="ap-flip-logo-inner">
             <div className="ap-flip-logo-face">
-                <img src="/hepc-logo.png" alt="" />
+                <img src="/images/hepc-logo.png" alt="" />
             </div>
             <div className="ap-flip-logo-face ap-flip-logo-back">
-                <img src="/HARSAC-Logo.png" alt="" />
+                <img src="/images/HARSAC-Logo.png" alt="" />
             </div>
         </div>
     </div>

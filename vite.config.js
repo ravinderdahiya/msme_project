@@ -8,8 +8,11 @@ dns.setDefaultResultOrder('ipv4first')
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const rawApiBaseUrl = env.VITE_API_BASE_URL || env.VITE_SERVER_URL || 'http://localhost:8080'
-  const apiBaseUrl = /^https?:\/\//i.test(rawApiBaseUrl) ? rawApiBaseUrl : 'http://localhost:8080'
+  const defaultDevBackendOrigin = env.VITE_DEV_BACKEND_ORIGIN || 'http://127.0.0.1:5000'
+  const rawApiBaseUrl = env.VITE_API_BASE_URL || env.VITE_SERVER_URL || `${defaultDevBackendOrigin}/msme_backend/api`
+  const apiBaseUrl = /^https?:\/\//i.test(rawApiBaseUrl)
+    ? rawApiBaseUrl
+    : `${defaultDevBackendOrigin}${rawApiBaseUrl.startsWith('/') ? rawApiBaseUrl : `/${rawApiBaseUrl}`}`
   const parsedApiUrl = new URL(apiBaseUrl)
   const backendTarget = parsedApiUrl.origin
   const backendBasePath = parsedApiUrl.pathname.replace(/\/+$/, '')

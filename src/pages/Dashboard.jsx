@@ -43,7 +43,7 @@ export default function Dashboard() {
       <div className="content">
         {/* LEFT MAP */}
         <div className="map-section">
-          <img src="/map.png" alt="India Map" className="map-img" />
+          <img src="/images/map.png" alt="India Map" className="map-img" />
 
           <div className="legend">
             <div><span className="high"></span> High Vulnerability</div>

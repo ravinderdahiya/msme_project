@@ -6,38 +6,38 @@ import Login from "./Login";
 
 
 const data = [
-    { title: "Industrial Zone", img: "/zone.png" },
-    { title: "Road Network", img: "/road.png" },
-    { title: "Water Supply", img: "watersuppply.png" },
-    { title: "Electricity Grid", img: "electricity.jpg" },
-    { title: "Environmental Data", img: "environment.png" },
-    { title: "Nearby Facilities", img: "facilites.png" },
-    { title: "Water Supply", img: "watersuppply.png" },
-    { title: "Electricity Grid", img: "electricity.jpg" },
-    { title: "Environmental Data", img: "environment.png" },
-    { title: "Nearby Facilities", img: "facilites.png" },
+    { title: "Industrial Zone", img: "/images/zone.png" },
+    { title: "Road Network", img: "/images/road.png" },
+    { title: "Water Supply", img: "/images/watersuppply.png" },
+    { title: "Electricity Grid", img: "/images/electricity.jpg" },
+    { title: "Environmental Data", img: "/images/environment.png" },
+    { title: "Nearby Facilities", img: "/images/facilites.png" },
+    { title: "Water Supply", img: "/images/watersuppply.png" },
+    { title: "Electricity Grid", img: "/images/electricity.jpg" },
+    { title: "Environmental Data", img: "/images/environment.png" },
+    { title: "Nearby Facilities", img: "/images/facilites.png" },
 ];
 
 const steps = [
     {
         no: "1",
         title: "Search Location",
-        img: "/landicon.jpg",
+        img: "/images/landicon.jpg",
     },
     {
         no: "2",
         title: "View Map",
-        img: "/road.png",
+        img: "/images/road.png",
     },
     {
         no: "3",
         title: "Analyze Data",
-        img: "/insight.png",
+        img: "/images/insight.png",
     },
     {
         no: "4",
         title: "Download Report",
-        img: "/desicion.png",
+        img: "/images/desicion.png",
     },
 ];
 
@@ -99,7 +99,7 @@ export default function HomePage() {
 
 
                 <div className="left-logo">
-                    <img src="/har_govt.png" alt="logo" />
+                    <img src="/images/har_govt.png" alt="logo" />
                 </div>
 
 
@@ -110,7 +110,7 @@ export default function HomePage() {
 
 
                 <div className="right-logo">
-                    <img src="/hepc-logo.png" alt="logo" />
+                    <img src="/images/hepc-logo.png" alt="logo" />
                 </div>
 
             </div>

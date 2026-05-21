@@ -262,7 +262,7 @@ export default function HeaderGis({
         <div className="nmhdr-flip" aria-hidden="true">
           <div className="nmhdr-flip-inner nmhdr-flip-inner--single">
             <div className="nmhdr-flip-face">
-              <img src="/hepc-logo.png" alt="" />
+              <img src="/images/hepc-logo.png" alt="" />
             </div>
           </div>
         </div>

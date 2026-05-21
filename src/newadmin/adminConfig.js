@@ -54,12 +54,12 @@ export const breadcrumbMap = {
     "system-health": ["Dashboard", "System Health"],
 };
 
-export const ADMIN_AVATAR_SRC = "/hepc-logo.png";
+export const ADMIN_AVATAR_SRC = "/images/hepc-logo.png";
 
 export const handleAvatarError = (event) => {
     const image = event.currentTarget;
     image.onerror = null;
-    image.src = "/HARSAC-Logo.png";
+    image.src = "/images/HARSAC-Logo.png";
 };
 
 export const deriveLayerType = (url) => {

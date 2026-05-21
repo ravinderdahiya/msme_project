@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CheckSquare, Compass, LocateFixed, Minus, Plus } from "lucide-react";
 import { MapDecorChrome, MapDecorGeometries } from "./MapDecorLayer.jsx";
 import { findClosestDecorMarker } from "./mapDecorConfig.js";
-const MSME_MAP_IMG = "/public/msmemap.png";
+const MSME_MAP_IMG = "/images/msmemap.png";
 
 const MIN_SCALE = 1;
 const MAX_SCALE = 3.5;
