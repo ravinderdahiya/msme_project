@@ -18,3 +18,14 @@ export const updateAdminUserStatus = async (id, payload) => {
   const res = await http.patch(`/user/admin/users/${id}/status`, payload)
   return res.data || {}
 }
+
+export const getAdminUserSessions = async (id, { page = 1, limit = 20 } = {}) => {
+  const res = await http.get(`/user/admin/users/${id}/sessions`, {
+    params: {
+      page,
+      limit
+    }
+  })
+
+  return res.data || {}
+}
