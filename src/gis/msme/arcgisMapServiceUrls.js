@@ -1,21 +1,32 @@
-/** Direct ArcGIS MapServer roots (public read for map layers). */
-export const HSACGGM_MAP_SERVICE_URLS = {
-  MSME_BASE_REFERENCE:
-    "https://hsacggm.in/server/rest/services/MSME/Base_Reference_Layers/MapServer",
-  MSME_ADMIN_BOUNDARIES:
-    "https://hsacggm.in/server/rest/services/MSME/Administrative_Boundaries/MapServer",
-  MSME_ENVIRONMENT:
-    "https://hsacggm.in/server/rest/services/MSME/Environmental_Constraints/MapServer",
-  MSME_INVESTMENT:
-    "https://hsacggm.in/server/rest/services/MSME/Investment_Zones/MapServer",
-  MSME_SOCIAL:
-    "https://hsacggm.in/server/rest/services/MSME/Social_Infrastructure/MapServer",
-  MSME_TRANSPORT:
-    "https://hsacggm.in/server/rest/services/MSME/Transportation_Infrastructure/MapServer",
-  MSME_UTILITIES:
-    "https://hsacggm.in/server/rest/services/MSME/Utilities/MapServer",
-  MSME_CADASTRAL:
-    "https://hsacggm.in/server/rest/services/MSME/Haryana_Cadastral/MapServer",
-  MSME_CONSTITUENCY:
-    "https://hsacggm.in/server/rest/services/MSME/Constituency_Boundaries/MapServer",
+/** Runtime ArcGIS MapServer roots (loaded from backend database config). */
+export const MSME_MAP_SERVICE_KEYS = [
+  "MSME_BASE_REFERENCE",
+  "MSME_ADMIN_BOUNDARIES",
+  "MSME_ENVIRONMENT",
+  "MSME_INVESTMENT",
+  "MSME_SOCIAL",
+  "MSME_TRANSPORT",
+  "MSME_UTILITIES",
+  "MSME_CADASTRAL",
+  "MSME_CONSTITUENCY",
+]
+
+export const HSACGGM_MAP_SERVICE_URLS = {}
+
+const normalizeUrl = (value) => String(value || "").trim().replace(/\/+$/, "")
+
+export function setHsacggmMapServiceUrls(mapServices) {
+  const source = mapServices && typeof mapServices === "object" ? mapServices : {}
+  Object.keys(HSACGGM_MAP_SERVICE_URLS).forEach((key) => {
+    delete HSACGGM_MAP_SERVICE_URLS[key]
+  })
+
+  MSME_MAP_SERVICE_KEYS.forEach((key) => {
+    const url = normalizeUrl(source[key])
+    if (url) {
+      HSACGGM_MAP_SERVICE_URLS[key] = url
+    }
+  })
+
+  return { ...HSACGGM_MAP_SERVICE_URLS }
 }

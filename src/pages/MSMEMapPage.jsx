@@ -1,5 +1,6 @@
-import { useEffect, useState } from "react";
-import { initMsmeWebGis, applyMsmeGisUiStrings } from "../gis/msmeWebGis.js";
+import { useEffect, useRef, useState } from "react";
+import { loadMapServiceUrlsFromBackend } from "../gis/msme/loadMapServiceUrls.js";
+import { ADMIN_MS } from "../gis/msme/serviceUrlsAndLayers.js";
 import { useIn } from "../in/useIn.js";
 import Sidebar from "../components/Sidebar.jsx";
 import HaryanaMap from "../components/Haryana_map.jsx";
@@ -16,6 +17,29 @@ const MSMEGISPage = () => {
   const [searchBusy, setSearchBusy] = useState(false);
   const [theme, setTheme] = useState("black");
   const [assemblyMapOpen, setAssemblyMapOpen] = useState(false);
+  const gisModuleRef = useRef(null);
+
+  const getGisUiStrings = () => ({
+    district: t("placeholderDistrict"),
+    tehsil: t("placeholderTehsil"),
+    village: t("placeholderVillage"),
+    vidhanSabha: t("placeholderVidhanSabha"),
+    lokSabha: t("placeholderLokSabha"),
+    muraba: t("placeholderMuraba"),
+    parcel: t("placeholderParcel"),
+    cadKhasraPlaceholder: t("cadKhasraPlaceholder"),
+    allTehsils: t("placeholderAllTehsils"),
+    allVillages: t("placeholderAllVillages"),
+    hsvpSector: t("placeholderHsvpSector"),
+    hsvpPlot: t("placeholderHsvpPlot"),
+    mapPopupTitle: t("mapPopupTitle"),
+  });
+
+  const applyRuntimeUiStrings = (gisModule) => {
+    const mod = gisModule || gisModuleRef.current;
+    if (!mod || typeof mod.applyMsmeGisUiStrings !== "function") return;
+    mod.applyMsmeGisUiStrings(getGisUiStrings());
+  };
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -29,12 +53,67 @@ const MSMEGISPage = () => {
   }, [theme]);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
-      initMsmeWebGis();
-    }, 0);
+    let cancelled = false;
+    let timer = null;
+    const REQUIRED_MAP_SERVICE_KEYS = [
+      "MSME_BASE_REFERENCE",
+      "MSME_ADMIN_BOUNDARIES",
+      "MSME_ENVIRONMENT",
+      "MSME_INVESTMENT",
+      "MSME_SOCIAL",
+      "MSME_TRANSPORT",
+      "MSME_UTILITIES",
+      "MSME_CADASTRAL",
+      "MSME_CONSTITUENCY",
+    ];
+
+    const bootGis = async () => {
+      const config = await loadMapServiceUrlsFromBackend();
+      const availableMapServices = config?.mapServices || {};
+      const missingRequiredMapServices = REQUIRED_MAP_SERVICE_KEYS.filter(
+        (key) => !String(availableMapServices?.[key] || "").trim()
+      );
+      if (!config?.ok) {
+        console.error(
+          "[MSME GIS] map service config could not load from backend. GIS init is skipped to avoid invalid layer URLs."
+        );
+        return;
+      } else if (Array.isArray(config.missingKeys) && config.missingKeys.length) {
+        console.warn("[MSME GIS] map service keys missing in backend config:", config.missingKeys);
+      }
+      if (missingRequiredMapServices.length) {
+        console.error(
+          "[MSME GIS] required map service keys are missing. GIS init is skipped.",
+          missingRequiredMapServices
+        );
+        return;
+      }
+      if (!String(ADMIN_MS || "").trim()) {
+        console.error(
+          "[MSME GIS] resolved Administrative layer URL is empty after config load. GIS init is skipped."
+        );
+        return;
+      }
+
+      const gisModule = await import("../gis/msmeWebGis.js");
+      if (cancelled) return;
+      gisModuleRef.current = gisModule;
+      applyRuntimeUiStrings(gisModule);
+      timer = window.setTimeout(() => {
+        if (cancelled) return;
+        if (typeof gisModule.initMsmeWebGis === "function") {
+          gisModule.initMsmeWebGis();
+        }
+      }, 0);
+    };
+
+    bootGis().catch((error) => {
+      console.error("[MSME GIS] bootstrap failed:", error);
+    });
 
     return () => {
-      window.clearTimeout(timer);
+      cancelled = true;
+      if (timer) window.clearTimeout(timer);
       if (typeof window !== "undefined") {
         try {
           window.__msmeGisMapView = null;
@@ -116,21 +195,7 @@ const MSMEGISPage = () => {
   }, []);
 
   useEffect(() => {
-    applyMsmeGisUiStrings({
-      district: t("placeholderDistrict"),
-      tehsil: t("placeholderTehsil"),
-      village: t("placeholderVillage"),
-      vidhanSabha: t("placeholderVidhanSabha"),
-      lokSabha: t("placeholderLokSabha"),
-      muraba: t("placeholderMuraba"),
-      parcel: t("placeholderParcel"),
-      cadKhasraPlaceholder: t("cadKhasraPlaceholder"),
-      allTehsils: t("placeholderAllTehsils"),
-      allVillages: t("placeholderAllVillages"),
-      hsvpSector: t("placeholderHsvpSector"),
-      hsvpPlot: t("placeholderHsvpPlot"),
-      mapPopupTitle: t("mapPopupTitle"),
-    });
+    applyRuntimeUiStrings();
   }, [lang]);
 
   const parseLatLonInput = (text) => {

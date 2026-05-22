@@ -719,6 +719,38 @@
     gap: 10px;
 }
 
+.api-url-subtabs {
+    display: inline-flex;
+    gap: 8px;
+    background: #f3f7fd;
+    border: 1px solid #dce5f2;
+    border-radius: 12px;
+    padding: 6px;
+}
+
+.api-url-subtab-btn {
+    height: 36px;
+    border: 1px solid transparent;
+    border-radius: 9px;
+    padding: 0 14px;
+    font-size: 0.9rem;
+    font-weight: 600;
+    background: transparent;
+    color: #37577a;
+    cursor: pointer;
+}
+
+.api-url-subtab-btn.is-active {
+    background: #ffffff;
+    border-color: #cbd9ec;
+    color: #1d4ed8;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.12);
+}
+
+.api-url-grid-single {
+    grid-template-columns: minmax(0, 1fr) !important;
+}
+
 .api-url-form-grid input,
 .api-url-form-grid select,
 .api-url-form-grid textarea {
@@ -757,6 +789,16 @@
     color: #b91c1c;
     font-size: 0.88rem;
     font-weight: 600;
+}
+
+.new-admin-empty-state {
+    margin-top: 12px;
+    padding: 10px 12px;
+    border: 1px dashed #cddbee;
+    border-radius: 10px;
+    background: #f8fbff;
+    color: #617791;
+    font-size: 0.88rem;
 }
 
 .new-admin-modal-backdrop {
