@@ -44,17 +44,6 @@ export const systemEvents = [
     { event: "High memory usage detected", time: "19 May 2024 - 11:10 PM", status: "Error" },
 ];
 
-export const users = [
-    { name: "Rahul Verma", email: "rahul.verma@example.com", role: "Investor", status: "Active", lastActive: "20 May 2024 10:30 AM" },
-    { name: "Priya Sharma", email: "priya.sharma@example.com", role: "Investor", status: "Active", lastActive: "20 May 2024 09:15 AM" },
-    { name: "Amit Kumar", email: "amit.kumar@example.com", role: "Analyst", status: "Active", lastActive: "19 May 2024 04:45 PM" },
-    { name: "Neha Singh", email: "neha.singh@example.com", role: "Analyst", status: "Active", lastActive: "19 May 2024 11:20 AM" },
-    { name: "Vikram Mehta", email: "vikram.mehta@example.com", role: "Admin", status: "Active", lastActive: "18 May 2024 03:00 PM" },
-    { name: "Sandeep Raj", email: "sandeep.raj@example.com", role: "Viewer", status: "Inactive", lastActive: "15 May 2024 10:10 AM" },
-    { name: "Karan Patel", email: "karan.patel@example.com", role: "Investor", status: "Blocked", lastActive: "10 May 2024 02:20 PM" },
-    { name: "Meera Joshi", email: "meera.joshi@example.com", role: "Investor", status: "Active", lastActive: "20 May 2024 08:50 AM" },
-];
-
 export const layers = [
     { name: "Roads", category: "Infrastructure", type: "Line", status: "Active", updated: "20 May 2024" },
     { name: "Railway Lines", category: "Infrastructure", type: "Line", status: "Active", updated: "19 May 2024" },
