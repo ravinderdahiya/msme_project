@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import LocationButton from './LocationButton.jsx'
 import BufferButton from './BufferButton.jsx'
 import PrintScreenButton from './PrintScreenButton.jsx'
@@ -6,25 +6,48 @@ import BasemapButton from './BasemapButton.jsx'
 import HomeButton from './HomeButton.jsx'
 import ShapeSketchButton from './ShapeSketchButton.jsx'
 
-export default function HaryanaMap({ t }) {
+function mapViewLooksReady() {
+  const view = typeof window !== 'undefined' ? window.__msmeGisMapView : null
+  return !!(view && view.destroyed === false)
+}
+
+function showGisLoadingOverlay() {
+  const el = typeof document !== 'undefined' ? document.getElementById('gisLoadingOverlay') : null
+  if (!el) return
+  el.classList.remove('is-hidden')
+  el.setAttribute('aria-hidden', 'false')
+}
+
+export default function HaryanaMap({ t, onMapBootComplete }) {
   const [legendExpanded, setLegendExpanded] = useState(false)
   /** After first successful map hide, same overlay is used for fetches — show “Analyzing Data”. */
   const [gisLoaderIsDataPhase, setGisLoaderIsDataPhase] = useState(false)
   const gisBootLoaderDismissed = useRef(false)
+  const mapBootCompleteFired = useRef(false)
+
+  useLayoutEffect(function () {
+    showGisLoadingOverlay()
+  }, [])
 
   useEffect(function () {
     var el = typeof document !== 'undefined' ? document.getElementById('gisLoadingOverlay') : null
     if (!el) return
 
-    function mapViewLooksReady() {
-      var view = typeof window !== 'undefined' ? window.__msmeGisMapView : null
-      return !!(view && view.destroyed === false)
+    function notifyMapBootComplete() {
+      if (mapBootCompleteFired.current) return
+      if (!el.classList.contains('is-hidden') || !mapViewLooksReady()) return
+      mapBootCompleteFired.current = true
+      gisBootLoaderDismissed.current = true
+      if (typeof onMapBootComplete === 'function') {
+        onMapBootComplete()
+      }
     }
 
     function syncGisLoaderPhase() {
       var hidden = el.classList.contains('is-hidden')
       if (hidden) {
         if (mapViewLooksReady()) gisBootLoaderDismissed.current = true
+        notifyMapBootComplete()
         return
       }
       setGisLoaderIsDataPhase(gisBootLoaderDismissed.current)
@@ -33,10 +56,28 @@ export default function HaryanaMap({ t }) {
     var mo = new MutationObserver(syncGisLoaderPhase)
     mo.observe(el, { attributes: true, attributeFilter: ['class'] })
     syncGisLoaderPhase()
+
+    function onLoaderShow() {
+      if (gisBootLoaderDismissed.current) {
+        setGisLoaderIsDataPhase(true)
+      }
+    }
+
+    window.addEventListener('msme-gis-loader-show', onLoaderShow)
+
+    var mapReadyPoll = window.setInterval(function () {
+      notifyMapBootComplete()
+      if (mapBootCompleteFired.current) {
+        window.clearInterval(mapReadyPoll)
+      }
+    }, 250)
+
     return function () {
       mo.disconnect()
+      window.removeEventListener('msme-gis-loader-show', onLoaderShow)
+      window.clearInterval(mapReadyPoll)
     }
-  }, [])
+  }, [onMapBootComplete])
 
   const toggleLegend = useCallback(function () {
     setLegendExpanded(function (prev) {
@@ -82,8 +123,8 @@ export default function HaryanaMap({ t }) {
       <PrintScreenButton t={t} />
       <HomeButton t={t} />
       <BasemapButton t={t} />
-      <div id="gisLoadingOverlay" className="is-hidden" aria-hidden="true">
-        <div className="gis-loading-card" role="status" aria-live="polite">
+      <div id="gisLoadingOverlay" aria-live="polite">
+        <div className="gis-loading-card" role="status">
           <span className="gis-loading-spinner" aria-hidden="true" />
           <h2 className="gis-loading-title">
             {gisLoaderIsDataPhase

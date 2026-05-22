@@ -2166,6 +2166,7 @@ function patchLegacySource(source) {
   var mapClickInstantPinPattern =
     /var anchor32643 = projection\.project\(mapPoint, SR_METER\);\s*lastIdentifyAnchor32643 = anchor32643;\s*return Promise\.all\(IDENTIFY_URLS\.map/;
   var mapClickInstantPinReplacement = [
+    '    if (typeof window.__msmeShowGisDataLoader === "function") { try { window.__msmeShowGisDataLoader(); } catch (eLdMap0) {} }',
     "var anchor32643 = projection.project(mapPoint, SR_METER);",
     "    lastIdentifyAnchor32643 = anchor32643;",
     "    var mapClickRadiusM = 5000;",
@@ -2429,6 +2430,11 @@ function installAssemblyLookupBridge() {
 export const initMsmeWebGis = (...args) => {
   ensureArcGisProxyAuthInterceptor();
   installAssemblyLookupBridge();
+  if (typeof window !== "undefined") {
+    import("./gisLoadingBridge.js").then((mod) => {
+      if (typeof mod.installGisLoadingBridge === "function") mod.installGisLoadingBridge();
+    });
+  }
   installIdentifyPopupLayoutHook();
   if (typeof window !== "undefined") {
     window.configureMsmeMapPopupUi = configureMsmeMapPopupUi;

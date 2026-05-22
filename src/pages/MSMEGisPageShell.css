@@ -673,6 +673,29 @@ html:not([data-theme='black']) #msmeGisRoot.msme-gis-page #rail #measurementPane
   pointer-events: none;
 }
 
+/* Initial reload: show map loader immediately; hide map FABs until ArcGIS view is ready */
+#msmeGisRoot.msme-gis-page.msme-gis-map-booting #gisLoadingOverlay {
+  z-index: 400 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
+  background: rgba(15, 23, 42, 0.38);
+  backdrop-filter: blur(4px);
+  pointer-events: none;
+}
+
+#msmeGisRoot.msme-gis-page.msme-gis-map-booting .buffer-fab-wrap,
+#msmeGisRoot.msme-gis-page.msme-gis-map-booting .buffer-map-fab,
+#msmeGisRoot.msme-gis-page.msme-gis-map-booting .msme-basemap-fab-host,
+#msmeGisRoot.msme-gis-page.msme-gis-map-booting .closest-print-fab,
+#msmeGisRoot.msme-gis-page.msme-gis-map-booting #coordBar,
+#msmeGisRoot.msme-gis-page.msme-gis-map-booting #legendPanel,
+#msmeGisRoot.msme-gis-page.msme-gis-map-booting #viewDiv .esri-ui-corner,
+#msmeGisRoot.msme-gis-page.msme-gis-map-booting #viewDiv .esri-ui-manual-container {
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Legend FAB — same chrome as Print / Home / Basemap (top-right map tools) */
 #msmeGisRoot.msme-gis-page #legendFab.legend-map-fab {
   position: absolute;

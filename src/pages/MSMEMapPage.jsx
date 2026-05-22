@@ -8,6 +8,7 @@ import HeaderGis from "../components/Header_gis.jsx";
 import GisMobilePanelCloseBehaviour from "../components/gis/GisMobilePanelCloseBehaviour.jsx";
 import "../msme-webgis.css";
 import "./MSMEGisPageShell.css";
+import { installGisLoadingBridge } from "../gis/msme/gisLoadingBridge.js";
 
 const MSMEGISPage = () => {
   const ASSEMBLY_MAP_URL =
@@ -17,6 +18,7 @@ const MSMEGISPage = () => {
   const [searchBusy, setSearchBusy] = useState(false);
   const [theme, setTheme] = useState("black");
   const [assemblyMapOpen, setAssemblyMapOpen] = useState(false);
+  const [mapBootComplete, setMapBootComplete] = useState(false);
   const gisModuleRef = useRef(null);
 
   const getGisUiStrings = () => ({
@@ -40,6 +42,10 @@ const MSMEGISPage = () => {
     if (!mod || typeof mod.applyMsmeGisUiStrings !== "function") return;
     mod.applyMsmeGisUiStrings(getGisUiStrings());
   };
+
+  useEffect(() => {
+    installGisLoadingBridge();
+  }, []);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -285,7 +291,10 @@ const MSMEGISPage = () => {
   };
 
   return (
-    <div id="msmeGisRoot" className="msme-gis-page">
+    <div
+      id="msmeGisRoot"
+      className={`msme-gis-page${mapBootComplete ? " msme-gis-map-ready" : " msme-gis-map-booting"}`}
+    >
       <HeaderGis
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
@@ -299,7 +308,7 @@ const MSMEGISPage = () => {
       />
       <Sidebar t={t} onOpenAssemblyMap={() => setAssemblyMapOpen(true)} />
       <GisMobilePanelCloseBehaviour />
-      <HaryanaMap t={t} />
+      <HaryanaMap t={t} onMapBootComplete={() => setMapBootComplete(true)} />
       {assemblyMapOpen ? (
         <section className="assembly-map-inline-panel" aria-label="Assembly map inline panel">
           <div className="assembly-map-inline-header">
