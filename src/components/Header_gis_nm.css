@@ -12,7 +12,7 @@
   cursor: wait;
 }
 
-/* MSME GIS header: HEPC ↔ HARSAC flip (animation from NewMainMapHeader.css). */
+/* MSME GIS header: HEPC logo (static; sizing overrides NewMainMapHeader.css). */
 #appHeader.nmhdr-gis .nmhdr-flip-face {
   background: rgba(255, 255, 255, 0.95) !important;
   border-color: rgba(15, 35, 64, 0.1) !important;
