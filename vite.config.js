@@ -15,7 +15,7 @@ const arcgisProxyAgent = new https.Agent({
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const defaultDevBackendOrigin = env.VITE_DEV_BACKEND_ORIGIN || 'http://127.0.0.1:8080'
+  const defaultDevBackendOrigin = env.VITE_DEV_BACKEND_ORIGIN || 'http://127.0.0.1:5000'
   const rawApiBaseUrl = env.VITE_API_BASE_URL || env.VITE_SERVER_URL || `${defaultDevBackendOrigin}/msme_backend/api`
   const apiBaseUrl = /^https?:\/\//i.test(rawApiBaseUrl)
     ? rawApiBaseUrl

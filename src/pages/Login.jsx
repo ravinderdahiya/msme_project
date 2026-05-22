@@ -247,38 +247,43 @@ export default function Login() {
         try {
             setLoading(true);
 
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-
-                    const latitude = position.coords.latitude;
-                    const longitude = position.coords.longitude;
-
-                    console.log(latitude, longitude)
-
-                    const res = await verifyOtpApi(
-                        cleanMobile,
-                        otp,
-                        latitude,
-                        longitude
-                    );
-
-                    setAuthSession({ token: res.token, user: res.user });
-                    setHttpAuthToken(res.token);
-
-                    setMessageKey("loginSuccess");
-                    setMessageType("success");
-
-                    navigate(
-                        getPostLoginRoute(res.user, redirectAfterLogin),
-                        { replace: true }
-                    );
-                },
-                (error) => {
-                    console.log("Location Error:", error);
-
-                    setMessageKey("verifyFailed");
-                    setMessageType("error");
+            const location = await new Promise((resolve) => {
+                if (!navigator?.geolocation) {
+                    resolve({ latitude: null, longitude: null });
+                    return;
                 }
+
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        resolve({
+                            latitude: position?.coords?.latitude ?? null,
+                            longitude: position?.coords?.longitude ?? null,
+                        });
+                    },
+                    (error) => {
+                        console.log("Location Error:", error);
+                        resolve({ latitude: null, longitude: null });
+                    },
+                    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+                );
+            });
+
+            const res = await verifyOtpApi(
+                cleanMobile,
+                otp,
+                location.latitude,
+                location.longitude
+            );
+
+            setAuthSession({ token: res.token, user: res.user });
+            setHttpAuthToken(res.token);
+
+            setMessageKey("loginSuccess");
+            setMessageType("success");
+
+            navigate(
+                getPostLoginRoute(res.user, redirectAfterLogin),
+                { replace: true }
             );
 
         } catch (err) {
