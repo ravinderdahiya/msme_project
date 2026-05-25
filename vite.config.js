@@ -21,7 +21,11 @@ export default defineConfig(({ mode }) => {
     ? rawApiBaseUrl
     : `${defaultDevBackendOrigin}${rawApiBaseUrl.startsWith('/') ? rawApiBaseUrl : `/${rawApiBaseUrl}`}`
   const parsedApiUrl = new URL(apiBaseUrl)
-  const backendTarget = parsedApiUrl.origin
+  const devBackendOrigin = String(env.VITE_DEV_BACKEND_ORIGIN || '').trim().replace(/\/+$/, '')
+  const backendTarget =
+    (mode !== 'production' && /^https?:\/\//i.test(devBackendOrigin))
+      ? devBackendOrigin
+      : parsedApiUrl.origin
   const backendBasePath = parsedApiUrl.pathname.replace(/\/+$/, '')
   const withBackendBasePath = (path) => {
     const cleanPath = path.startsWith('/') ? path : `/${path}`
@@ -46,7 +50,8 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
 
           rewrite: (path) => {
-            const rewritten = path.replace(/^\/msme_backend\/api/, '')
+            const suffix = path.replace(/^\/msme_backend\/api/, '')
+            const rewritten = `${backendBasePath}${suffix}`
             return rewritten || '/'
           },
 
