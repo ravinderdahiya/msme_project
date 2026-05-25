@@ -831,24 +831,33 @@ html:not([data-theme='black']) #msmeGisRoot.msme-gis-page #rail #measurementPane
   color: rgba(232, 237, 245, 0.92) !important;
 }
 
-/* ArcGIS UI (top-right widgets) — make it look like NewMainMap icon strip */
+/* Map tool FABs — centered on map, directly below header (not inside header DOM) */
+#msmeGisRoot.msme-gis-page {
+  --msme-gis-map-toolbar-top: calc(var(--header-h) + var(--msme-gis-shell-pad) + 14px);
+}
+
 #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner {
   position: fixed !important;
-  top: calc(var(--msme-gis-content-top) + 10px) !important;
-  right: 10% !important;
-  margin-top: 0 !important;
-  margin-right: 0 !important;
+  top: var(--msme-gis-map-toolbar-top) !important;
+  left: 50% !important;
+  right: auto !important;
+  bottom: auto !important;
+  transform: translateX(-50%) !important;
+  margin: 0 !important;
   display: flex;
   flex-direction: row;
-  align-items: center;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  justify-content: center;
   gap: 14px;
-  padding: 0;
+  padding: 0 8px 28px;
+  max-width: calc(100vw - (var(--msme-gis-shell-pad) * 2) - 12px);
+  box-sizing: border-box;
   border: 0;
   border-radius: 0;
   background: transparent;
   box-shadow: none;
   backdrop-filter: none;
-  flex-wrap: nowrap;
   z-index: 97;
 }
 
@@ -2179,16 +2188,16 @@ html:not([data-theme='black'])
   --calcite-ui-icon-color: #93c5fd !important;
 }
 
-/* Make Proximity/Closest + Home/Layers look alike and align in one row (desktop). */
+/* Proximity / Closest stay in the centered toolbar row (inside .esri-ui-top-right). */
 @media (min-width: 901px) {
   #msmeGisRoot.msme-gis-page .buffer-fab-wrap {
-    position: fixed !important;
-    top: calc(var(--msme-gis-content-top) + 10px) !important;
-    right: calc(var(--msme-gis-shell-pad) + 146px) !important;
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
     left: auto !important;
     bottom: auto !important;
     gap: 14px !important;
-    z-index: 98 !important;
+    z-index: auto !important;
   }
 
   #msmeGisRoot.msme-gis-page .buffer-fab-wrap .buffer-map-fab,
@@ -2227,13 +2236,13 @@ html:not([data-theme='black'])
 
 @media (max-width: 900px) {
   #msmeGisRoot.msme-gis-page .buffer-fab-wrap {
-    position: fixed !important;
-    top: calc(var(--msme-gis-content-top) + 10px) !important;
-    right: calc(var(--msme-gis-shell-pad) + 128px) !important;
+    position: relative !important;
+    top: auto !important;
+    right: auto !important;
     left: auto !important;
     bottom: auto !important;
     gap: 12px !important;
-    z-index: 98 !important;
+    z-index: auto !important;
   }
 
   #msmeGisRoot.msme-gis-page .buffer-fab-wrap .buffer-map-fab,
@@ -3185,22 +3194,19 @@ html:not([data-theme='black'])
     top: calc(var(--msme-gis-content-top) + var(--msme-gis-rail-chrome-h) + var(--msme-gis-inner-gap) + 10px) !important;
   }
 
-  /*
-   * Proximity / Closest / Print / Home / Basemap live under #viewDiv (or move into .esri-ui-top-right).
-   * Fixed + viewport "content-top" placed them above the visible map after the stacked menu rail — clipped or hidden.
-   * Anchor the ArcGIS top-right host to the map frame (same pattern ArcGIS uses internally).
-   */
+  /* Same centered strip below header (viewport-fixed), not map corner. */
   #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner {
-    position: absolute !important;
-    top: 10px !important;
-    right: 10px !important;
-    left: auto !important;
+    position: fixed !important;
+    top: var(--msme-gis-map-toolbar-top) !important;
+    left: 50% !important;
+    right: auto !important;
     bottom: auto !important;
-    max-width: calc(100% - 20px) !important;
-    flex-wrap: wrap !important;
-    justify-content: flex-end !important;
-    row-gap: 8px !important;
-    column-gap: 10px !important;
+    transform: translateX(-50%) !important;
+    max-width: calc(100vw - (var(--msme-gis-shell-pad) * 2) - 12px) !important;
+    flex-wrap: nowrap !important;
+    justify-content: center !important;
+    row-gap: 0 !important;
+    column-gap: 12px !important;
     z-index: 120 !important;
   }
 }
@@ -3409,9 +3415,9 @@ html:not([data-theme='black'])
  */
 @media (max-width: 768px) {
   #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner {
-    /* Google-Maps-like pill under header */
+    /* Centered on map, directly below header */
     position: fixed !important;
-    top: calc(var(--msme-gis-content-top) + 8px) !important;
+    top: var(--msme-gis-map-toolbar-top) !important;
     left: 50% !important;
     right: auto !important;
     bottom: auto !important;
