@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
-import { loadMapServiceUrlsFromBackend } from "../gis/msme/loadMapServiceUrls.js";
+import {
+  loadMapServiceUrlsFromBackend,
+  resetMapServiceUrlCache,
+} from "../gis/msme/loadMapServiceUrls.js";
 import { ADMIN_MS } from "../gis/msme/serviceUrlsAndLayers.js";
 import { useIn } from "../in/useIn.js";
 import Sidebar from "../components/Sidebar.jsx";
@@ -8,7 +11,7 @@ import HeaderGis from "../components/Header_gis.jsx";
 import GisMobilePanelCloseBehaviour from "../components/gis/GisMobilePanelCloseBehaviour.jsx";
 import "../msme-webgis.css";
 import "./MSMEGisPageShell.css";
-import { installGisLoadingBridge } from "../gis/msme/gisLoadingBridge.js";
+import { dismissGisBootLoader, installGisLoadingBridge } from "../gis/msme/gisLoadingBridge.js";
 
 const MSMEGISPage = () => {
   const ASSEMBLY_MAP_URL =
@@ -19,6 +22,8 @@ const MSMEGISPage = () => {
   const [theme, setTheme] = useState("black");
   const [assemblyMapOpen, setAssemblyMapOpen] = useState(false);
   const [mapBootComplete, setMapBootComplete] = useState(false);
+  const [mapBootError, setMapBootError] = useState("");
+  const [bootAttempt, setBootAttempt] = useState(0);
   const gisModuleRef = useRef(null);
 
   const getGisUiStrings = () => ({
@@ -73,6 +78,14 @@ const MSMEGISPage = () => {
       "MSME_CONSTITUENCY",
     ];
 
+    const failBoot = (message, details) => {
+      console.error("[MSME GIS]", message, details || "");
+      dismissGisBootLoader();
+      if (!cancelled) {
+        setMapBootError(message);
+      }
+    };
+
     const bootGis = async () => {
       const config = await loadMapServiceUrlsFromBackend();
       const availableMapServices = config?.mapServices || {};
@@ -80,24 +93,23 @@ const MSMEGISPage = () => {
         (key) => !String(availableMapServices?.[key] || "").trim()
       );
       if (!config?.ok) {
-        console.error(
-          "[MSME GIS] map service config could not load from backend. GIS init is skipped to avoid invalid layer URLs."
+        failBoot(
+          "Map configuration could not be loaded. Start msme_backend (default port 8083) or set VITE_SERVER_URL in .env to a running API.",
+          config?.error
         );
         return;
       } else if (Array.isArray(config.missingKeys) && config.missingKeys.length) {
         console.warn("[MSME GIS] map service keys missing in backend config:", config.missingKeys);
       }
       if (missingRequiredMapServices.length) {
-        console.error(
-          "[MSME GIS] required map service keys are missing. GIS init is skipped.",
+        failBoot(
+          "Required map service URLs are missing in backend config. Check API URLs in admin.",
           missingRequiredMapServices
         );
         return;
       }
       if (!String(ADMIN_MS || "").trim()) {
-        console.error(
-          "[MSME GIS] resolved Administrative layer URL is empty after config load. GIS init is skipped."
-        );
+        failBoot("Administrative boundaries map URL is empty after config load.");
         return;
       }
 
@@ -114,7 +126,7 @@ const MSMEGISPage = () => {
     };
 
     bootGis().catch((error) => {
-      console.error("[MSME GIS] bootstrap failed:", error);
+      failBoot("GIS bootstrap failed unexpectedly.", error);
     });
 
     return () => {
@@ -142,7 +154,7 @@ const MSMEGISPage = () => {
         window.__msmeGisInitInProgress = false;
       }
     };
-  }, []);
+  }, [bootAttempt]);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -309,6 +321,26 @@ const MSMEGISPage = () => {
       <Sidebar t={t} onOpenAssemblyMap={() => setAssemblyMapOpen(true)} />
       <GisMobilePanelCloseBehaviour />
       <HaryanaMap t={t} onMapBootComplete={() => setMapBootComplete(true)} />
+      {mapBootError ? (
+        <div className="msme-gis-boot-error" role="alert">
+          <p className="msme-gis-boot-error-title">Map could not start</p>
+          <p className="msme-gis-boot-error-detail">{mapBootError}</p>
+          <p className="msme-gis-boot-error-detail">
+            In a terminal run: <code>cd MSME_Backend</code> then <code>npm run dev</code> (port 8083).
+          </p>
+          <button
+            type="button"
+            className="assembly-map-inline-back"
+            onClick={() => {
+              resetMapServiceUrlCache();
+              setMapBootError("");
+              setBootAttempt((n) => n + 1);
+            }}
+          >
+            Retry
+          </button>
+        </div>
+      ) : null}
       {assemblyMapOpen ? (
         <section className="assembly-map-inline-panel" aria-label="Assembly map inline panel">
           <div className="assembly-map-inline-header">
