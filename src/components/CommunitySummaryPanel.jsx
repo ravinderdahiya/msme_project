@@ -52,13 +52,33 @@ function hasMetricValue(value) {
   return !(value == null || value === '')
 }
 
+function resolveAssemblyMetricDisplayValue(row, key) {
+  if (!row) return null
+  if (hasMetricValue(row[key])) return row[key]
+  if (key === 'proposedAreaPct' && hasMetricValue(row.controlledArea)) return row.controlledArea
+  return null
+}
+
 function hasAssemblyMetricDetailsFromRow(row) {
   if (!row) return false
   return (
     hasMetricValue(row.proposedAreaPct) ||
+    hasMetricValue(row.controlledArea) ||
     hasMetricValue(row.proposedPolicy) ||
+    hasMetricValue(row.developmentPlan) ||
     hasMetricValue(row.intermediateAreaPct) ||
     hasMetricValue(row.coreAreaPct) ||
+    hasMetricValue(row.subPrimeAreaPct) ||
+    hasMetricValue(row.mcPct) ||
+    hasMetricValue(row.existingIndustry)
+  )
+}
+
+function hasAssemblyAreaBreakupFromRow(row) {
+  if (!row) return false
+  return (
+    hasMetricValue(row.coreAreaPct) ||
+    hasMetricValue(row.intermediateAreaPct) ||
     hasMetricValue(row.subPrimeAreaPct) ||
     hasMetricValue(row.mcPct) ||
     hasMetricValue(row.existingIndustry)
@@ -919,7 +939,9 @@ export default function CommunitySummaryPanel() {
   }, [assemblyDetailsFromSnapshot, runtimeAssemblyDetails, placeDetails])
   const displayAssemblyMetrics = useMemo(() => {
     if (pinnedTehsilMetrics && hasAssemblyMetricDetailsFromRow(pinnedTehsilMetrics)) {
-      return pinnedTehsilMetrics
+      // Keep pinned % metrics, but preserve missing text fields
+      // (e.g. developmentPlan) from broader assembly details.
+      return mergeAssemblyDetails(assemblyDetails, pinnedTehsilMetrics)
     }
     return assemblyDetails
   }, [pinnedTehsilMetrics, assemblyDetails])
@@ -1070,6 +1092,17 @@ export default function CommunitySummaryPanel() {
       .then((metrics) => {
         if (cancelled) return
         if (metrics && hasAssemblyMetricDetailsFromRow(metrics)) {
+          if (!hasAssemblyAreaBreakupFromRow(metrics)) {
+            return fillAssemblyMetricsForTehsil(district, tehsil, resolvedLookupPoint).then(
+              (fallbackMetrics) => {
+                if (cancelled) return
+                var mergedMetrics = mergeAssemblyDetails(metrics, fallbackMetrics)
+                setPinnedTehsilMetrics(mergedMetrics)
+                setRuntimeAssemblyDetails((prev) => mergeAssemblyDetails(prev, mergedMetrics))
+                setAssemblyMetricsError('')
+              },
+            )
+          }
           setPinnedTehsilMetrics(metrics)
           setRuntimeAssemblyDetails((prev) => mergeAssemblyDetails(prev, metrics))
           setAssemblyMetricsError('')
@@ -1094,7 +1127,7 @@ export default function CommunitySummaryPanel() {
     return () => {
       cancelled = true
     }
-  }, [placeDetails && placeDetails.district, placeDetails && placeDetails.tehsil])
+  }, [placeDetails && placeDetails.district, placeDetails && placeDetails.tehsil, resolvedLookupPoint])
 
   useEffect(() => {
     var cancelled = false
@@ -1142,10 +1175,17 @@ export default function CommunitySummaryPanel() {
       setRuntimeAssemblyDetails((prev) => mergeAssemblyDetails(prev, merged))
     }
 
-  var loadPromise =
+    var loadPromise =
       districtHint && tehsilHint
         ? fetchTehsilAssemblyMetrics(districtHint, tehsilHint).then((metrics) => {
-            if (metrics && hasAssemblyMetricDetailsFromRow(metrics)) return metrics
+            if (metrics && hasAssemblyMetricDetailsFromRow(metrics)) {
+              if (hasAssemblyAreaBreakupFromRow(metrics)) return metrics
+              return fillAssemblyMetricsForTehsil(
+                districtHint,
+                tehsilHint,
+                resolvedLookupPoint,
+              ).then((fallbackMetrics) => mergeAssemblyDetails(metrics, fallbackMetrics))
+            }
             return fillAssemblyMetricsForTehsil(districtHint, tehsilHint, resolvedLookupPoint)
           })
         : loadVidhanSabhaPanelForCommunity(resolvedLookupPoint, districtHint, tehsilHint)
@@ -1155,7 +1195,14 @@ export default function CommunitySummaryPanel() {
         if (cancelled) return
         if (details && hasAssemblyMetricDetailsFromRow(details)) {
           applyAssemblyDetails(details)
-          return
+          if (hasAssemblyAreaBreakupFromRow(details) || !districtHint || !tehsilHint) return
+          return fillAssemblyMetricsForTehsil(districtHint, tehsilHint, resolvedLookupPoint).then(
+            (fallbackDetails) => {
+              if (fallbackDetails && hasAssemblyMetricDetailsFromRow(fallbackDetails)) {
+                applyAssemblyDetails(mergeAssemblyDetails(details, fallbackDetails))
+              }
+            },
+          )
         }
         if (districtHint && tehsilHint) {
           return fetchTehsilAssemblyMetrics(districtHint, tehsilHint).then((metrics) => {
@@ -1645,28 +1692,6 @@ export default function CommunitySummaryPanel() {
       </div>
 
       <div className="community-ba-scroll">
-      {placeCardShouldRender ? (
-        <section className="community-ba-section community-ba-place-card" aria-label="Pinned place details">
-          <h4 className="community-ba-section__title">
-            <SectionTitleIcon kind="place" />
-            Pinned Place Details
-          </h4>
-          <div className="community-ba-place-grid">
-            {PLACE_DETAIL_FIELDS.map((field) => (
-              <div key={field.key} className="community-ba-place-field">
-                <span className="community-ba-place-field__icon">
-                  <PlaceDetailFieldIcon type={field.icon} />
-                </span>
-                <div className="community-ba-place-field__text">
-                  <strong>{field.label}</strong>
-                  <span>{(placeDetails && placeDetails[field.key]) || '-'}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
       {assemblyCardShouldRender ? (
         <section className="community-ba-section community-ba-assembly-card" aria-label="Vidhan Sabha profile">
           <h4 className="community-ba-section__title">
@@ -1701,10 +1726,10 @@ export default function CommunitySummaryPanel() {
                 <span>
                   {metric.suffix
                     ? formatMetricValue(
-                        displayAssemblyMetrics && displayAssemblyMetrics[metric.key],
+                        resolveAssemblyMetricDisplayValue(displayAssemblyMetrics, metric.key),
                         metric.suffix,
                       )
-                    : (displayAssemblyMetrics && displayAssemblyMetrics[metric.key]) || '-'}
+                    : resolveAssemblyMetricDisplayValue(displayAssemblyMetrics, metric.key) || '-'}
                 </span>
               </article>
             ))}
@@ -1715,7 +1740,7 @@ export default function CommunitySummaryPanel() {
               Loading area metrics for {assemblyTehsilLabel || assemblyDistrictLabel}…
             </p>
           ) : null}
-          {assemblyMetricsError ? (
+          {assemblyMetricsError && !hasAssemblyMetricDetails ? (
             <p className="community-ba-assembly-note">
               <span className="community-ba-assembly-note__dot" aria-hidden="true" />
               {assemblyMetricsError}
@@ -1743,6 +1768,59 @@ export default function CommunitySummaryPanel() {
               Detailed policy/area metrics is waqt map service me available nahi hain.
             </p>
           ) : null}
+        </section>
+      ) : null}
+
+      {assemblyCardShouldRender ? (
+        <section className="community-ba-section community-ba-planning-card" aria-label="Planning details">
+          <h4 className="community-ba-section__title">
+            <SectionTitleIcon kind="assembly" />
+            Planning Details
+          </h4>
+          <div className="community-ba-planning-grid">
+            <article className="community-ba-planning-item">
+              <strong>Controlled Area</strong>
+              <span>
+                {formatMetricValue(
+                  displayAssemblyMetrics &&
+                    (displayAssemblyMetrics.controlledArea != null
+                      ? displayAssemblyMetrics.controlledArea
+                      : displayAssemblyMetrics.proposedAreaPct),
+                  '%',
+                )}
+              </span>
+            </article>
+            <article className="community-ba-planning-item">
+              <strong>Development Plan</strong>
+              <span>
+                {(displayAssemblyMetrics &&
+                  (displayAssemblyMetrics.developmentPlan || displayAssemblyMetrics.proposedPolicy)) ||
+                  '-'}
+              </span>
+            </article>
+          </div>
+        </section>
+      ) : null}
+
+      {placeCardShouldRender ? (
+        <section className="community-ba-section community-ba-place-card" aria-label="Pinned place details">
+          <h4 className="community-ba-section__title">
+            <SectionTitleIcon kind="place" />
+            Pinned Place Details
+          </h4>
+          <div className="community-ba-place-grid">
+            {PLACE_DETAIL_FIELDS.map((field) => (
+              <div key={field.key} className="community-ba-place-field">
+                <span className="community-ba-place-field__icon">
+                  <PlaceDetailFieldIcon type={field.icon} />
+                </span>
+                <div className="community-ba-place-field__text">
+                  <strong>{field.label}</strong>
+                  <span>{(placeDetails && placeDetails[field.key]) || '-'}</span>
+                </div>
+              </div>
+            ))}
+          </div>
         </section>
       ) : null}
 

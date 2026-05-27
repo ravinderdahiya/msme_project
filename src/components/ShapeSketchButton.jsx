@@ -3,6 +3,8 @@ import { useEffect, useRef, useState } from 'react'
 export default function ShapeSketchButton() {
   var [open, setOpen] = useState(false)
   var [shapeMode, setShapeMode] = useState('polygon')
+  var [distanceValue, setDistanceValue] = useState('5')
+  var [unit, setUnit] = useState('km')
   var rootRef = useRef(null)
 
   useEffect(() => {
@@ -80,7 +82,50 @@ export default function ShapeSketchButton() {
     }
   }, [])
 
+  function distanceInputStep() {
+    if (unit === 'km') return '0.1'
+    if (unit === 'm') return '10'
+    if (unit === 'yd') return '10'
+    if (unit === 'ft') return '10'
+    return '1'
+  }
+
+  function toMeters(raw, u) {
+    var n = Number(raw)
+    if (!isFinite(n) || n <= 0) return NaN
+    var unitKey = String(u || '').toLowerCase()
+    if (unitKey === 'km') return Math.round(n * 1000)
+    if (unitKey === 'yd' || unitKey === 'yard' || unitKey === 'yards') return Math.round(n * 0.9144)
+    if (unitKey === 'ft' || unitKey === 'feet' || unitKey === 'foot') return Math.round(n * 0.3048)
+    return Math.round(n)
+  }
+
+  function syncSketchDistanceToLegacyUi() {
+    var m = toMeters(distanceValue, unit)
+    if (!isFinite(m) || m <= 0) m = 5000
+
+    var pickNum = document.getElementById('bufferPickDistNum')
+    var pickUnit = document.getElementById('bufferPickDistUnit')
+    if (pickNum) pickNum.value = String(distanceValue || '5')
+    if (pickUnit) pickUnit.value = unit
+
+    var slider = document.getElementById('bufDist')
+    var sliderVal = document.getElementById('bufDistVal')
+    if (slider) {
+      var minV = parseInt(slider.min, 10)
+      var maxV = parseInt(slider.max, 10)
+      if (isFinite(minV)) m = Math.max(minV, m)
+      if (isFinite(maxV)) m = Math.min(maxV, m)
+      slider.value = String(m)
+      try {
+        slider.dispatchEvent(new Event('input', { bubbles: true }))
+      } catch (_e0) {}
+    }
+    if (sliderVal) sliderVal.textContent = String(m)
+  }
+
   function runShapeSketch() {
+    syncSketchDistanceToLegacyUi()
     if (window.msmeGisStartSketch && typeof window.msmeGisStartSketch === 'function') {
       window.msmeGisStartSketch(shapeMode)
       setOpen(false)
@@ -158,6 +203,27 @@ export default function ShapeSketchButton() {
             </button>
           </div>
           <div className="buffer-mini-panel__body">
+            <label className="buffer-mini-panel__label">Buffer distance</label>
+            <div className="buffer-mini-panel__row">
+              <input
+                type="number"
+                className="buffer-mini-panel__num"
+                min="0.1"
+                step={distanceInputStep()}
+                value={distanceValue}
+                onChange={(e) => setDistanceValue(e.target.value)}
+              />
+              <select
+                className="buffer-mini-panel__unit"
+                value={unit}
+                onChange={(e) => setUnit(String(e.target.value || 'km'))}
+              >
+                <option value="km">Kilometer</option>
+                <option value="m">Meter</option>
+                <option value="yd">Yard</option>
+                <option value="ft">Feet</option>
+              </select>
+            </div>
             <label className="buffer-mini-panel__label">Select shape</label>
             <div className="shape-mini-panel__row">
               <select
