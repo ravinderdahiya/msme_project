@@ -369,6 +369,43 @@
   background: #dc2626;
 }
 
+.community-ba-planning-card {
+  background: #ffffff;
+}
+
+.community-ba-planning-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.community-ba-planning-item {
+  border: 1px solid #e5ece7;
+  border-radius: 10px;
+  background: #f7faf8;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 70px;
+}
+
+.community-ba-planning-item strong {
+  font-size: 10px;
+  font-weight: 800;
+  color: #4b6358;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.community-ba-planning-item span {
+  font-size: 18px;
+  line-height: 1.15;
+  font-weight: 800;
+  color: #0e3125;
+  word-break: break-word;
+}
+
 /* POI Actions */
 
 .community-ba-toolbar {
@@ -1027,6 +1064,10 @@
   }
 
   .community-ba-assembly-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .community-ba-planning-grid {
     grid-template-columns: 1fr;
   }
 
