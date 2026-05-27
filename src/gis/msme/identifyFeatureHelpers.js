@@ -166,22 +166,16 @@ function buildIdentifyPlaceRowsHtml(placeDetails) {
 export function buildSimpleIdentifyPopupHtml(
   lat,
   lon,
-  primaryLayerName,
+  _primaryLayerName,
   distM,
-  mapPopupTitleFallback,
+  _mapPopupTitleFallback,
   placeDetails,
 ) {
-  var title = primaryLayerName
-    ? escapeHtml(primaryLayerName)
-    : escapeHtml(mapPopupTitleFallback || 'Features at this location')
   var distStr = distM != null && isFinite(distM) && distM < 1e6 ? Math.round(distM) + ' m' : '—'
   var placeRows = buildIdentifyPlaceRowsHtml(placeDetails)
   return (
     '<div style="font-size:12px;line-height:1.45;max-width:260px;padding:2px 0;">' +
-    '<p style="margin:0 0 4px;font-weight:600;color:#202124;font-size:13px;">' +
-    title +
-    '</p>' +
-    '<p style="margin:0;color:#5f6368;font-size:11px;">' +
+    '<p style="margin:0 0 6px;color:#202124;font-size:12px;font-weight:500;">' +
     lat.toFixed(5) +
     '°, ' +
     lon.toFixed(5) +

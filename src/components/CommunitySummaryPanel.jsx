@@ -9,11 +9,12 @@ import {
 import {
   autoSelectVidhanSabhaInUi,
   coerceAssemblyDetails,
-  extractAssemblyGeometryCandidates,
   mergeAssemblyDetails,
-  queryAssemblyDetailsByGeometry,
-  queryAssemblyDetailsByPointWgs84,
+  fillAssemblyMetricsForDistrict,
+  fillAssemblyMetricsForTehsil,
+  loadVidhanSabhaPanelForCommunity,
 } from '../gis/msme/assemblyDetailsHelpers.js'
+import { fetchTehsilAssemblyMetrics } from '../services/assemblyMetricsService.js'
 import '../css/CommunitySummaryPanel.css'
 
 function parseIsoMs(iso) {
@@ -49,6 +50,41 @@ function formatMetricValue(value, suffix) {
 
 function hasMetricValue(value) {
   return !(value == null || value === '')
+}
+
+function hasAssemblyMetricDetailsFromRow(row) {
+  if (!row) return false
+  return (
+    hasMetricValue(row.proposedAreaPct) ||
+    hasMetricValue(row.proposedPolicy) ||
+    hasMetricValue(row.intermediateAreaPct) ||
+    hasMetricValue(row.coreAreaPct) ||
+    hasMetricValue(row.subPrimeAreaPct) ||
+    hasMetricValue(row.mcPct) ||
+    hasMetricValue(row.existingIndustry)
+  )
+}
+
+function hasAssemblyNameFromRow(row) {
+  if (!row) return false
+  return !!(row.vidhanSabha || row.nearestTehsil)
+}
+
+function normalizePlaceLabel(value) {
+  return String(value || '')
+    .trim()
+    .toUpperCase()
+}
+
+function assemblySnapshotMatchesPlace(snapshot, place) {
+  if (!snapshot || !place) return !!snapshot
+  var snapDistrict = normalizePlaceLabel(snapshot.district)
+  var placeDistrict = normalizePlaceLabel(place.district)
+  if (placeDistrict && snapDistrict && snapDistrict !== placeDistrict) return false
+  var snapTehsil = normalizePlaceLabel(snapshot.nearestTehsil || snapshot.vidhanSabha)
+  var placeTehsil = normalizePlaceLabel(place.tehsil)
+  if (placeTehsil && snapTehsil && snapTehsil !== placeTehsil) return false
+  return true
 }
 
 function pickLatestCommunitySummary(analysisSnap, mapSnap) {
@@ -658,12 +694,12 @@ const PLACE_DETAIL_FIELDS = [
 ]
 
 const ASSEMBLY_METRIC_ROWS = [
-  { key: 'proposedPolicy', label: 'Proposed Policy', suffix: '', tone: '#7c3aed', bg: '#ede9fe' },
+  { key: 'proposedAreaPct', label: 'Proposed Area %', suffix: '%', tone: '#7c3aed', bg: '#ede9fe' },
   { key: 'coreAreaPct', label: 'Core Area %', suffix: '%', tone: '#2563eb', bg: '#dbeafe' },
   { key: 'intermediateAreaPct', label: 'Intermediate Area %', suffix: '%', tone: '#0891b2', bg: '#cffafe' },
   { key: 'subPrimeAreaPct', label: 'Sub Prime Area %', suffix: '%', tone: '#ea580c', bg: '#ffedd5' },
   { key: 'mcPct', label: 'MC %', suffix: '%', tone: '#0d9488', bg: '#ccfbf1' },
-  { key: 'existingIndustry', label: 'Existing Industry', suffix: '', tone: '#64748b', bg: '#f1f5f9' },
+  { key: 'existingIndustry', label: 'Existing Industry %', suffix: '%', tone: '#64748b', bg: '#f1f5f9' },
 ]
 
 function PlaceDetailFieldIcon({ type }) {
@@ -782,6 +818,9 @@ export default function CommunitySummaryPanel() {
   const [selectedCategoryKeys, setSelectedCategoryKeys] = useState([])
   const [runtimePlaceDetails, setRuntimePlaceDetails] = useState(null)
   const [runtimeAssemblyDetails, setRuntimeAssemblyDetails] = useState(null)
+  const [pinnedTehsilMetrics, setPinnedTehsilMetrics] = useState(null)
+  const [assemblyMetricsLoading, setAssemblyMetricsLoading] = useState(false)
+  const [assemblyMetricsError, setAssemblyMetricsError] = useState('')
   const [resolvedLookupPoint, setResolvedLookupPoint] = useState(null)
   const placeLookupCacheRef = useRef({})
   const assemblyLookupCacheRef = useRef({})
@@ -871,27 +910,44 @@ export default function CommunitySummaryPanel() {
     () => resolveAssemblyDetails(displaySummary, latestReport),
     [displaySummary, latestReport],
   )
-  const assemblyDetails = useMemo(
-    () => mergeAssemblyDetails(assemblyDetailsFromSnapshot, runtimeAssemblyDetails),
-    [assemblyDetailsFromSnapshot, runtimeAssemblyDetails],
+  const assemblyDetails = useMemo(() => {
+    var snap = assemblySnapshotMatchesPlace(assemblyDetailsFromSnapshot, placeDetails)
+      ? assemblyDetailsFromSnapshot
+      : null
+    // Runtime API metrics first; snapshot only fills missing labels.
+    return mergeAssemblyDetails(runtimeAssemblyDetails, snap)
+  }, [assemblyDetailsFromSnapshot, runtimeAssemblyDetails, placeDetails])
+  const displayAssemblyMetrics = useMemo(() => {
+    if (pinnedTehsilMetrics && hasAssemblyMetricDetailsFromRow(pinnedTehsilMetrics)) {
+      return pinnedTehsilMetrics
+    }
+    return assemblyDetails
+  }, [pinnedTehsilMetrics, assemblyDetails])
+  const assemblyTehsilLabel = useMemo(
+    () =>
+      (placeDetails && placeDetails.tehsil) ||
+      (assemblyDetails && assemblyDetails.nearestTehsil) ||
+      (assemblyDetails && assemblyDetails.vidhanSabha) ||
+      '',
+    [placeDetails, assemblyDetails],
   )
   const assemblyDistrictLabel = useMemo(
     () =>
-      (assemblyDetails && assemblyDetails.district) || (placeDetails && placeDetails.district) || '-',
+      (placeDetails && placeDetails.district) ||
+      (assemblyDetails && assemblyDetails.district) ||
+      '-',
     [assemblyDetails, placeDetails],
   )
   const hasAssemblyMetricDetails = useMemo(() => {
-    if (!assemblyDetails) return false
-    return (
-      hasMetricValue(assemblyDetails.proposedPolicy) ||
-      hasMetricValue(assemblyDetails.intermediateAreaPct) ||
-      hasMetricValue(assemblyDetails.coreAreaPct) ||
-      hasMetricValue(assemblyDetails.subPrimeAreaPct) ||
-      hasMetricValue(assemblyDetails.mcPct) ||
-      hasMetricValue(assemblyDetails.existingIndustry)
-    )
-  }, [assemblyDetails])
+    if (!displayAssemblyMetrics) return false
+    return hasAssemblyMetricDetailsFromRow(displayAssemblyMetrics)
+  }, [displayAssemblyMetrics])
   const hasAssemblyName = !!(assemblyDetails && assemblyDetails.vidhanSabha)
+  const nearestTehsilLabel =
+    (assemblyDetails && assemblyDetails.nearestTehsil) ||
+    (placeDetails && placeDetails.tehsil) ||
+    ''
+  const usedTehsilFallback = !!(assemblyDetails && assemblyDetails.usedTehsilFallback)
 
   const isStaleUpdating =
     waitingForCounts &&
@@ -997,85 +1053,139 @@ export default function CommunitySummaryPanel() {
     }
   }, [placeDetailsFromSnapshot, resolvedLookupPoint])
 
+  /** Pinned tehsil → load % cards (dedicated state — never wiped by other effects). */
   useEffect(() => {
     var cancelled = false
-    assemblyLookupCacheRef.current = {}
-
-    if (assemblyDetailsFromSnapshot) {
-      setRuntimeAssemblyDetails(null)
-      return () => {
-        cancelled = true
-      }
+    var district = placeDetails && placeDetails.district
+    var tehsil = placeDetails && placeDetails.tehsil
+    if (!district || !tehsil) {
+      setPinnedTehsilMetrics(null)
+      setAssemblyMetricsError('')
+      return () => {}
     }
 
-    var geometryCandidates = extractAssemblyGeometryCandidates(displaySummary, latestReport)
-
-    function tryGeometryFallback(onResolved) {
-      if (!Array.isArray(geometryCandidates) || geometryCandidates.length === 0) {
-        onResolved(null)
-        return
-      }
-      var idx = 0
-      function runNext() {
+    setAssemblyMetricsLoading(true)
+    setAssemblyMetricsError('')
+    fetchTehsilAssemblyMetrics(district, tehsil)
+      .then((metrics) => {
         if (cancelled) return
-        if (idx >= geometryCandidates.length) {
-          onResolved(null)
-          return
+        if (metrics && hasAssemblyMetricDetailsFromRow(metrics)) {
+          setPinnedTehsilMetrics(metrics)
+          setRuntimeAssemblyDetails((prev) => mergeAssemblyDetails(prev, metrics))
+          setAssemblyMetricsError('')
+        } else {
+          setPinnedTehsilMetrics(null)
+          setAssemblyMetricsError(
+            'Area metrics load nahi ho paye. MSME_Backend chalu karein (port 8083) aur page refresh karein.',
+          )
         }
-        var rawGeometry = geometryCandidates[idx]
-        idx += 1
-        queryAssemblyDetailsByGeometry(rawGeometry).then((details) => {
-          if (cancelled) return
-          if (details) {
-            onResolved(details)
-            return
-          }
-          runNext()
-        })
-      }
-      runNext()
+      })
+      .catch(() => {
+        if (cancelled) return
+        setPinnedTehsilMetrics(null)
+        setAssemblyMetricsError(
+          'Backend connect nahi ho raha. Terminal mein: cd MSME_Backend → npm run dev (port 8083).',
+        )
+      })
+      .finally(() => {
+        if (!cancelled) setAssemblyMetricsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
     }
+  }, [placeDetails && placeDetails.district, placeDetails && placeDetails.tehsil])
+
+  useEffect(() => {
+    var cancelled = false
 
     if (!resolvedLookupPoint) {
-      tryGeometryFallback((details) => {
-        if (cancelled) return
-        setRuntimeAssemblyDetails(details || null)
-      })
+      if (!(placeDetails && placeDetails.district && placeDetails.tehsil)) {
+        setRuntimeAssemblyDetails(null)
+      }
       return () => {
         cancelled = true
       }
     }
 
     var cacheKey = `${resolvedLookupPoint.lat.toFixed(6)},${resolvedLookupPoint.lon.toFixed(6)}`
-    if (assemblyLookupCacheRef.current[cacheKey]) {
-      setRuntimeAssemblyDetails(assemblyLookupCacheRef.current[cacheKey])
+    var districtHint =
+      (placeDetails && placeDetails.district) ||
+      (assemblyDetailsFromSnapshot && assemblyDetailsFromSnapshot.district) ||
+      ''
+    var tehsilHint =
+      (placeDetails && placeDetails.tehsil) ||
+      (assemblyDetailsFromSnapshot && assemblyDetailsFromSnapshot.nearestTehsil) ||
+      ''
+
+    var cacheKeyFull = `${cacheKey}|${normalizePlaceLabel(districtHint)}|${normalizePlaceLabel(tehsilHint)}`
+    var cached = assemblyLookupCacheRef.current[cacheKeyFull]
+    if (
+      cached &&
+      hasAssemblyMetricDetailsFromRow(cached) &&
+      assemblySnapshotMatchesPlace(cached, placeDetails)
+    ) {
+      setRuntimeAssemblyDetails(cached)
       return () => {
         cancelled = true
       }
     }
 
-    queryAssemblyDetailsByPointWgs84(resolvedLookupPoint).then((details) => {
-      if (cancelled) return
-      if (details) {
-        assemblyLookupCacheRef.current[cacheKey] = details
-        setRuntimeAssemblyDetails(details)
-        return
-      }
-      tryGeometryFallback((fallbackDetails) => {
+    function applyAssemblyDetails(details) {
+      if (cancelled || !details) return
+      var merged = mergeAssemblyDetails(details, {
+        nearestTehsil: tehsilHint || details.nearestTehsil,
+        district: districtHint || details.district,
+        vidhanSabha: details.vidhanSabha || tehsilHint || details.nearestTehsil,
+      })
+      assemblyLookupCacheRef.current[cacheKeyFull] = merged
+      setRuntimeAssemblyDetails((prev) => mergeAssemblyDetails(prev, merged))
+    }
+
+  var loadPromise =
+      districtHint && tehsilHint
+        ? fetchTehsilAssemblyMetrics(districtHint, tehsilHint).then((metrics) => {
+            if (metrics && hasAssemblyMetricDetailsFromRow(metrics)) return metrics
+            return fillAssemblyMetricsForTehsil(districtHint, tehsilHint, resolvedLookupPoint)
+          })
+        : loadVidhanSabhaPanelForCommunity(resolvedLookupPoint, districtHint, tehsilHint)
+
+    loadPromise
+      .then((details) => {
         if (cancelled) return
-        if (fallbackDetails) {
-          assemblyLookupCacheRef.current[cacheKey] = fallbackDetails
-          setRuntimeAssemblyDetails(fallbackDetails)
+        if (details && hasAssemblyMetricDetailsFromRow(details)) {
+          applyAssemblyDetails(details)
           return
         }
-        setRuntimeAssemblyDetails(null)
+        if (districtHint && tehsilHint) {
+          return fetchTehsilAssemblyMetrics(districtHint, tehsilHint).then((metrics) => {
+            if (metrics && hasAssemblyMetricDetailsFromRow(metrics)) applyAssemblyDetails(metrics)
+          })
+        }
+        if (districtHint) {
+          return fillAssemblyMetricsForDistrict(districtHint, resolvedLookupPoint).then(
+            (districtMetrics) => {
+              if (districtMetrics && hasAssemblyMetricDetailsFromRow(districtMetrics)) {
+                applyAssemblyDetails(districtMetrics)
+              }
+            },
+          )
+        }
       })
-    })
+      .catch(() => {})
 
     return () => {
       cancelled = true
+      setAssemblyMetricsLoading(false)
     }
-  }, [assemblyDetailsFromSnapshot, resolvedLookupPoint, displaySummary, latestReport])
+  }, [
+    assemblyDetailsFromSnapshot,
+    resolvedLookupPoint,
+    placeDetails && placeDetails.district,
+    placeDetails && placeDetails.tehsil,
+    displaySummary,
+    latestReport,
+  ])
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -1565,10 +1675,18 @@ export default function CommunitySummaryPanel() {
           </h4>
           <div className="community-ba-assembly-header">
             <p className="community-ba-assembly-name">
-              {(assemblyDetails && assemblyDetails.vidhanSabha) || '—'}
+              {assemblyTehsilLabel ||
+                (assemblyDetails && assemblyDetails.vidhanSabha) ||
+                (usedTehsilFallback && nearestTehsilLabel) ||
+                '—'}
             </p>
             <p className="community-ba-assembly-sub">
-              District: {assemblyDistrictLabel}
+              {assemblyTehsilLabel ? `Tehsil: ${assemblyTehsilLabel}` : null}
+              {assemblyTehsilLabel && assemblyDistrictLabel ? ' · ' : null}
+              {assemblyDistrictLabel ? `District: ${assemblyDistrictLabel}` : null}
+              {usedTehsilFallback && nearestTehsilLabel && !assemblyTehsilLabel
+                ? ` · Nearest tehsil: ${nearestTehsilLabel}`
+                : ''}
             </p>
           </div>
           <div className="community-ba-assembly-grid">
@@ -1582,16 +1700,41 @@ export default function CommunitySummaryPanel() {
                 <strong>{metric.label}</strong>
                 <span>
                   {metric.suffix
-                    ? formatMetricValue(assemblyDetails && assemblyDetails[metric.key], metric.suffix)
-                    : (assemblyDetails && assemblyDetails[metric.key]) || '-'}
+                    ? formatMetricValue(
+                        displayAssemblyMetrics && displayAssemblyMetrics[metric.key],
+                        metric.suffix,
+                      )
+                    : (displayAssemblyMetrics && displayAssemblyMetrics[metric.key]) || '-'}
                 </span>
               </article>
             ))}
           </div>
-          {!hasAssemblyName ? (
+          {assemblyMetricsLoading ? (
+            <p className="community-ba-assembly-note community-ba-assembly-note--info">
+              <span className="community-ba-assembly-note__dot" aria-hidden="true" />
+              Loading area metrics for {assemblyTehsilLabel || assemblyDistrictLabel}…
+            </p>
+          ) : null}
+          {assemblyMetricsError ? (
+            <p className="community-ba-assembly-note">
+              <span className="community-ba-assembly-note__dot" aria-hidden="true" />
+              {assemblyMetricsError}
+            </p>
+          ) : null}
+          {!assemblyMetricsLoading &&
+          !hasAssemblyName &&
+          !hasAssemblyMetricDetails &&
+          !usedTehsilFallback &&
+          !assemblyTehsilLabel ? (
             <p className="community-ba-assembly-note">
               <span className="community-ba-assembly-note__dot" aria-hidden="true" />
               Is clicked point par Vidhan Sabha match nahi mila (outside Haryana ho sakta hai).
+            </p>
+          ) : null}
+          {usedTehsilFallback && !hasAssemblyName && hasAssemblyMetricDetails ? (
+            <p className="community-ba-assembly-note community-ba-assembly-note--info">
+              <span className="community-ba-assembly-note__dot" aria-hidden="true" />
+              Clicked point ke liye nearest tehsil ({nearestTehsilLabel || '—'}) se profile load ki gayi.
             </p>
           ) : null}
           {hasAssemblyName && !hasAssemblyMetricDetails ? (

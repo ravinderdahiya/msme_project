@@ -43,6 +43,19 @@ export function hideGisDataLoader() {
   }, 60)
 }
 
+/** Force-hide the boot overlay when GIS init is aborted (e.g. backend unreachable). */
+export function dismissGisBootLoader() {
+  loaderDepth = 0
+  if (hideTimer) {
+    clearTimeout(hideTimer)
+    hideTimer = null
+  }
+  const el = getOverlayEl()
+  if (!el) return
+  el.classList.add('is-hidden')
+  el.setAttribute('aria-hidden', 'true')
+}
+
 function isUiChromeClickTarget(target) {
   if (!target || typeof target.closest !== 'function') return false
   return !!target.closest(

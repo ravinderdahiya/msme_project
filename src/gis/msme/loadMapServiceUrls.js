@@ -12,10 +12,18 @@ const cache = {
   lastResult: null,
 }
 
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
+
 function missingKeysFromMap(mapServices) {
   return [...MSME_MAP_SERVICE_KEYS, ...INVESTHRY_FEATURE_SERVICE_KEYS].filter(
     (key) => !String(mapServices?.[key] || "").trim(),
   )
+}
+
+export function resetMapServiceUrlCache() {
+  cache.loaded = false
+  cache.loadingPromise = null
+  cache.lastResult = null
 }
 
 export async function loadMapServiceUrlsFromBackend() {
@@ -28,7 +36,20 @@ export async function loadMapServiceUrlsFromBackend() {
 
   cache.loadingPromise = (async () => {
     try {
-      const payload = await getFrontendRuntimeConfig()
+      let payload = null
+      let lastError = null
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        try {
+          payload = await getFrontendRuntimeConfig()
+          break
+        } catch (error) {
+          lastError = error
+          if (attempt < 3) await sleep(2000)
+        }
+      }
+      if (!payload) {
+        throw lastError || new Error("frontend-config unavailable")
+      }
       const runtimeMap = payload?.mapServices || {}
       const hsacggmMapServices = setHsacggmMapServiceUrls(runtimeMap)
       const investhryFeatureServices = setInvesthryFeatureServiceUrls(runtimeMap)

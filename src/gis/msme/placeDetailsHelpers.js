@@ -1,6 +1,18 @@
 /** Shared place-detail field extraction for map identify + community panel. */
+import Point from '@arcgis/core/geometry/Point.js'
+import * as projection from '@arcgis/core/geometry/projection.js'
 import { queryLayer } from './queryClient.js'
 import { ADMIN_MS, LAYER_DISTRICT, LAYER_TEHSIL, LAYER_VILLAGE } from './serviceUrlsAndLayers.js'
+import {
+  distanceFromPointToGeometry,
+  geomFromJSON,
+  getGeometryCentroid,
+  toEngineSR,
+} from './geometryUtils.js'
+import { SR_METER, SR4326 } from './spatialRefs.js'
+
+const NEAREST_TEHSIL_SEARCH_DISTANCE_M = 120000
+const NEAREST_TEHSIL_QUERY_LIMIT = 25
 
 export function normalizePlaceValue(value) {
   if (value == null) return ''
@@ -185,6 +197,112 @@ function queryAdminPointLayer(layerId, point) {
     })
 }
 
+function tehsilCentroidWgs84(geometry32643) {
+  if (!geometry32643) return null
+  var centroid = getGeometryCentroid(geometry32643)
+  if (!centroid) return null
+  try {
+    var wgs = projection.project(centroid, SR4326)
+    return normalizeLonLat(wgs && wgs.x, wgs && wgs.y)
+  } catch (_e0) {
+    return null
+  }
+}
+
+function queryTehsilCandidatesNearPoint(point, useDistanceBuffer) {
+  var query = {
+    where: '1=1',
+    geometryType: 'esriGeometryPoint',
+    geometry: `${point.lon},${point.lat}`,
+    inSR: 4326,
+    spatialRel: 'esriSpatialRelIntersects',
+    outFields: '*',
+    returnGeometry: true,
+    resultRecordCount: useDistanceBuffer ? NEAREST_TEHSIL_QUERY_LIMIT : 1,
+  }
+  if (useDistanceBuffer) {
+    query.distance = NEAREST_TEHSIL_SEARCH_DISTANCE_M
+    query.units = 'esriSRUnit_Meter'
+  }
+  return queryLayer(ADMIN_MS, LAYER_TEHSIL, query)
+}
+
+function pickNearestTehsilFeature(data, anchor32643) {
+  var feats = data && Array.isArray(data.features) ? data.features : []
+  if (!feats.length || !anchor32643) return null
+
+  var best = null
+  var bestDist = null
+  feats.forEach(function (feature) {
+    var rawG = feature && feature.geometry
+    if (!rawG) return
+    var g = toEngineSR(geomFromJSON(rawG))
+    if (!g) return
+    var d = distanceFromPointToGeometry(anchor32643, g)
+    if (d == null) return
+    if (bestDist == null || d < bestDist) {
+      bestDist = d
+      best = { feature: feature, geometry: g, distanceM: d }
+    }
+  })
+  return best
+}
+
+/**
+ * When a map click is outside tehsil polygons, find the nearest tehsil boundary
+ * and return its attributes, centroid (WGS84), and geometry for downstream lookups.
+ */
+export function queryNearestTehsilAtPointWgs84(point) {
+  if (!point || typeof point !== 'object') return Promise.resolve(null)
+  var normalized = normalizeLonLat(point.lon, point.lat)
+  if (!normalized) return Promise.resolve(null)
+
+  return projection
+    .load()
+    .then(function () {
+      var anchor4326 = new Point({
+        x: normalized.lon,
+        y: normalized.lat,
+        spatialReference: SR4326,
+      })
+      var anchor32643 = projection.project(anchor4326, SR_METER)
+      if (!anchor32643) return null
+
+      return queryTehsilCandidatesNearPoint(normalized, false).then(function (hitData) {
+        var picked = pickNearestTehsilFeature(hitData, anchor32643)
+        if (picked) return picked
+        return queryTehsilCandidatesNearPoint(normalized, true).then(function (bufferData) {
+          return pickNearestTehsilFeature(bufferData, anchor32643)
+        })
+      })
+    })
+    .then(function (picked) {
+      if (!picked) return null
+      var attrs = picked.feature && picked.feature.attributes ? picked.feature.attributes : null
+      var placeDetails = coercePlaceDetails(attrs)
+      var centroid = tehsilCentroidWgs84(picked.geometry)
+      var geometryJson = null
+      try {
+        geometryJson = picked.geometry && picked.geometry.toJSON ? picked.geometry.toJSON() : null
+      } catch (_e1) {
+        geometryJson = null
+      }
+      return {
+        placeDetails,
+        attributes: attrs,
+        centroid,
+        geometryJson,
+        distanceM: picked.distanceM,
+        tehsil:
+          (placeDetails && placeDetails.tehsil) ||
+          pickPlaceField(attrs, ['tehsil', 'n_t_name', 'tehsil_name', 'TEHSIL']),
+      }
+    })
+    .catch(function () {
+      return null
+    })
+}
+
 export function queryPlaceDetailsByPointWgs84(point) {
   if (!point || typeof point !== 'object') return Promise.resolve(null)
   var normalized = normalizeLonLat(point.lon, point.lat)
@@ -193,7 +311,12 @@ export function queryPlaceDetailsByPointWgs84(point) {
   return queryAdminPointLayer(LAYER_VILLAGE, normalized).then(function (villageData) {
     return queryAdminPointLayer(LAYER_TEHSIL, normalized).then(function (tehsilData) {
       return queryAdminPointLayer(LAYER_DISTRICT, normalized).then(function (districtData) {
-        return mergePlaceDetails(mergePlaceDetails(villageData, tehsilData), districtData)
+        var merged = mergePlaceDetails(mergePlaceDetails(villageData, tehsilData), districtData)
+        if (merged && merged.tehsil) return merged
+        return queryNearestTehsilAtPointWgs84(normalized).then(function (nearest) {
+          if (!nearest || !nearest.placeDetails) return merged
+          return mergePlaceDetails(merged, nearest.placeDetails)
+        })
       })
     })
   })

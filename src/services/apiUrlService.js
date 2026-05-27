@@ -20,6 +20,6 @@ export const deleteApiUrl = async (id) => {
 }
 
 export const getFrontendRuntimeConfig = async () => {
-  const res = await http.get("/api-url/frontend-config")
+  const res = await http.get("/api-url/frontend-config", { timeout: 45000 })
   return res.data || {}
 }

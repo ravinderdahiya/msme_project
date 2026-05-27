@@ -1,6 +1,7 @@
 import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import dns from 'node:dns'
+import http from 'node:http'
 import https from 'node:https'
 
 // Prefer IPv4 on local dev proxy to avoid IPv6-first gateway failures on some networks.
@@ -12,10 +13,20 @@ const arcgisProxyAgent = new https.Agent({
   timeout: 120000,
 })
 
+// Reuse TCP connections to the local backend — avoids ETIMEDOUT when GIS fires many parallel map requests.
+const backendProxyAgent = new http.Agent({
+  keepAlive: true,
+  keepAliveMsecs: 30000,
+  maxSockets: 32,
+  maxFreeSockets: 16,
+  timeout: 120000,
+  family: 4,
+})
+
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '')
-  const defaultDevBackendOrigin = env.VITE_DEV_BACKEND_ORIGIN || 'http://127.0.0.1:8080'
+  const defaultDevBackendOrigin = env.VITE_DEV_BACKEND_ORIGIN || 'http://127.0.0.1:8083'
   const rawApiBaseUrl = env.VITE_API_BASE_URL || env.VITE_SERVER_URL || `${defaultDevBackendOrigin}/msme_backend/api`
   const apiBaseUrl = /^https?:\/\//i.test(rawApiBaseUrl)
     ? rawApiBaseUrl
@@ -32,6 +43,15 @@ export default defineConfig(({ mode }) => {
     return `${backendBasePath}${cleanPath}`
   }
 
+  // Map/ArcGIS proxy calls can take 30–90s; default Node proxy timeouts cause ETIMEDOUT.
+  const backendProxy = {
+    target: backendTarget,
+    changeOrigin: true,
+    agent: backendProxyAgent,
+    timeout: 120000,
+    proxyTimeout: 120000,
+  }
+
   return {
     plugins: [react()],
 
@@ -42,19 +62,16 @@ export default defineConfig(({ mode }) => {
 
   // ✅ Optional (sirf tab use hoga jab /arcgis API hit hogi)
     server: {
-      host: 'localhost',
+      host: '127.0.0.1',
       open: true,
       proxy: {
         '/msme_backend/api': {
-          target: backendTarget,
-          changeOrigin: true,
-
+          ...backendProxy,
           rewrite: (path) => {
             const suffix = path.replace(/^\/msme_backend\/api/, '')
             const rewritten = `${backendBasePath}${suffix}`
             return rewritten || '/'
           },
-
         },
         '/arcgis': {
           target: 'https://hsacggm.in',
@@ -75,28 +92,23 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path.replace(/^\/investhry/, ''),
         },
         '/user': {
-          target: backendTarget,
-          changeOrigin: true,
+          ...backendProxy,
           rewrite: (path) => withBackendBasePath(path),
         },
         '/otp': {
-          target: backendTarget,
-          changeOrigin: true,
+          ...backendProxy,
           rewrite: (path) => withBackendBasePath(path),
         },
         '/api-url': {
-          target: backendTarget,
-          changeOrigin: true,
+          ...backendProxy,
           rewrite: (path) => withBackendBasePath(path),
         },
         '/data-services': {
-          target: backendTarget,
-          changeOrigin: true,
+          ...backendProxy,
           rewrite: (path) => withBackendBasePath(path),
         },
         '/mapserver': {
-          target: backendTarget,
-          changeOrigin: true,
+          ...backendProxy,
           rewrite: (path) => withBackendBasePath(path),
         },
       },

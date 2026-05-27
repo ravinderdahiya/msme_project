@@ -1,5 +1,8 @@
-import { HSACGGM_MAP_SERVICE_URLS } from "./arcgisMapServiceUrls.js"
-import { INVESTHRY_FEATURE_SERVICE_URLS } from "./investhryFeatureServiceUrls.js"
+import { HSACGGM_MAP_SERVICE_URLS, MSME_MAP_SERVICE_KEYS } from "./arcgisMapServiceUrls.js"
+import {
+  INVESTHRY_FEATURE_SERVICE_KEYS,
+  INVESTHRY_FEATURE_SERVICE_URLS,
+} from "./investhryFeatureServiceUrls.js"
 
 const normalizeBaseUrl = (value) => String(value || "").trim().replace(/\/+$/, "")
 const DEFAULT_API_BASE_PATH = "/msme_backend/api"
@@ -16,12 +19,12 @@ export function toDevInvesthryProxyUrl(investhryUrl) {
 
 function useLocalGisProxy() {
   const isDev = Boolean(import.meta.env.DEV)
+  if (!isDev) return false
   const envBase = normalizeBaseUrl(
     import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_SERVER_URL,
   )
-  const isLocal =
-    !envBase || /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(envBase)
-  return isDev && isLocal
+  if (!envBase || envBase.startsWith('/')) return true
+  return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(envBase)
 }
 
 function resolveApiBasePath() {
@@ -64,6 +67,15 @@ function shouldUseBackendMapProxy(directUrl) {
 export function resolveMapServiceUrl(serviceKey) {
   const key = String(serviceKey || "").trim()
   const direct = HSACGGM_MAP_SERVICE_URLS[key]
+
+  // Local dev: MSME layers on investhry need the backend token proxy (by key, even before URLs are cached).
+  if (useLocalGisProxy() && MSME_MAP_SERVICE_KEYS.includes(key)) {
+    const proxyUrl = buildMapServiceProxyUrl(key)
+    if (proxyUrl && (!direct || shouldUseBackendMapProxy(direct))) {
+      return proxyUrl
+    }
+  }
+
   if (!direct) return ""
 
   if (shouldUseBackendMapProxy(direct)) {
@@ -79,12 +91,29 @@ export function resolveMapServiceUrl(serviceKey) {
 
 /**
  * Invest Haryana Vidhan Sabha / policy FeatureServer URLs.
- * Local dev uses `/investhry` Vite proxy.
+ * Routed through backend mapserver proxy so ArcGIS tokens are applied.
  */
 export function resolveInvesthryFeatureUrl(serviceKey) {
   const key = String(serviceKey || "").trim()
+  if (!key) return ""
+
   const direct = INVESTHRY_FEATURE_SERVICE_URLS[key]
+  const isKnownInvesthryKey = INVESTHRY_FEATURE_SERVICE_KEYS.includes(key)
+
+  // Backend mapserver proxy only needs the service key (from .env via DB), not the cached URL.
+  if (
+    isKnownInvesthryKey &&
+    (useLocalGisProxy() || shouldUseBackendMapProxy(direct || "https://investhry.harsac.in/"))
+  ) {
+    const proxyUrl = buildMapServiceProxyUrl(key)
+    if (proxyUrl) return proxyUrl
+  }
+
   if (!direct) return ""
+
+  if (shouldUseBackendMapProxy(direct)) {
+    return buildMapServiceProxyUrl(key)
+  }
 
   if (useLocalGisProxy()) {
     return toDevInvesthryProxyUrl(direct)

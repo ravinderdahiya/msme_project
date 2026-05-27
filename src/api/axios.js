@@ -6,13 +6,13 @@ const rawBaseUrl = String(
 ).trim()
 const normalizedBaseUrl = rawBaseUrl.replace(/\/+$/, "")
 const isDev = Boolean(import.meta.env.DEV)
+const isRelativeApiBase = normalizedBaseUrl.startsWith("/")
 const isLocalBackendUrl =
+    isRelativeApiBase ||
     /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?(\/|$)/i.test(normalizedBaseUrl)
 const defaultProxyBasePath = "/msme_backend/api"
 const resolvedBaseUrl =
-    (isDev && (!normalizedBaseUrl || isLocalBackendUrl))
-        ? defaultProxyBasePath
-        : (normalizedBaseUrl || defaultProxyBasePath)
+    isDev && isLocalBackendUrl ? defaultProxyBasePath : (normalizedBaseUrl || defaultProxyBasePath)
 
 const axiosInstance = axios.create({
     // Single base path for all frontend API calls.
