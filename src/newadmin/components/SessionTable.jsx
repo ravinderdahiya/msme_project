@@ -1,5 +1,6 @@
 import React from "react";
 import { Info, MapPin } from "lucide-react";
+import DeviceInfo from "./DeviceInfo";
 import StatusBadge from "./StatusBadge";
 import Table from "./Table";
 
@@ -15,7 +16,9 @@ export default function SessionTable({ sessions, onViewMap, onSessionInfo }) {
                     <td className="px-5 py-4 text-sm font-medium text-slate-700">{session.loginAt}</td>
                     <td className="px-5 py-4 text-sm text-slate-600">{session.logoutAt || "-"}</td>
                     <td className="px-5 py-4 text-sm text-slate-700">{session.ipAddress}</td>
-                    <td className="px-5 py-4 text-sm text-slate-600">{session.userAgent}</td>
+                    <td className="px-5 py-4 text-sm text-slate-600">
+                        <DeviceInfo browser={session.browser} version={session.browserVersion} platform={session.platform} />
+                    </td>
                     <td className="px-5 py-4 text-sm text-slate-700">
                         <strong className="block text-slate-900">{session.latitude}, {session.longitude}</strong>
                         <span>{session.location}</span>

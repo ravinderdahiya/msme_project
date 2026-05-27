@@ -5,6 +5,7 @@ const tones = {
     Inactive: "bg-slate-100 text-slate-600 ring-slate-200",
     Blocked: "bg-rose-100 text-rose-700 ring-rose-200",
     "Logged Out": "bg-slate-100 text-slate-600 ring-slate-200",
+    "High Risk": "bg-rose-100 text-rose-700 ring-rose-200",
 };
 
 export default function StatusBadge({ status }) {
