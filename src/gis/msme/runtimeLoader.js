@@ -244,7 +244,6 @@ function configureMsmeMapPopupUi(view) {
   if (!view || view.destroyed || !view.popup) return;
   try {
     const popup = view.popup;
-    popup.collapseEnabled = true;
     popup.dockEnabled = false;
     popup.alignment = "top-center";
     popup.highlightEnabled = false;
@@ -322,7 +321,7 @@ function openIdentifyMapPopup(view, mapPoint, lat, lon, primaryLayerName, distM,
     try {
       if (popup.visible) popup.close();
     } catch (eClose0) {}
-    popup.open({
+    view.openPopup({
       title: "",
       content: popupHtml,
       location: anchorPoint,
