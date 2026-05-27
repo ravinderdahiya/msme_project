@@ -2,9 +2,11 @@
 
 .community-summary-panel.community-ba-panel {
   position: fixed;
-  top: calc(var(--header-h, 64px) + 116px);
+  /* Keep just a tiny breathing space below header/tool strip */
+  top: calc(var(--header-h, 64px) + 18px);
   right: 18px;
-  bottom: 118px;
+  /* Fill almost full map height (no visible bottom gap) */
+  bottom: calc(var(--msme-gis-shell-pad, 8px) + 2px);
   width: min(560px, calc(100vw - 28px));
   z-index: 98;
   display: flex;
@@ -86,7 +88,7 @@
 .community-ba-reopen-btn {
   position: fixed;
   right: 38px;
-  top: calc(var(--header-h, 64px) + 126px);
+  top: calc(var(--header-h, 64px) + 28px);
   z-index: 98;
   width: 52px;
   height: 52px;
@@ -975,14 +977,14 @@
 @media (max-width: 900px) {
   .community-summary-panel.community-ba-panel {
     right: 14px;
-    bottom: 114px;
-    top: calc(var(--header-h, 64px) + 112px);
+    bottom: calc(var(--msme-gis-shell-pad, 8px) + 2px);
+    top: calc(var(--header-h, 64px) + 18px);
     width: min(480px, calc(100vw - 28px));
   }
 
   .community-ba-reopen-btn {
     right: 24px;
-    top: calc(var(--header-h, 64px) + 122px);
+    top: calc(var(--header-h, 64px) + 28px);
   }
 }
 
@@ -991,9 +993,9 @@
     right: 10px;
     left: 10px;
     width: auto;
-    bottom: 10px;
-    top: auto;
-    max-height: 76vh;
+    bottom: calc(var(--msme-gis-shell-pad, 8px) + env(safe-area-inset-bottom, 0px));
+    top: calc(var(--header-h, 64px) + 14px);
+    max-height: none;
     border-radius: 12px;
   }
 
