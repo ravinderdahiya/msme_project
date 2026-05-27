@@ -139,8 +139,21 @@ export function coerceAssemblyDetails(source) {
     'POLICY_YEAR',
     'POLICY',
   ])
+  var developmentPlan = pickPlaceField(source, [
+    'developmentPlan',
+    'development_plan',
+    'DEVELOPMENT_PLAN',
+    'area_tyep',
+    'area_type',
+    'AREA_TYEP',
+    'AREA_TYPE',
+    'proposedPolicy',
+    'proposed_policy',
+    'PROPOSED_POLICY',
+  ])
   var proposedAreaPct = normalizePercent(
     pickPlaceField(source, [
+      'proposedAreaPct',
       'controlled',
       'CONTROLLED',
       'proposed_area_pct',
@@ -150,8 +163,21 @@ export function coerceAssemblyDetails(source) {
       'PROPOSED_AREA',
     ]),
   )
+  var controlledArea = normalizePercent(
+    pickPlaceField(source, [
+      'controlledArea',
+      'controlled_area',
+      'CONTROLLED_AREA',
+      'controlled',
+      'CONTROLLED',
+      'proposedAreaPct',
+      'proposed_area_pct',
+      'PROPOSED_AREA_PCT',
+    ]),
+  )
   var intermediateAreaPct = normalizePercent(
     pickPlaceField(source, [
+      'intermediateAreaPct',
       'im_per',
       'IM_PER',
       'per_im',
@@ -171,6 +197,7 @@ export function coerceAssemblyDetails(source) {
   )
   var coreAreaPct = normalizePercent(
     pickPlaceField(source, [
+      'coreAreaPct',
       'core_per',
       'CORE_PER',
       'per_core',
@@ -189,6 +216,7 @@ export function coerceAssemblyDetails(source) {
   )
   var subPrimeAreaPct = normalizePercent(
     pickPlaceField(source, [
+      'subPrimeAreaPct',
       'sp_per',
       'SP_PER',
       'per_sp',
@@ -209,6 +237,7 @@ export function coerceAssemblyDetails(source) {
   )
   var mcPct = normalizePercent(
     pickPlaceField(source, [
+      'mcPct',
       'mcper',
       'MCPER',
       'MC_PER',
@@ -222,6 +251,7 @@ export function coerceAssemblyDetails(source) {
   )
   var existingIndustry = normalizePercent(
     pickPlaceField(source, [
+      'existingIndustry',
       'areacont',
       'AREACONT',
       'area_cont',
@@ -245,7 +275,9 @@ export function coerceAssemblyDetails(source) {
     !vidhanSabha &&
     !district &&
     !proposedPolicy &&
+    !developmentPlan &&
     proposedAreaPct == null &&
+    controlledArea == null &&
     !nearestTehsil &&
     !usedTehsilFallback &&
     intermediateAreaPct == null &&
@@ -262,7 +294,9 @@ export function coerceAssemblyDetails(source) {
     vidhanSabhaCode: vidhanSabhaCode || null,
     district: district || null,
     proposedPolicy: proposedPolicy || null,
+    developmentPlan: developmentPlan || proposedPolicy || null,
     proposedAreaPct: proposedAreaPct == null ? null : proposedAreaPct,
+    controlledArea: controlledArea == null ? proposedAreaPct : controlledArea,
     intermediateAreaPct: intermediateAreaPct == null ? null : intermediateAreaPct,
     coreAreaPct: coreAreaPct == null ? null : coreAreaPct,
     subPrimeAreaPct: subPrimeAreaPct == null ? null : subPrimeAreaPct,
@@ -279,7 +313,9 @@ function hasMeaningfulAssemblyValue(value) {
 
 var ASSEMBLY_METRIC_KEYS = [
   'proposedPolicy',
+  'developmentPlan',
   'proposedAreaPct',
+  'controlledArea',
   'intermediateAreaPct',
   'coreAreaPct',
   'subPrimeAreaPct',
@@ -297,7 +333,9 @@ export function mergeAssemblyDetails(base, extra) {
     'vidhanSabhaCode',
     'district',
     'proposedPolicy',
+    'developmentPlan',
     'proposedAreaPct',
+    'controlledArea',
     'intermediateAreaPct',
     'coreAreaPct',
     'subPrimeAreaPct',
@@ -900,7 +938,9 @@ function hasAssemblyMetricValues(details) {
   if (!details) return false
   return (
     details.proposedPolicy != null ||
+    details.developmentPlan != null ||
     details.proposedAreaPct != null ||
+    details.controlledArea != null ||
     details.intermediateAreaPct != null ||
     details.coreAreaPct != null ||
     details.subPrimeAreaPct != null ||
