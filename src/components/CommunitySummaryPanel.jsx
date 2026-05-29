@@ -358,6 +358,12 @@ function hasCategoryData(row) {
   return false
 }
 
+function getRowDisplayCount(row, isClosestMode) {
+  if (isClosestMode) return getClosestRowCount(row)
+  var count = Number(row && row.count)
+  return Number.isFinite(count) ? count : 0
+}
+
 function getItemName(item, fallbackIndex) {
   if (!item) return `Location ${fallbackIndex + 1}`
 
@@ -590,9 +596,11 @@ export default function CommunitySummaryPanel() {
   const [pinnedTehsilMetrics, setPinnedTehsilMetrics] = useState(null)
   const [assemblyMetricsLoading, setAssemblyMetricsLoading] = useState(false)
   const [assemblyMetricsError, setAssemblyMetricsError] = useState('')
+  const [placeDetailsLoading, setPlaceDetailsLoading] = useState(false)
   const [resolvedLookupPoint, setResolvedLookupPoint] = useState(null)
   const placeLookupCacheRef = useRef({})
   const assemblyLookupCacheRef = useRef({})
+  const assemblyTehsilFetchKeyRef = useRef('')
   const autoAssemblySelectionRef = useRef('')
   const panelRef = useRef(null)
 
@@ -786,10 +794,10 @@ export default function CommunitySummaryPanel() {
 
   useEffect(() => {
     var cancelled = false
-    placeLookupCacheRef.current = {}
 
     if (placeDetailsFromSnapshot) {
       setRuntimePlaceDetails(null)
+      setPlaceDetailsLoading(false)
       return () => {
         cancelled = true
       }
@@ -797,6 +805,7 @@ export default function CommunitySummaryPanel() {
 
     if (!resolvedLookupPoint) {
       setRuntimePlaceDetails(null)
+      setPlaceDetailsLoading(false)
       return () => {
         cancelled = true
       }
@@ -805,13 +814,16 @@ export default function CommunitySummaryPanel() {
     var cacheKey = `${resolvedLookupPoint.lat.toFixed(6)},${resolvedLookupPoint.lon.toFixed(6)}`
     if (placeLookupCacheRef.current[cacheKey]) {
       setRuntimePlaceDetails(placeLookupCacheRef.current[cacheKey])
+      setPlaceDetailsLoading(false)
       return () => {
         cancelled = true
       }
     }
 
+    setPlaceDetailsLoading(true)
     queryPlaceDetailsByPointWgs84(resolvedLookupPoint).then((details) => {
       if (cancelled) return
+      setPlaceDetailsLoading(false)
       if (!details) {
         setRuntimePlaceDetails(null)
         return
@@ -833,8 +845,15 @@ export default function CommunitySummaryPanel() {
     if (!district || !tehsil) {
       setPinnedTehsilMetrics(null)
       setAssemblyMetricsError('')
+      assemblyTehsilFetchKeyRef.current = ''
       return () => {}
     }
+
+    var tehsilFetchKey = `${normalizePlaceLabel(district)}|${normalizePlaceLabel(tehsil)}`
+    if (assemblyTehsilFetchKeyRef.current === tehsilFetchKey && pinnedTehsilMetrics) {
+      return () => {}
+    }
+    assemblyTehsilFetchKeyRef.current = tehsilFetchKey
 
     setAssemblyMetricsLoading(true)
     setAssemblyMetricsError('')
@@ -925,8 +944,18 @@ export default function CommunitySummaryPanel() {
       setRuntimeAssemblyDetails((prev) => mergeAssemblyDetails(prev, merged))
     }
 
-    var loadPromise =
+    var tehsilFetchKey =
       districtHint && tehsilHint
+        ? `${normalizePlaceLabel(districtHint)}|${normalizePlaceLabel(tehsilHint)}`
+        : ''
+    var tehsilFetchHandledElsewhere =
+      tehsilFetchKey &&
+      assemblyTehsilFetchKeyRef.current === tehsilFetchKey &&
+      (assemblyMetricsLoading || pinnedTehsilMetrics)
+
+    var loadPromise = tehsilFetchHandledElsewhere
+      ? Promise.resolve(pinnedTehsilMetrics || runtimeAssemblyDetails)
+      : districtHint && tehsilHint
         ? fetchTehsilAssemblyMetrics(districtHint, tehsilHint).then((metrics) => {
             if (metrics && hasAssemblyMetricDetailsFromRow(metrics)) {
               if (hasAssemblyAreaBreakupFromRow(metrics)) return metrics
@@ -954,7 +983,7 @@ export default function CommunitySummaryPanel() {
             },
           )
         }
-        if (districtHint && tehsilHint) {
+        if (districtHint && tehsilHint && !tehsilFetchHandledElsewhere) {
           return fetchTehsilAssemblyMetrics(districtHint, tehsilHint).then((metrics) => {
             if (metrics && hasAssemblyMetricDetailsFromRow(metrics)) applyAssemblyDetails(metrics)
           })
@@ -973,7 +1002,6 @@ export default function CommunitySummaryPanel() {
 
     return () => {
       cancelled = true
-      setAssemblyMetricsLoading(false)
     }
   }, [
     assemblyDetailsFromSnapshot,
@@ -982,6 +1010,9 @@ export default function CommunitySummaryPanel() {
     placeDetails && placeDetails.tehsil,
     displaySummary,
     latestReport,
+    pinnedTehsilMetrics,
+    assemblyMetricsLoading,
+    runtimeAssemblyDetails,
   ])
 
   useEffect(() => {
@@ -1003,14 +1034,18 @@ export default function CommunitySummaryPanel() {
   const placeHeaderLines = useMemo(() => {
     if (!placeCardShouldRender) return null
     const formatField = (field) => {
-      const value = (placeDetails && placeDetails[field.key]) || '-'
-      return `${field.label}: ${value}`
+      const value = placeDetails && placeDetails[field.key]
+      if (value) return `${field.label}: ${value}`
+      if (placeDetailsLoading || (resolvedLookupPoint && !placeDetailsFromSnapshot)) {
+        return `${field.label}: …`
+      }
+      return `${field.label}: -`
     }
     return {
       line1: PLACE_DETAIL_FIELDS.slice(0, 3).map(formatField).join(' · '),
       line2: PLACE_DETAIL_FIELDS.slice(3).map(formatField).join(' · '),
     }
-  }, [placeCardShouldRender, placeDetails])
+  }, [placeCardShouldRender, placeDetails, placeDetailsLoading, resolvedLookupPoint, placeDetailsFromSnapshot])
   const assemblyCardShouldRender = useMemo(() => {
     if (hasAssemblyDetails) return true
     if (!latestReport) return false
@@ -1078,19 +1113,16 @@ export default function CommunitySummaryPanel() {
     ? displaySummary.categories
     : LOADING_ROWS
 
-  // Show every category from a completed summary (including 0). While loading, show placeholders.
-  const rows = displaySummary ? allRows : allRows
+  const rows = displaySummary
+    ? allRows.filter((row) => getRowDisplayCount(row, isClosestMode) > 0 || hasCategoryData(row))
+    : allRows
 
   const hasUnavailable = allRows.some((r) => r && r.available === false)
 
-  const totalCountNum = rows.reduce((sum, row) => {
-    var value = isClosestMode
-      ? getClosestRowCount(row)
-      : row && Number.isFinite(Number(row.count))
-        ? Number(row.count)
-        : 0
-    return sum + value
-  }, 0)
+  const totalCountNum = rows.reduce(
+    (sum, row) => sum + Math.max(0, getRowDisplayCount(row, isClosestMode)),
+    0,
+  )
 
   const totalCount = displaySummary ? totalCountNum : '...'
 
@@ -1350,6 +1382,7 @@ export default function CommunitySummaryPanel() {
             label: row && row.label ? row.label : key,
             items: focusItems,
             total: focusItems.length,
+            showAllRoutes: true,
           },
         }),
       )
@@ -1510,12 +1543,14 @@ export default function CommunitySummaryPanel() {
                 <AssemblyMetricIcon tone={metric.tone} />
                 <strong>{metric.label}</strong>
                 <span>
-                  {metric.suffix
-                    ? formatMetricValue(
-                        resolveAssemblyMetricDisplayValue(displayAssemblyMetrics, metric.key),
-                        metric.suffix,
-                      )
-                    : resolveAssemblyMetricDisplayValue(displayAssemblyMetrics, metric.key) || '-'}
+                  {assemblyMetricsLoading && !hasAssemblyMetricDetails
+                    ? '…'
+                    : metric.suffix
+                      ? formatMetricValue(
+                          resolveAssemblyMetricDisplayValue(displayAssemblyMetrics, metric.key),
+                          metric.suffix,
+                        )
+                      : resolveAssemblyMetricDisplayValue(displayAssemblyMetrics, metric.key) || '-'}
                 </span>
               </article>
             ))}
@@ -1730,11 +1765,7 @@ export default function CommunitySummaryPanel() {
 
         <div className="community-ba-cards">
           {rows.map((row, idx) => {
-            var count = isClosestMode
-              ? getClosestRowCount(row)
-              : row && Number.isFinite(Number(row.count))
-                ? Number(row.count)
-                : 0
+            var count = getRowDisplayCount(row, isClosestMode)
             var label = row && row.label ? row.label : 'Category'
             var key = String(row && row.key ? row.key : idx)
             var keyLower = key.toLowerCase()

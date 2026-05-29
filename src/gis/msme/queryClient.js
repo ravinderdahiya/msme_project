@@ -15,12 +15,12 @@ const MAX_PARALLEL_ARCGIS_REQUESTS = (() => {
 const DEFAULT_ARCGIS_MAX_ATTEMPTS = (() => {
   const raw = Number(import.meta.env.VITE_GIS_MAX_ATTEMPTS)
   if (!Number.isFinite(raw)) return 2
-  return Math.max(1, Math.min(6, Math.round(raw)))
+  return Math.max(1, Math.min(4, Math.round(raw)))
 })()
 const DEFAULT_ARCGIS_TIMEOUT_MS = (() => {
   const raw = Number(import.meta.env.VITE_GIS_REQUEST_TIMEOUT_MS)
-  if (!Number.isFinite(raw)) return 45000
-  return Math.max(15000, Math.min(180000, Math.round(raw)))
+  if (!Number.isFinite(raw)) return 18000
+  return Math.max(8000, Math.min(120000, Math.round(raw)))
 })()
 const REQUEST_RESPONSE_CACHE_TTL_MS = (() => {
   const raw = Number(import.meta.env.VITE_GIS_QUERY_CACHE_TTL_MS)

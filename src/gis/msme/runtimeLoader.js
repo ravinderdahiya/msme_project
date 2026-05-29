@@ -1831,6 +1831,7 @@ function patchLegacySource(source) {
     '          label: "Closest in buffer",',
     "          items: focusItems,",
     "          total: focusItems.length,",
+    "          showAllRoutes: true,",
     "        },",
     "      }));",
     '      window.dispatchEvent(new CustomEvent("msme-community-panel-open"));',
@@ -1875,28 +1876,33 @@ function patchLegacySource(source) {
     "      if (!roads.length) {",
     "        return finalizeGraphics({",
     "          routed: routedSeed || 0,",
-    "          fallback: drawStraightFallbackForAll(itemsForRoute)",
+    "          fallback: (detail && detail.showAllRoutes) ? 0 : drawStraightFallbackForAll(itemsForRoute)",
     "        });",
     "      }",
     "      var graph = buildRoadGraph(roads, 8);",
     "      if (!graph || !graph.keys || !graph.keys.length) {",
     "        return finalizeGraphics({",
     "          routed: routedSeed || 0,",
-    "          fallback: drawStraightFallbackForAll(itemsForRoute)",
+    "          fallback: (detail && detail.showAllRoutes) ? 0 : drawStraightFallbackForAll(itemsForRoute)",
     "        });",
     "      }",
     "      return drawFromRoadGraph(graph, itemsForRoute, routedSeed || 0);",
     "    }).catch(function () {",
     "      return finalizeGraphics({",
     "        routed: routedSeed || 0,",
-    "        fallback: drawStraightFallbackForAll(itemsForRoute)",
+    "        fallback: (detail && detail.showAllRoutes) ? 0 : drawStraightFallbackForAll(itemsForRoute)",
     "      });",
     "    });",
     "  }",
     "",
     "  if (detail && detail.showAllRoutes && validItems.length > 0) {",
-    '    setStatus("Drawing routes to center for " + validItems.length + " POIs...");',
-    "    return queryRoadGraphAndDrawAllPois(validItems, 0).then(function () {",
+    '    setStatus("Drawing road-following routes for " + validItems.length + " POIs...");',
+    "    return drawOsrmRoutesBatch(validItems).then(function (osrmStateAll) {",
+    "      var routedAll = (osrmStateAll && osrmStateAll.routed) || 0;",
+    "      var unresolvedAll = (osrmStateAll && osrmStateAll.unresolved) ? osrmStateAll.unresolved : [];",
+    "      if (!unresolvedAll.length) return finalizeGraphics({ routed: routedAll, fallback: 0 });",
+    "      return queryRoadGraphAndDrawAllPois(unresolvedAll, routedAll);",
+    "    }).then(function () {",
     "      return doneZoom.then(function () { return true; });",
     "    });",
     "  }",
@@ -1989,10 +1995,10 @@ function patchLegacySource(source) {
   var mapClickRadiusPattern =
     /var radiusM = 3000;\s*try \{\s*radiusM = readCadNearRadiusMeters\(\);\s*\} catch \(e2\) \{\}/;
   var mapClickRadiusReplacement = [
-    "var radiusM = 5000;",
+    "var radiusM = 2000;",
     "  try {",
     "    var pickedRadius = readCadNearRadiusMeters();",
-    "    if (isFinite(pickedRadius) && pickedRadius > 0) radiusM = Math.max(5000, Math.round(pickedRadius));",
+    "    if (isFinite(pickedRadius) && pickedRadius > 0) radiusM = Math.round(pickedRadius);",
     "  } catch (e2) {}",
   ].join("\n");
   if (mapClickRadiusPattern.test(out)) {
@@ -2087,7 +2093,7 @@ function patchLegacySource(source) {
     '  if (String(selectionSource || "") !== "map-click") return;',
     "  if (!identifyLayer || !anchor32643) return;",
     "  var rad = Number(radiusM);",
-    "  if (!isFinite(rad) || rad <= 0) rad = 5000;",
+    "  if (!isFinite(rad) || rad <= 0) rad = 2000;",
     "  try {",
     "    var buf32643 = geometryEngine.buffer(anchor32643, rad, \"meters\");",
     "    if (buf32643) {",
@@ -2132,6 +2138,37 @@ function patchLegacySource(source) {
     console.warn("[msme runtime patch] map click pin symbol patch not applied.");
   }
 
+  var bufferFillSymbolsPattern =
+    /var symBuffer = new SimpleFillSymbol\(\{\s*color: \[26, 115, 232, 0\.2\],\s*outline: new SimpleLineSymbol\(\{ color: \[26, 115, 232, 0\.85\], width: 1 \}\)\s*\}\);\s*var symVillage =[\s\S]*?var symCadNearBuffer = new SimpleFillSymbol\(\{\s*color: \[33, 150, 243, 0\.18\],\s*outline: new SimpleLineSymbol\(\{ color: \[13, 71, 161, 1\], width: 3 \}\)\s*\}\);/;
+  var bufferFillSymbolsReplacement = [
+    "var symBuffer = new SimpleFillSymbol({",
+    "  color: [26, 115, 232, 0],",
+    "  outline: new SimpleLineSymbol({ color: [26, 115, 232, 0.85], width: 1 })",
+    "});",
+    "var symVillage = new SimpleFillSymbol({",
+    "  color: [52, 168, 83, 0.35],",
+    "  outline: new SimpleLineSymbol({ color: [30, 142, 62, 1], width: 1 })",
+    "});",
+    "var symPoint = new SimpleMarkerSymbol({",
+    '  style: "circle", color: [234, 67, 53, 0.95], size: 9,',
+    '  outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 1 })',
+    "});",
+    "var symSuitable = new SimpleFillSymbol({",
+    "  color: [52, 168, 83, 0.45],",
+    "  outline: new SimpleLineSymbol({ color: [30, 142, 62, 1.5], width: 1.5 })",
+    "});",
+    "var symLineHit = new SimpleLineSymbol({ color: [251, 140, 0, 1], width: 2 });",
+    "var symCadNearBuffer = new SimpleFillSymbol({",
+    "  color: [33, 150, 243, 0],",
+    "  outline: new SimpleLineSymbol({ color: [13, 71, 161, 1], width: 3 })",
+    "});",
+  ].join("\n");
+  if (bufferFillSymbolsPattern.test(out)) {
+    out = out.replace(bufferFillSymbolsPattern, bufferFillSymbolsReplacement);
+  } else {
+    console.warn("[msme runtime patch] buffer fill transparency patch not applied.");
+  }
+
   var symPointPinPattern =
     /var symPoint = new SimpleMarkerSymbol\(\{\s*style: "circle", color: \[234, 67, 53, 0\.95\], size: 9,\s*outline: new SimpleLineSymbol\(\{ color: \[255, 255, 255, 1\], width: 1 \}\)\s*\}\);/;
   var symPointPinReplacement = [
@@ -2170,10 +2207,10 @@ function patchLegacySource(source) {
     '    if (typeof window.__msmeShowGisDataLoader === "function") { try { window.__msmeShowGisDataLoader(); } catch (eLdMap0) {} }',
     "var anchor32643 = projection.project(mapPoint, SR_METER);",
     "    lastIdentifyAnchor32643 = anchor32643;",
-    "    var mapClickRadiusM = 5000;",
+    "    var mapClickRadiusM = 2000;",
     "    try {",
     "      var pickedMapRad = readCadNearRadiusMeters();",
-    "      if (isFinite(pickedMapRad) && pickedMapRad > 0) mapClickRadiusM = Math.max(5000, Math.round(pickedMapRad));",
+    "      if (isFinite(pickedMapRad) && pickedMapRad > 0) mapClickRadiusM = Math.round(pickedMapRad);",
     "    } catch (eMapRad0) {}",
     '    setMapClickSelectionGraphics(mapPoint, anchor32643, mapClickRadiusM, "map-click");',
     "    return Promise.all(IDENTIFY_URLS.map",
@@ -2280,10 +2317,10 @@ function patchLegacySource(source) {
     "    var llMap = projection.project(mapPoint, SR4326);",
     "    var latMap = llMap.y;",
     "    var lonMap = llMap.x;",
-    "    var radiusMap = 5000;",
+    "    var radiusMap = 2000;",
     "    try {",
     "      var pickedMapR = readCadNearRadiusMeters();",
-    "      if (isFinite(pickedMapR) && pickedMapR > 0) radiusMap = Math.max(5000, Math.round(pickedMapR));",
+    "      if (isFinite(pickedMapR) && pickedMapR > 0) radiusMap = Math.round(pickedMapR);",
     "    } catch (eMapR0) {}",
     "    return finishMapClickPlaceResults(anchor32643, mapPoint, flat, latMap, lonMap, radiusMap);",
     "  }",
@@ -2613,6 +2650,7 @@ function installAssemblyLookupBridge() {
   if (window.__msmeAssemblyLookupBridgeInstalled) return;
   window.__msmeAssemblyLookupBridgeInstalled = true;
   window.msmeGisQueryAssemblyDetailsByPointWgs84 = queryAssemblyDetailsByPointWgs84;
+  window.msmeGisQueryPlaceDetailsByPointWgs84 = queryPlaceDetailsByPointWgs84;
 }
 
 export const initMsmeWebGis = (...args) => {
@@ -3699,10 +3737,12 @@ function installCadastralLayerAutoOpen() {
     return found && switched;
   }
 
-  function openCadastralLayer() {
+  function openCadastralLayer(opts) {
+    opts = opts || {};
+    var openUi = !!opts.openUi;
     var view = window.__msmeGisMapView;
     if (!view || view.destroyed || !view.map) return false;
-    ensureLayersPanelOpen();
+    if (openUi) ensureLayersPanelOpen();
     var cadLayer = findCadastralLayer(view.map);
     if (!cadLayer) return false;
     try {
@@ -3710,7 +3750,7 @@ function installCadastralLayerAutoOpen() {
       cadLayer.opacity = 1;
     } catch (e1) {}
 
-    if (typeof cadLayer.when === "function") {
+    if (openUi && typeof cadLayer.when === "function") {
       cadLayer
         .when(function () {
           try {
@@ -3721,19 +3761,23 @@ function installCadastralLayerAutoOpen() {
           return null;
         });
     }
-    openCadPanelTab();
-    ensureCadastralLayerListVisible();
-    window.setTimeout(ensureCadastralLayerListVisible, 300);
-    window.setTimeout(ensureCadastralLayerListVisible, 900);
+    if (openUi) {
+      openCadPanelTab();
+      ensureCadastralLayerListVisible();
+      window.setTimeout(ensureCadastralLayerListVisible, 300);
+      window.setTimeout(ensureCadastralLayerListVisible, 900);
+    }
     return true;
   }
 
-  window.msmeGisOpenCadastralLayer = openCadastralLayer;
+  window.msmeGisOpenCadastralLayer = function (openUi) {
+    return openCadastralLayer({ openUi: openUi !== false });
+  };
 
   var tries = 0;
   var timer = window.setInterval(function () {
     tries += 1;
-    if (openCadastralLayer()) {
+    if (openCadastralLayer({ openUi: false })) {
       window.clearInterval(timer);
       return;
     }
