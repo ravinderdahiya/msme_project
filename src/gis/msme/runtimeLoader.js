@@ -1355,13 +1355,16 @@ function patchLegacySource(source) {
     "applyInitialRequestedLayerPreset();",
     "    try {",
     "      var transLyr = null;",
+    "      var cadLyr = null;",
     "      if (map && map.layers && typeof map.layers.forEach === \"function\") {",
     "        map.layers.forEach(function (lyr) {",
-    "          if (transLyr) return;",
+    "          if (transLyr && cadLyr) return;",
     "          var title0 = String((lyr && lyr.title) || \"\");",
     "          var url0 = String((lyr && lyr.url) || \"\");",
     "          var isTransport = /Transportation/i.test(title0) || /Transportation_Infrastructure/i.test(url0);",
     "          if (isTransport) transLyr = lyr;",
+    "          var isCad = /Cadastral/i.test(title0) || /Haryana_Cadastral/i.test(url0) || /MSME_CADASTRAL/i.test(url0);",
+    "          if (isCad) cadLyr = lyr;",
     "        });",
     "      }",
     "      if (transLyr && typeof transLyr.when === \"function\") {",
@@ -1375,6 +1378,27 @@ function patchLegacySource(source) {
     "          });",
     "        });",
     "      }",
+    "      function enforceCadOn() {",
+    "        if (!cadLyr) return;",
+    "        try { cadLyr.visible = true; cadLyr.opacity = 1; } catch (eCad0) {}",
+    "        if (cadLyr && typeof cadLyr.when === \"function\") {",
+    "          cadLyr.when(function () {",
+    "            try {",
+    "              if (cadLyr.sublayers && typeof cadLyr.sublayers.forEach === \"function\") {",
+    "                cadLyr.sublayers.forEach(function eachSub(s0) {",
+    "                  try { s0.visible = true; } catch (eCad1) {}",
+    "                  if (s0 && s0.sublayers && typeof s0.sublayers.forEach === \"function\") {",
+    "                    s0.sublayers.forEach(eachSub);",
+    "                  }",
+    "                });",
+    "              }",
+    "            } catch (eCad2) {}",
+    "          });",
+    "        }",
+    "      }",
+    "      enforceCadOn();",
+    "      window.setTimeout(enforceCadOn, 600);",
+    "      window.setTimeout(enforceCadOn, 1500);",
     "    } catch (eRoadOn) {",
     "      console.warn(\"[msme runtime patch] transport roads default-on failed\", eRoadOn);",
     "    }",
@@ -1477,10 +1501,10 @@ function patchLegacySource(source) {
     "function queryLayerFeaturesByObjectIds(url, layerId, objectIds) {",
     "  var ids = Array.isArray(objectIds) ? objectIds : [];",
     "  if (!ids.length) return Promise.resolve([]);",
-    "  var chunks = chunkArray(ids, 80);",
+    "  var chunks = chunkArray(ids, 140);",
     "  var nextIdx = 0;",
     "  var merged = [];",
-    "  var workerCount = Math.min(2, Math.max(1, chunks.length));",
+    "  var workerCount = Math.min(4, Math.max(1, chunks.length));",
     "",
     "  function fetchChunk(idChunk) {",
     "    return queryLayer(url, layerId, {",
@@ -3556,5 +3580,167 @@ function installMeasurementLineTool() {
   window.setInterval(syncViewRef, 800);
 }
 
+function installCadastralLayerAutoOpen() {
+  if (typeof window === "undefined") return;
+  if (window.__msmeCadastralLayerAutoOpenInstalled) return;
+  window.__msmeCadastralLayerAutoOpenInstalled = true;
+
+  function normalizeServiceUrl(value) {
+    return String(value || "")
+      .trim()
+      .replace(/[?#].*$/, "")
+      .replace(/\/+$/, "")
+      .toLowerCase();
+  }
+
+  var cadBaseUrl = normalizeServiceUrl(CAD_MS);
+
+  function setVisibleForSublayers(sublayers) {
+    if (!sublayers || typeof sublayers.forEach !== "function") return;
+    sublayers.forEach(function (sub) {
+      try {
+        sub.visible = true;
+      } catch (e0) {}
+      if (sub && sub.sublayers) setVisibleForSublayers(sub.sublayers);
+    });
+  }
+
+  function findCadastralLayer(map) {
+    if (!map || !map.layers || typeof map.layers.forEach !== "function") return null;
+    var found = null;
+    map.layers.forEach(function (lyr) {
+      if (found) return;
+      var id0 = String((lyr && lyr.id) || "");
+      var title0 = String((lyr && lyr.title) || "");
+      var url0 = normalizeServiceUrl((lyr && lyr.url) || "");
+      var urlMatchesCad =
+        !!cadBaseUrl &&
+        (url0 === cadBaseUrl ||
+          url0.indexOf(cadBaseUrl + "/") === 0 ||
+          cadBaseUrl.indexOf(url0 + "/") === 0);
+      var isCad =
+        /cad/i.test(id0) ||
+        /cadastral/i.test(title0) ||
+        /haryana[_\s-]*cadastral/i.test(url0) ||
+        /msme_cadastral/i.test(url0) ||
+        urlMatchesCad;
+      if (isCad) found = lyr;
+    });
+    return found;
+  }
+
+  function openCadPanelTab() {
+    if (window.__msmeCadUiOpenedOnce) return true;
+    var openNavBtn = document.getElementById("btnOpenNav");
+    var aoiPanel = document.getElementById("aoiPanel");
+    if (openNavBtn && aoiPanel && aoiPanel.classList.contains("collapsed")) {
+      try {
+        openNavBtn.click();
+      } catch (e0) {}
+    }
+    var tabCad = document.getElementById("tabCad");
+    if (tabCad && typeof tabCad.click === "function") {
+      try {
+        tabCad.click();
+        window.__msmeCadUiOpenedOnce = true;
+        return true;
+      } catch (e1) {}
+    }
+    return false;
+  }
+
+  function ensureLayersPanelOpen() {
+    var panel = document.getElementById("toolsPanel");
+    var btn = document.getElementById("btnTogglePanel");
+    if (!panel || !btn || typeof btn.click !== "function") return false;
+    if (panel.classList.contains("collapsed")) {
+      try {
+        btn.click();
+      } catch (e0) {}
+    }
+    return !panel.classList.contains("collapsed");
+  }
+
+  function ensureCadastralLayerListVisible() {
+    var root = document.getElementById("layerListContainer");
+    if (!root) return false;
+
+    var items = root.querySelectorAll("calcite-list-item, .esri-layer-list__item, [role='listitem']");
+    var found = false;
+    var switched = false;
+
+    items.forEach(function (item) {
+      if (switched) return;
+      var text = String((item && item.textContent) || "").toLowerCase();
+      if (text.indexOf("cadastral") === -1 && text.indexOf("cad") === -1) return;
+      found = true;
+
+      var toggle = item.querySelector(
+        ".esri-layer-list__visibility-toggle, calcite-action[icon='view-hide'], calcite-action[icon='view-visible'], button[aria-pressed], [aria-label*='visibility' i], [title*='visibility' i]",
+      );
+      if (!toggle || typeof toggle.click !== "function") return;
+
+      var pressed = String(toggle.getAttribute("aria-pressed") || "");
+      var classText = String(toggle.className || "");
+      var iconText = String(toggle.getAttribute("icon") || "");
+      var offState = /view-hide|non-visible|eye-off|esri-icon-non-visible/i.test(classText + " " + iconText);
+
+      if (pressed === "false" || offState) {
+        try {
+          toggle.click();
+          switched = true;
+        } catch (e0) {}
+        return;
+      }
+
+      if (pressed === "true") switched = true;
+    });
+
+    return found && switched;
+  }
+
+  function openCadastralLayer() {
+    var view = window.__msmeGisMapView;
+    if (!view || view.destroyed || !view.map) return false;
+    ensureLayersPanelOpen();
+    var cadLayer = findCadastralLayer(view.map);
+    if (!cadLayer) return false;
+    try {
+      cadLayer.visible = true;
+      cadLayer.opacity = 1;
+    } catch (e1) {}
+
+    if (typeof cadLayer.when === "function") {
+      cadLayer
+        .when(function () {
+          try {
+            if (cadLayer.sublayers) setVisibleForSublayers(cadLayer.sublayers);
+          } catch (e2) {}
+        })
+        .catch(function () {
+          return null;
+        });
+    }
+    openCadPanelTab();
+    ensureCadastralLayerListVisible();
+    window.setTimeout(ensureCadastralLayerListVisible, 300);
+    window.setTimeout(ensureCadastralLayerListVisible, 900);
+    return true;
+  }
+
+  window.msmeGisOpenCadastralLayer = openCadastralLayer;
+
+  var tries = 0;
+  var timer = window.setInterval(function () {
+    tries += 1;
+    if (openCadastralLayer()) {
+      window.clearInterval(timer);
+      return;
+    }
+    if (tries >= 80) window.clearInterval(timer);
+  }, 300);
+}
+
 installMeasurementLineTool();
 installRailTrackBufferTool();
+installCadastralLayerAutoOpen();

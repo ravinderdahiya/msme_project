@@ -8,8 +8,8 @@ import https from 'node:https'
 dns.setDefaultResultOrder('ipv4first')
 const arcgisProxyAgent = new https.Agent({
   keepAlive: true,
-  maxSockets: 4,
-  maxFreeSockets: 2,
+  maxSockets: 12,
+  maxFreeSockets: 6,
   timeout: 120000,
 })
 
