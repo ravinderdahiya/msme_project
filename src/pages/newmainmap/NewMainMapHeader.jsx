@@ -1,31 +1,30 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { History, LogIn, Moon, Search, Sun } from "lucide-react";
+import { ChevronDown, LogOut, Menu } from "lucide-react";
 import "./NewMainMapHeader.css";
 import { logoutApi } from "../../services/authService";
 import { clearAuthSession } from "../../utils/authStorage";
 
-const SEARCH_PLACEHOLDER =
-  "Search places across Haryana or use the sidebar record search";
+const NAV_LINKS = [
+  { key: "switch-portal", label: "Switch Portal" },
+  { key: "help-desk", label: "Help Desk" },
+  { key: "data-upload", label: "Data Upload System" },
+];
 
-export default function NewMainMapHeader({
-  search,
-  setSearch,
-  onSearchSubmit,
-  theme = "light",
-  onToggleTheme = () => {},
-}) {
+export default function NewMainMapHeader() {
   const navigate = useNavigate();
-  const [langEn, setLangEn] = useState(true);
-  const [searchExpanded, setSearchExpanded] = useState(false);
+  const menuRef = useRef(null);
+  const [menuOpen, setMenuOpen] = useState(false);
 
-  const handleSubmit = useCallback(
-    (e) => {
-      e.preventDefault();
-      onSearchSubmit?.(search);
-    },
-    [onSearchSubmit, search]
-  );
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocClick = (e) => {
+      if (menuRef.current?.contains(e.target)) return;
+      setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [menuOpen]);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -39,95 +38,49 @@ export default function NewMainMapHeader({
   }, [navigate]);
 
   return (
-    <header className="nmhdr">
-      <div className="nmhdr-brand">
-        <div className="nmhdr-flip" aria-hidden="true">
-          <div className="nmhdr-flip-inner">
-            <div className="nmhdr-flip-face">
-              <img src="/images/HARSAC-Logo.png" alt="" />
-            </div>
-            <div className="nmhdr-flip-face nmhdr-flip-back">
-              <img src="/images/hepc-logo.png" alt="" />
-            </div>
-          </div>
-        </div>
-        <div className="nmhdr-titles">
-          <span className="nmhdr-title">MSME, Haryana</span>
-          <span className="nmhdr-subtitle">GIS Investment Portal, Haryana</span>
+    <header className="nmhdr nmhdr-dmp">
+      <div className="nmhdr-dmp-left">
+        <img src="/images/hepc-logo.png" alt="MSME Haryana" className="nmhdr-dmp-logo" />
+        <span className="nmhdr-dmp-sep" aria-hidden />
+        <div className="nmhdr-dmp-titles">
+          <span className="nmhdr-dmp-title">MSME GIS Portal</span>
+          <span className="nmhdr-dmp-subtitle">District Master Plan — Haryana</span>
         </div>
       </div>
 
-      <button
-        type="button"
-        className={`nmhdr-search-toggle${searchExpanded ? " is-open" : ""}`}
-        aria-expanded={searchExpanded}
-        aria-controls="nmhdr-search-form"
-        onClick={() => setSearchExpanded((v) => !v)}
-      >
-        <Search size={20} strokeWidth={2} />
-        <span className="nmhdr-sr-only">Toggle place search</span>
-      </button>
-
-      <form
-        id="nmhdr-search-form"
-        className={`nmhdr-search${searchExpanded ? " is-expanded" : ""}`}
-        onSubmit={handleSubmit}
-        role="search"
-      >
-        <span className="nmhdr-search-icon" aria-hidden>
-          <Search size={18} strokeWidth={2} />
-        </span>
-        <input
-          type="search"
-          name="q"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          placeholder={SEARCH_PLACEHOLDER}
-          aria-label="Search places"
-        />
-        <button type="submit" className="nmhdr-search-btn">
-          Search
-        </button>
-      </form>
-
-      <div className="nmhdr-actions">
-        <button
-          type="button"
-          className={`nmhdr-theme-btn${theme === "dark" ? " is-dark" : ""}`}
-          onClick={onToggleTheme}
-          aria-pressed={theme === "dark"}
-          aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          title={theme === "dark" ? "Light mode" : "Dark mode"}
-        >
-          {theme === "dark" ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
-        </button>
-        {/* <button type="button" className="nmhdr-icon-btn" aria-label="Assistant">
-          <Sparkles size={18} strokeWidth={2} />
-        </button> */}
-        <button type="button" className="nmhdr-icon-btn" aria-label="History">
-          <History size={18} strokeWidth={2} />
-        </button>
-        <button
-          type="button"
-          className="nmhdr-lang"
-          onClick={() => setLangEn((v) => !v)}
-          aria-pressed={langEn}
-          title="Toggle language"
-        >
-          <span className={langEn ? "is-active" : ""}>EN</span>
-          <span className="nmhdr-lang-sep" aria-hidden>
-            |
+      <nav className="nmhdr-dmp-nav" aria-label="Portal links">
+        {NAV_LINKS.map((link, idx) => (
+          <span key={link.key} className="nmhdr-dmp-nav-item">
+            {idx > 0 && <span className="nmhdr-dmp-nav-sep" aria-hidden />}
+            <button type="button" className="nmhdr-dmp-nav-link">
+              {link.label}
+            </button>
           </span>
-          <span className={!langEn ? "is-active" : ""}>हि</span>
-        </button>
-        <button
-          type="button"
-          className="nmhdr-login"
-          onClick={handleLogout}
-        >
-          <LogIn size={18} strokeWidth={2} />
-          <span className="nmhdr-login-text">Logout</span>
-        </button>
+        ))}
+      </nav>
+
+      <div className="nmhdr-dmp-right">
+        <div className="nmhdr-dmp-menu-wrap" ref={menuRef}>
+          <button
+            type="button"
+            className={`nmhdr-dmp-menu-btn${menuOpen ? " is-open" : ""}`}
+            aria-expanded={menuOpen}
+            aria-haspopup="true"
+            onClick={() => setMenuOpen((v) => !v)}
+          >
+            <Menu size={20} strokeWidth={2} />
+            <ChevronDown size={16} strokeWidth={2} aria-hidden />
+          </button>
+          {menuOpen && (
+            <div className="nmhdr-dmp-dropdown" role="menu">
+              <button type="button" role="menuitem" className="nmhdr-dmp-dropdown-item" onClick={handleLogout}>
+                <LogOut size={16} strokeWidth={2} />
+                Logout
+              </button>
+            </div>
+          )}
+        </div>
+        <img src="/images/HARSAC-Logo.png" alt="Government emblem" className="nmhdr-dmp-emblem" />
       </div>
     </header>
   );

@@ -2,12 +2,18 @@ import {
   BarChart3,
   BookOpen,
   Bookmark,
+  CircleDot,
   Clock3,
   FileText,
   HelpCircle,
+  Home,
   Layers3,
+  Map,
   MapPin,
+  Navigation,
+  Settings2,
   ShieldCheck,
+  SquareStack,
 } from "lucide-react";
 
 export const LAYERS_PATH = "/newmainmap/layers";
@@ -119,6 +125,48 @@ export const otherMenu = [
   { title: "Bookmarks", subtitle: "Saved locations", icon: Bookmark },
   { title: "History", subtitle: "Recent activities", icon: Clock3 },
   { title: "Help & Support", subtitle: "Get help", icon: HelpCircle },
+];
+
+/** Left rail — swap `icon` / `iconSrc` with your own assets when ready. */
+export const railMenu = [
+  { key: "tools", label: "Tools", icon: Settings2 },
+  { key: "ministries", label: "Ministries", icon: SquareStack },
+  { key: "state-layers", label: "State Layers", icon: Map },
+  { key: "mandatory-layers", label: "Mandatory Layers", icon: Layers3 },
+  { key: "layers", label: "Layers", icon: Layers3, route: LAYERS_PATH },
+  { key: "active-layers", label: "Active layers", icon: CircleDot },
+];
+
+/** Tools grid — placeholder icons; replace with image URLs via `iconSrc` later. */
+export const toolsGrid = [
+  { key: "home", label: "Home", icon: Home },
+  { key: "terrain", label: "ThreeDTerrain", icon: Map },
+  { key: "navigation", label: "Navigation", icon: Navigation },
+  { key: "select-land", label: "Select Land", icon: MapPin, route: SELECT_LAND_PATH },
+  { key: "add-project", label: "Add Project", icon: CircleDot },
+  { key: "water-pipeline", label: "Add Water Pipeline", icon: CircleDot },
+  { key: "catchment", label: "Catchment Area", icon: CircleDot },
+  { key: "gap-analyzer", label: "Dynamic Gap Analyzer", icon: CircleDot },
+  { key: "bus-station", label: "Proposed Bus Station", icon: CircleDot },
+  { key: "swipe-layers", label: "Swipe Layers", icon: Layers3, route: LAYERS_PATH },
+  { key: "route", label: "Route", icon: CircleDot },
+  { key: "permission", label: "Permission", icon: CircleDot },
+  { key: "extraction", label: "Extraction", icon: CircleDot },
+  { key: "find-location", label: "Find Location", icon: MapPin },
+  { key: "od-tool", label: "OD Tool", icon: CircleDot },
+  { key: "go-area", label: "Go Area", icon: CircleDot },
+  { key: "layers", label: "Layers", icon: Layers3, route: LAYERS_PATH },
+  { key: "analysis", label: "Analysis", icon: BarChart3, route: ANALYSIS_PATH },
+  { key: "buffer", label: "Buffer Tool", icon: ShieldCheck, route: BUFFER_PATH },
+  { key: "land-details", label: "Land Details", icon: FileText },
+  { key: "reports", label: "Reports", icon: BookOpen },
+];
+
+export const MAP_LEGEND_ITEMS = [
+  { id: "village", label: "Village Boundary", style: "dashed" },
+  { id: "sub-district", label: "Sub-District Boundary", style: "dash-dot" },
+  { id: "district", label: "District Boundary", style: "solid-bold" },
+  { id: "state", label: "State Boundary", style: "solid" },
 ];
 
 export const BUFFER_PRESETS = ["1 km", "5 km", "10 km", "Custom"];
