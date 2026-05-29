@@ -11,6 +11,17 @@ function mapViewLooksReady() {
   return !!(view && view.destroyed === false)
 }
 
+function mapToolbarControlsAreDocked() {
+  if (typeof document === 'undefined') return false
+  const host = document.querySelector('#viewDiv .esri-ui-top-right.esri-ui-corner')
+  if (!host) return false
+  const bufferWrap = host.querySelector('.buffer-fab-wrap')
+  const homeFab = host.querySelector('.home-map-fab')
+  const printFab = host.querySelector('.closest-print-fab')
+  const basemapHost = host.querySelector('.msme-basemap-fab-host')
+  return !!(bufferWrap && homeFab && printFab && basemapHost)
+}
+
 function showGisLoadingOverlay() {
   const el = typeof document !== 'undefined' ? document.getElementById('gisLoadingOverlay') : null
   if (!el) return
@@ -36,6 +47,7 @@ export default function HaryanaMap({ t, onMapBootComplete }) {
     function notifyMapBootComplete() {
       if (mapBootCompleteFired.current) return
       if (!el.classList.contains('is-hidden') || !mapViewLooksReady()) return
+      if (!mapToolbarControlsAreDocked()) return
       mapBootCompleteFired.current = true
       gisBootLoaderDismissed.current = true
       if (typeof onMapBootComplete === 'function') {

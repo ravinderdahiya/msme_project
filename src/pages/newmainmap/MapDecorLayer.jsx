@@ -2,16 +2,15 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   Car,
-  Crosshair,
-  Expand,
-  GitBranch,
+  Globe2,
   Layers2,
+  MapPin,
   Minus,
   Plane,
   Plus,
-  Printer,
-  UserRound,
+  Ruler,
 } from "lucide-react";
+import { MAP_LEGEND_ITEMS } from "./config.js";
 import { NM_DECOR_MARKERS, NM_DECOR_ROADS } from "./mapDecorConfig.js";
 
 const BASEMAP_OPTIONS = [
@@ -62,20 +61,26 @@ export function MapDecorGeometries() {
   );
 }
 
-function MapToolBtn({ icon: Icon, label, circled, onClick }) {
+function MapLegend() {
   return (
-    <button
-      type="button"
-      className={`nm-map-fake-tool${circled ? " nm-map-fake-tool--circled" : ""}`}
-      title={label}
-      aria-label={label}
-      onClick={onClick}
-    >
-      <span className="nm-map-fake-tool-icon">
-        <Icon size="1em" strokeWidth={2} aria-hidden />
-      </span>
-      <span className="nm-map-fake-tool-label">{label}</span>
-    </button>
+    <div className="nm-map-legend" aria-label="Map legend">
+      <ul className="nm-map-legend-list">
+        {MAP_LEGEND_ITEMS.map((item) => (
+          <li key={item.id} className="nm-map-legend-row">
+            <span className={`nm-map-legend-line nm-map-legend-line--${item.style}`} aria-hidden />
+            <span>{item.label}</span>
+          </li>
+        ))}
+      </ul>
+      <div className="nm-map-scale-meta">
+        <span>1 : 829,479</span>
+      </div>
+      <div className="nm-map-scale-bar" aria-hidden>
+        <span>0</span>
+        <span className="nm-map-scale-track" />
+        <span>20 km</span>
+      </div>
+    </div>
   );
 }
 
@@ -85,11 +90,8 @@ export function MapDecorChrome({
   onZoomOut,
   onFitExtent,
   onNearby,
-  onClosestPoint,
-  onPrint,
   onLayers,
   onLocate,
-  onStreetView,
   baseMapPopoverOpen,
   basemapMode,
   onToggleBaseMapPopover,
@@ -99,7 +101,6 @@ export function MapDecorChrome({
   const baseMapAnchorRef = useRef(null);
   const baseMapPopoverRef = useRef(null);
   const [baseMapPopoverPos, setBaseMapPopoverPos] = useState(null);
-
   const measureBaseMapPopover = () => {
     const el = baseMapAnchorRef.current;
     if (!el) return;
@@ -145,95 +146,106 @@ export function MapDecorChrome({
   if (!showChrome) return null;
 
   return (
-    <div className="nm-map-chrome">
-      <div className="nm-map-chrome-top">
-        {/* <MapToolBtn icon={Plus} label="Zoom In" onClick={onZoomIn} />
-        <MapToolBtn icon={Minus} label="Zoom Out" circled onClick={onZoomOut} /> */}
-        <MapToolBtn icon={Expand} label="Fit Extent" onClick={onFitExtent} />
-        <MapToolBtn icon={Crosshair} label="Nearby" onClick={onNearby} />
-        <MapToolBtn icon={GitBranch} label="Closest Point" onClick={onClosestPoint} />
-        <MapToolBtn icon={Printer} label="Print" onClick={onPrint} />
+    <div className="nm-map-chrome nm-map-chrome-dmp">
+      <MapLegend />
 
-        <div className="nm-basemap-anchor" ref={baseMapAnchorRef}>
-          <MapToolBtn icon={Layers2} label="Base Map" onClick={onToggleBaseMapPopover} />
-        </div>
-
-        {baseMapPopoverOpen &&
-          baseMapPopoverPos &&
-          createPortal(
-            <div
-              ref={baseMapPopoverRef}
-              className="nm-basemap-popover nm-basemap-popover--portal"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="nm-basemap-popover-title"
-              style={{
-                top: `${baseMapPopoverPos.top}px`,
-                left: `${baseMapPopoverPos.left}px`,
-              }}
-            >
-              <div className="nm-basemap-popover-head">
-                <span id="nm-basemap-popover-title">Base Map</span>
-                <Layers2 size={18} strokeWidth={2} aria-hidden className="nm-basemap-popover-head-icon" />
-              </div>
-              <div className="nm-basemap-popover-row">
-                {BASEMAP_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    className={`nm-basemap-option${basemapMode === opt.id ? " is-active" : ""}`}
-                    onClick={() => onSelectBasemap?.(opt.id)}
-                  >
-                    <span className={`nm-basemap-thumb nm-basemap-thumb--${opt.key}`} aria-hidden />
-                    <span className="nm-basemap-option-label">{opt.label}</span>
-                  </button>
-                ))}
-              </div>
-            </div>,
-            document.body
-          )}
-
-        <MapToolBtn icon={Layers2} label="Layers" onClick={onLayers} />
+      <div className="nm-map-coord-bar" aria-live="polite">
+        <span>Latitude: --</span>
+        <span>Longitude: --</span>
       </div>
 
-      {/* <div className="nm-map-chrome-basemap">
-          <span className="nm-map-chrome-basemap-title">Base Map</span>
-          <div className="nm-map-chrome-thumbs">
-            <div className="nm-map-chrome-thumb is-active">Light</div>
-            <div className="nm-map-chrome-thumb">Streets</div>
-            <div className="nm-map-chrome-thumb">Satellite</div>
-            <div className="nm-map-chrome-thumb">Terrain</div>
-          </div>
-        </div> */}
-
-      {/* <div className="nm-map-chrome-status">
-          <span>Lat: 29.0587</span>
-          <span>Lng: 76.0856</span>
-          <span>Zoom: 8</span>
-        </div> */}
-
-      <div className="nm-map-chrome-rail">
-        <button type="button" className="nm-map-chrome-rail-btn" title="Center map" aria-label="Center map" onClick={onLocate}>
-          <Crosshair size={16} strokeWidth={2} />
-        </button>
+      <div className="nm-map-chrome-rail nm-map-chrome-rail-dmp">
         <div className="nm-map-chrome-rail-stack">
           <button type="button" className="nm-map-chrome-rail-mini" aria-label="Zoom in" onClick={onZoomIn}>
-            <Plus size={14} />
+            <Plus size={15} strokeWidth={2.2} />
           </button>
           <button type="button" className="nm-map-chrome-rail-mini" aria-label="Zoom out" onClick={onZoomOut}>
-            <Minus size={14} />
+            <Minus size={15} strokeWidth={2.2} />
           </button>
         </div>
         <button
           type="button"
-          className="nm-map-chrome-rail-btn nm-map-chrome-rail-btn--peg"
-          title="Street view (with live map)"
-          aria-label="Street view"
-          onClick={onStreetView}
+          className="nm-map-chrome-rail-btn"
+          title="Globe / fit extent"
+          aria-label="Globe view"
+          onClick={onFitExtent}
         >
-          <UserRound size={16} strokeWidth={2} />
+          <Globe2 size={16} strokeWidth={2} />
+        </button>
+        <button
+          type="button"
+          className="nm-map-chrome-rail-btn"
+          title="Measurement"
+          aria-label="Measurement tool"
+          onClick={onNearby}
+        >
+          <Ruler size={16} strokeWidth={2} />
+        </button>
+        <div className="nm-basemap-anchor" ref={baseMapAnchorRef}>
+          <button
+            type="button"
+            className="nm-map-chrome-rail-btn"
+            title="Base map"
+            aria-label="Base map"
+            onClick={onToggleBaseMapPopover}
+          >
+            <Layers2 size={16} strokeWidth={2} />
+          </button>
+        </div>
+        <button
+          type="button"
+          className="nm-map-chrome-rail-btn"
+          title="Layers"
+          aria-label="Layers"
+          onClick={onLayers}
+        >
+          <Layers2 size={16} strokeWidth={2} />
+        </button>
+        <button
+          type="button"
+          className="nm-map-chrome-rail-btn nm-map-chrome-rail-btn--locate"
+          title="Center map"
+          aria-label="Center map"
+          onClick={onLocate}
+        >
+          <MapPin size={16} strokeWidth={2} />
         </button>
       </div>
+
+      {baseMapPopoverOpen &&
+        baseMapPopoverPos &&
+        createPortal(
+          <div
+            ref={baseMapPopoverRef}
+            className="nm-basemap-popover nm-basemap-popover--portal"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="nm-basemap-popover-title"
+            style={{
+              top: `${baseMapPopoverPos.top}px`,
+              left: `${baseMapPopoverPos.left}px`,
+            }}
+          >
+            <div className="nm-basemap-popover-head">
+              <span id="nm-basemap-popover-title">Base Map</span>
+              <Layers2 size={18} strokeWidth={2} aria-hidden className="nm-basemap-popover-head-icon" />
+            </div>
+            <div className="nm-basemap-popover-row">
+              {BASEMAP_OPTIONS.map((opt) => (
+                <button
+                  key={opt.id}
+                  type="button"
+                  className={`nm-basemap-option${basemapMode === opt.id ? " is-active" : ""}`}
+                  onClick={() => onSelectBasemap?.(opt.id)}
+                >
+                  <span className={`nm-basemap-thumb nm-basemap-thumb--${opt.key}`} aria-hidden />
+                  <span className="nm-basemap-option-label">{opt.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 }
