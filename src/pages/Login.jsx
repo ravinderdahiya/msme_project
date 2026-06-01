@@ -249,7 +249,7 @@ export default function Login() {
 
             const location = await new Promise((resolve) => {
                 if (!navigator?.geolocation) {
-                    resolve({ latitude: null, longitude: null });
+                    resolve({ latitude: null, longitude: null, accuracy: null });
                     return;
                 }
 
@@ -258,13 +258,14 @@ export default function Login() {
                         resolve({
                             latitude: position?.coords?.latitude ?? null,
                             longitude: position?.coords?.longitude ?? null,
+                            accuracy: position?.coords?.accuracy ?? null,
                         });
                     },
                     (error) => {
                         console.log("Location Error:", error);
-                        resolve({ latitude: null, longitude: null });
+                        resolve({ latitude: null, longitude: null, accuracy: null });
                     },
-                    { enableHighAccuracy: false, timeout: 10000, maximumAge: 60000 }
+                    { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
                 );
             });
 
@@ -272,7 +273,8 @@ export default function Login() {
                 cleanMobile,
                 otp,
                 location.latitude,
-                location.longitude
+                location.longitude,
+                location.accuracy
             );
 
             setAuthSession({ token: res.token, user: res.user });
