@@ -19,6 +19,7 @@ import SessionTable from "./components/SessionTable";
 import StatsCard from "./components/StatsCard";
 import StatusBadge from "./components/StatusBadge";
 import Table from "./components/Table";
+import { parseUserAgent } from "../utils/userAgent";
 
 const PAGE_SIZE = 5;
 const ARCGIS_REVERSE_GEOCODE_URL = "https://geocode.arcgis.com/arcgis/rest/services/World/GeocodeServer/reverseGeocode";
@@ -396,9 +397,8 @@ function SessionInfoModal({ session, onClose }) {
             {session ? (
                 <div className="grid gap-4">
                     <Detail label="IP Address" value={session.ipAddress} />
-                    <Detail label="Device / Browser" value={session.userAgent} />
+                    <Detail label="Device / Browser" value={parseUserAgent(session.userAgent)} />
                     <Detail label="Location" value={session.locationName || session.location || "Location unavailable"} />
-                    <Detail label="Accuracy" value={session.locationAccuracy || (hasUsableLocation(session) ? "Approximate" : "-")} />
                     <Detail label="Latitude" value={session.latitude} />
                     <Detail label="Longitude" value={session.longitude} />
                     <Detail label="Login Time" value={session.loginAt} />
@@ -488,6 +488,45 @@ async function resolveLocationName(session) {
     if (locationCache.has(key)) return locationCache.get(key);
 
     const fallback = fallbackLocationName(latitude, longitude, session.locationName || session.location);
+
+    // Try Nominatim reverse geocoding first for high-quality local name in India
+    try {
+        const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json&zoom=18`,
+            {
+                headers: {
+                    "User-Agent": "MSME-Haryana-GIS-System/1.0 (sande@msme.com)"
+                }
+            }
+        );
+        if (!response.ok) throw new Error("Nominatim reverse geocode failed");
+        const data = await response.json();
+        if (data && data.display_name) {
+            const addr = data.address || {};
+            const localName = data.name || addr.amenity || addr.building || addr.office || addr.shop || addr.tourism || addr.industrial || addr.commercial || addr.road || "";
+            const neighbourhood = addr.neighbourhood || addr.suburb || addr.village || "";
+            const city = addr.city || addr.town || addr.municipality || addr.district || addr.county || "";
+            const state = addr.state || addr.region || addr.state_district || "";
+            
+            const parts = [];
+            if (localName) parts.push(localName);
+            if (neighbourhood && neighbourhood !== city && neighbourhood !== localName) parts.push(neighbourhood);
+            if (city) parts.push(city);
+            if (state && state !== city) parts.push(state);
+
+            const displayName = parts.filter(Boolean).join(", ");
+            const result = {
+                locationName: displayName || data.display_name,
+                locationAccuracy: session.locationAccuracy || "Approximate",
+            };
+            locationCache.set(key, result);
+            return result;
+        }
+    } catch (osmError) {
+        console.warn("Nominatim reverse geocode failed, falling back to ArcGIS", osmError);
+    }
+
+    // Fallback to ArcGIS reverse geocoder
     const params = new URLSearchParams({
         f: "json",
         location: `${longitude},${latitude}`,
@@ -501,10 +540,15 @@ async function resolveLocationName(session) {
         if (!response.ok) throw new Error("ArcGIS reverse geocode failed");
         const data = await response.json();
         const address = data.address || {};
-        const name =
-            address.City && address.Region
-                ? `${address.City}, ${address.Region}`
-                : address.LongLabel || address.Match_addr || [address.City, address.Subregion, address.Region, address.CountryCode].filter(Boolean).join(", ");
+        
+        const cityVal = address.City || address.Subregion || "";
+        const regionVal = address.Region || "";
+        const matchAddr = address.Match_addr || "";
+        
+        let name = matchAddr;
+        if (!name) {
+            name = cityVal && regionVal ? `${cityVal}, ${regionVal}` : (address.LongLabel || [address.City, address.Subregion, address.Region].filter(Boolean).join(", "));
+        }
 
         const result = {
             locationName: name || fallback,

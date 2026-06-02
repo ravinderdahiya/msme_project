@@ -64,6 +64,7 @@ export default defineConfig(({ mode }) => {
     server: {
       host: '127.0.0.1',
       open: true,
+      allowedHosts:true,
       proxy: {
         '/msme_backend/api': {
           ...backendProxy,

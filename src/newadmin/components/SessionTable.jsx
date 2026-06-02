@@ -2,6 +2,7 @@ import React from "react";
 import { Info } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import Table from "./Table";
+import { parseUserAgent } from "../../utils/userAgent";
 
 export default function SessionTable({ sessions, onSessionInfo }) {
     return (
@@ -15,7 +16,9 @@ export default function SessionTable({ sessions, onSessionInfo }) {
                     <td className="px-5 py-4 text-sm font-medium text-slate-700">{session.loginAt}</td>
                     <td className="px-5 py-4 text-sm text-slate-600">{session.logoutAt || "-"}</td>
                     <td className="px-5 py-4 text-sm text-slate-700">{session.ipAddress}</td>
-                    <td className="px-5 py-4 text-sm text-slate-600">{session.userAgent}</td>
+                    <td className="px-5 py-4 text-sm text-slate-600" title={session.userAgent || ""}>
+                        {parseUserAgent(session.userAgent)}
+                    </td>
                     <td className="px-5 py-4 text-sm text-slate-700">
                         <LocationCell session={session} />
                     </td>
@@ -50,11 +53,6 @@ function LocationCell({ session }) {
         <div>
             <strong className="block text-slate-900">{session.locationName || session.location || "Location captured"}</strong>
             <span className="block text-xs font-medium text-slate-500">{latitude.toFixed(4)}, {longitude.toFixed(4)}</span>
-            {session.locationAccuracy ? (
-                <span className="mt-1 inline-flex rounded-full bg-blue-50 px-2 py-0.5 text-[11px] font-bold text-blue-600">
-                    Accuracy: {session.locationAccuracy}
-                </span>
-            ) : null}
         </div>
     );
 }

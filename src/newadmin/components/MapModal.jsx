@@ -7,6 +7,7 @@ import SimpleMarkerSymbol from "@arcgis/core/symbols/SimpleMarkerSymbol";
 import "@arcgis/core/assets/esri/themes/light/main.css";
 import Modal from "./Modal";
 import StatusBadge from "./StatusBadge";
+import { parseUserAgent } from "../../utils/userAgent";
 
 export default function MapModal({ session, open, onClose }) {
     const mapRef = useRef(null);
@@ -76,12 +77,11 @@ export default function MapModal({ session, open, onClose }) {
                 </div>
                 <div className="grid gap-0 divide-y divide-slate-100 bg-white sm:grid-cols-2 lg:grid-cols-8 sm:divide-x sm:divide-y-0">
                     <Info label="Location" value={hasLocation ? session.locationName || session.location || "Location captured" : "Location unavailable"} className="lg:col-span-2" />
-                    <Info label="Latitude" value={hasLocation ? latitude.toFixed(4) : "-"} />
-                    <Info label="Longitude" value={hasLocation ? longitude.toFixed(4) : "-"} />
-                    <Info label="Accuracy" value={hasLocation ? session.locationAccuracy || "Approximate" : "-"} />
-                    <Info label="IP Address" value={session.ipAddress} />
-                    <Info label="Login Time" value={session.loginAt} />
-                    <div className="p-4">
+                    <Info label="Coordinates" value={hasLocation ? `${latitude.toFixed(4)}, ${longitude.toFixed(4)}` : "-"} className="lg:col-span-1" />
+                    <Info label="Device / Browser" value={parseUserAgent(session.userAgent)} className="lg:col-span-2" />
+                    <Info label="IP Address" value={session.ipAddress} className="lg:col-span-1" />
+                    <Info label="Login Time" value={session.loginAt} className="lg:col-span-1" />
+                    <div className="p-4 lg:col-span-1">
                         <span className="block text-xs font-semibold text-slate-500">Status</span>
                         <div className="mt-2"><StatusBadge status={session.isActive ? "Active" : "Logged Out"} /></div>
                     </div>
