@@ -308,16 +308,19 @@ export function queryPlaceDetailsByPointWgs84(point) {
   var normalized = normalizeLonLat(point.lon, point.lat)
   if (!normalized) return Promise.resolve(null)
 
-  return queryAdminPointLayer(LAYER_VILLAGE, normalized).then(function (villageData) {
-    return queryAdminPointLayer(LAYER_TEHSIL, normalized).then(function (tehsilData) {
-      return queryAdminPointLayer(LAYER_DISTRICT, normalized).then(function (districtData) {
-        var merged = mergePlaceDetails(mergePlaceDetails(villageData, tehsilData), districtData)
-        if (merged && merged.tehsil) return merged
-        return queryNearestTehsilAtPointWgs84(normalized).then(function (nearest) {
-          if (!nearest || !nearest.placeDetails) return merged
-          return mergePlaceDetails(merged, nearest.placeDetails)
-        })
-      })
+  return Promise.all([
+    queryAdminPointLayer(LAYER_VILLAGE, normalized),
+    queryAdminPointLayer(LAYER_TEHSIL, normalized),
+    queryAdminPointLayer(LAYER_DISTRICT, normalized),
+  ]).then(function (parts) {
+    var villageData = parts[0]
+    var tehsilData = parts[1]
+    var districtData = parts[2]
+    var merged = mergePlaceDetails(mergePlaceDetails(villageData, tehsilData), districtData)
+    if (merged && merged.tehsil) return merged
+    return queryNearestTehsilAtPointWgs84(normalized).then(function (nearest) {
+      if (!nearest || !nearest.placeDetails) return merged
+      return mergePlaceDetails(merged, nearest.placeDetails)
     })
   })
 }

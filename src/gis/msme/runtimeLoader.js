@@ -1355,13 +1355,16 @@ function patchLegacySource(source) {
     "applyInitialRequestedLayerPreset();",
     "    try {",
     "      var transLyr = null;",
+    "      var cadLyr = null;",
     "      if (map && map.layers && typeof map.layers.forEach === \"function\") {",
     "        map.layers.forEach(function (lyr) {",
-    "          if (transLyr) return;",
+    "          if (transLyr && cadLyr) return;",
     "          var title0 = String((lyr && lyr.title) || \"\");",
     "          var url0 = String((lyr && lyr.url) || \"\");",
     "          var isTransport = /Transportation/i.test(title0) || /Transportation_Infrastructure/i.test(url0);",
     "          if (isTransport) transLyr = lyr;",
+    "          var isCad = /Cadastral/i.test(title0) || /Haryana_Cadastral/i.test(url0) || /MSME_CADASTRAL/i.test(url0);",
+    "          if (isCad) cadLyr = lyr;",
     "        });",
     "      }",
     "      if (transLyr && typeof transLyr.when === \"function\") {",
@@ -1375,6 +1378,27 @@ function patchLegacySource(source) {
     "          });",
     "        });",
     "      }",
+    "      function enforceCadOn() {",
+    "        if (!cadLyr) return;",
+    "        try { cadLyr.visible = true; cadLyr.opacity = 1; } catch (eCad0) {}",
+    "        if (cadLyr && typeof cadLyr.when === \"function\") {",
+    "          cadLyr.when(function () {",
+    "            try {",
+    "              if (cadLyr.sublayers && typeof cadLyr.sublayers.forEach === \"function\") {",
+    "                cadLyr.sublayers.forEach(function eachSub(s0) {",
+    "                  try { s0.visible = true; } catch (eCad1) {}",
+    "                  if (s0 && s0.sublayers && typeof s0.sublayers.forEach === \"function\") {",
+    "                    s0.sublayers.forEach(eachSub);",
+    "                  }",
+    "                });",
+    "              }",
+    "            } catch (eCad2) {}",
+    "          });",
+    "        }",
+    "      }",
+    "      enforceCadOn();",
+    "      window.setTimeout(enforceCadOn, 600);",
+    "      window.setTimeout(enforceCadOn, 1500);",
     "    } catch (eRoadOn) {",
     "      console.warn(\"[msme runtime patch] transport roads default-on failed\", eRoadOn);",
     "    }",
@@ -1477,10 +1501,10 @@ function patchLegacySource(source) {
     "function queryLayerFeaturesByObjectIds(url, layerId, objectIds) {",
     "  var ids = Array.isArray(objectIds) ? objectIds : [];",
     "  if (!ids.length) return Promise.resolve([]);",
-    "  var chunks = chunkArray(ids, 80);",
+    "  var chunks = chunkArray(ids, 140);",
     "  var nextIdx = 0;",
     "  var merged = [];",
-    "  var workerCount = Math.min(2, Math.max(1, chunks.length));",
+    "  var workerCount = Math.min(4, Math.max(1, chunks.length));",
     "",
     "  function fetchChunk(idChunk) {",
     "    return queryLayer(url, layerId, {",
@@ -1807,6 +1831,7 @@ function patchLegacySource(source) {
     '          label: "Closest in buffer",',
     "          items: focusItems,",
     "          total: focusItems.length,",
+    "          showAllRoutes: true,",
     "        },",
     "      }));",
     '      window.dispatchEvent(new CustomEvent("msme-community-panel-open"));',
@@ -1851,28 +1876,33 @@ function patchLegacySource(source) {
     "      if (!roads.length) {",
     "        return finalizeGraphics({",
     "          routed: routedSeed || 0,",
-    "          fallback: drawStraightFallbackForAll(itemsForRoute)",
+    "          fallback: (detail && detail.showAllRoutes) ? 0 : drawStraightFallbackForAll(itemsForRoute)",
     "        });",
     "      }",
     "      var graph = buildRoadGraph(roads, 8);",
     "      if (!graph || !graph.keys || !graph.keys.length) {",
     "        return finalizeGraphics({",
     "          routed: routedSeed || 0,",
-    "          fallback: drawStraightFallbackForAll(itemsForRoute)",
+    "          fallback: (detail && detail.showAllRoutes) ? 0 : drawStraightFallbackForAll(itemsForRoute)",
     "        });",
     "      }",
     "      return drawFromRoadGraph(graph, itemsForRoute, routedSeed || 0);",
     "    }).catch(function () {",
     "      return finalizeGraphics({",
     "        routed: routedSeed || 0,",
-    "        fallback: drawStraightFallbackForAll(itemsForRoute)",
+    "        fallback: (detail && detail.showAllRoutes) ? 0 : drawStraightFallbackForAll(itemsForRoute)",
     "      });",
     "    });",
     "  }",
     "",
     "  if (detail && detail.showAllRoutes && validItems.length > 0) {",
-    '    setStatus("Drawing routes to center for " + validItems.length + " POIs...");',
-    "    return queryRoadGraphAndDrawAllPois(validItems, 0).then(function () {",
+    '    setStatus("Drawing road-following routes for " + validItems.length + " POIs...");',
+    "    return drawOsrmRoutesBatch(validItems).then(function (osrmStateAll) {",
+    "      var routedAll = (osrmStateAll && osrmStateAll.routed) || 0;",
+    "      var unresolvedAll = (osrmStateAll && osrmStateAll.unresolved) ? osrmStateAll.unresolved : [];",
+    "      if (!unresolvedAll.length) return finalizeGraphics({ routed: routedAll, fallback: 0 });",
+    "      return queryRoadGraphAndDrawAllPois(unresolvedAll, routedAll);",
+    "    }).then(function () {",
     "      return doneZoom.then(function () { return true; });",
     "    });",
     "  }",
@@ -1965,10 +1995,10 @@ function patchLegacySource(source) {
   var mapClickRadiusPattern =
     /var radiusM = 3000;\s*try \{\s*radiusM = readCadNearRadiusMeters\(\);\s*\} catch \(e2\) \{\}/;
   var mapClickRadiusReplacement = [
-    "var radiusM = 5000;",
+    "var radiusM = 2000;",
     "  try {",
     "    var pickedRadius = readCadNearRadiusMeters();",
-    "    if (isFinite(pickedRadius) && pickedRadius > 0) radiusM = Math.max(5000, Math.round(pickedRadius));",
+    "    if (isFinite(pickedRadius) && pickedRadius > 0) radiusM = Math.round(pickedRadius);",
     "  } catch (e2) {}",
   ].join("\n");
   if (mapClickRadiusPattern.test(out)) {
@@ -2063,7 +2093,7 @@ function patchLegacySource(source) {
     '  if (String(selectionSource || "") !== "map-click") return;',
     "  if (!identifyLayer || !anchor32643) return;",
     "  var rad = Number(radiusM);",
-    "  if (!isFinite(rad) || rad <= 0) rad = 5000;",
+    "  if (!isFinite(rad) || rad <= 0) rad = 2000;",
     "  try {",
     "    var buf32643 = geometryEngine.buffer(anchor32643, rad, \"meters\");",
     "    if (buf32643) {",
@@ -2108,6 +2138,37 @@ function patchLegacySource(source) {
     console.warn("[msme runtime patch] map click pin symbol patch not applied.");
   }
 
+  var bufferFillSymbolsPattern =
+    /var symBuffer = new SimpleFillSymbol\(\{\s*color: \[26, 115, 232, 0\.2\],\s*outline: new SimpleLineSymbol\(\{ color: \[26, 115, 232, 0\.85\], width: 1 \}\)\s*\}\);\s*var symVillage =[\s\S]*?var symCadNearBuffer = new SimpleFillSymbol\(\{\s*color: \[33, 150, 243, 0\.18\],\s*outline: new SimpleLineSymbol\(\{ color: \[13, 71, 161, 1\], width: 3 \}\)\s*\}\);/;
+  var bufferFillSymbolsReplacement = [
+    "var symBuffer = new SimpleFillSymbol({",
+    "  color: [26, 115, 232, 0],",
+    "  outline: new SimpleLineSymbol({ color: [26, 115, 232, 0.85], width: 1 })",
+    "});",
+    "var symVillage = new SimpleFillSymbol({",
+    "  color: [52, 168, 83, 0.35],",
+    "  outline: new SimpleLineSymbol({ color: [30, 142, 62, 1], width: 1 })",
+    "});",
+    "var symPoint = new SimpleMarkerSymbol({",
+    '  style: "circle", color: [234, 67, 53, 0.95], size: 9,',
+    '  outline: new SimpleLineSymbol({ color: [255, 255, 255, 1], width: 1 })',
+    "});",
+    "var symSuitable = new SimpleFillSymbol({",
+    "  color: [52, 168, 83, 0.45],",
+    "  outline: new SimpleLineSymbol({ color: [30, 142, 62, 1.5], width: 1.5 })",
+    "});",
+    "var symLineHit = new SimpleLineSymbol({ color: [251, 140, 0, 1], width: 2 });",
+    "var symCadNearBuffer = new SimpleFillSymbol({",
+    "  color: [33, 150, 243, 0],",
+    "  outline: new SimpleLineSymbol({ color: [13, 71, 161, 1], width: 3 })",
+    "});",
+  ].join("\n");
+  if (bufferFillSymbolsPattern.test(out)) {
+    out = out.replace(bufferFillSymbolsPattern, bufferFillSymbolsReplacement);
+  } else {
+    console.warn("[msme runtime patch] buffer fill transparency patch not applied.");
+  }
+
   var symPointPinPattern =
     /var symPoint = new SimpleMarkerSymbol\(\{\s*style: "circle", color: \[234, 67, 53, 0\.95\], size: 9,\s*outline: new SimpleLineSymbol\(\{ color: \[255, 255, 255, 1\], width: 1 \}\)\s*\}\);/;
   var symPointPinReplacement = [
@@ -2146,10 +2207,10 @@ function patchLegacySource(source) {
     '    if (typeof window.__msmeShowGisDataLoader === "function") { try { window.__msmeShowGisDataLoader(); } catch (eLdMap0) {} }',
     "var anchor32643 = projection.project(mapPoint, SR_METER);",
     "    lastIdentifyAnchor32643 = anchor32643;",
-    "    var mapClickRadiusM = 5000;",
+    "    var mapClickRadiusM = 2000;",
     "    try {",
     "      var pickedMapRad = readCadNearRadiusMeters();",
-    "      if (isFinite(pickedMapRad) && pickedMapRad > 0) mapClickRadiusM = Math.max(5000, Math.round(pickedMapRad));",
+    "      if (isFinite(pickedMapRad) && pickedMapRad > 0) mapClickRadiusM = Math.round(pickedMapRad);",
     "    } catch (eMapRad0) {}",
     '    setMapClickSelectionGraphics(mapPoint, anchor32643, mapClickRadiusM, "map-click");',
     "    return Promise.all(IDENTIFY_URLS.map",
@@ -2256,10 +2317,10 @@ function patchLegacySource(source) {
     "    var llMap = projection.project(mapPoint, SR4326);",
     "    var latMap = llMap.y;",
     "    var lonMap = llMap.x;",
-    "    var radiusMap = 5000;",
+    "    var radiusMap = 2000;",
     "    try {",
     "      var pickedMapR = readCadNearRadiusMeters();",
-    "      if (isFinite(pickedMapR) && pickedMapR > 0) radiusMap = Math.max(5000, Math.round(pickedMapR));",
+    "      if (isFinite(pickedMapR) && pickedMapR > 0) radiusMap = Math.round(pickedMapR);",
     "    } catch (eMapR0) {}",
     "    return finishMapClickPlaceResults(anchor32643, mapPoint, flat, latMap, lonMap, radiusMap);",
     "  }",
@@ -2589,6 +2650,7 @@ function installAssemblyLookupBridge() {
   if (window.__msmeAssemblyLookupBridgeInstalled) return;
   window.__msmeAssemblyLookupBridgeInstalled = true;
   window.msmeGisQueryAssemblyDetailsByPointWgs84 = queryAssemblyDetailsByPointWgs84;
+  window.msmeGisQueryPlaceDetailsByPointWgs84 = queryPlaceDetailsByPointWgs84;
 }
 
 export const initMsmeWebGis = (...args) => {
@@ -3556,5 +3618,173 @@ function installMeasurementLineTool() {
   window.setInterval(syncViewRef, 800);
 }
 
+function installCadastralLayerAutoOpen() {
+  if (typeof window === "undefined") return;
+  if (window.__msmeCadastralLayerAutoOpenInstalled) return;
+  window.__msmeCadastralLayerAutoOpenInstalled = true;
+
+  function normalizeServiceUrl(value) {
+    return String(value || "")
+      .trim()
+      .replace(/[?#].*$/, "")
+      .replace(/\/+$/, "")
+      .toLowerCase();
+  }
+
+  var cadBaseUrl = normalizeServiceUrl(CAD_MS);
+
+  function setVisibleForSublayers(sublayers) {
+    if (!sublayers || typeof sublayers.forEach !== "function") return;
+    sublayers.forEach(function (sub) {
+      try {
+        sub.visible = true;
+      } catch (e0) {}
+      if (sub && sub.sublayers) setVisibleForSublayers(sub.sublayers);
+    });
+  }
+
+  function findCadastralLayer(map) {
+    if (!map || !map.layers || typeof map.layers.forEach !== "function") return null;
+    var found = null;
+    map.layers.forEach(function (lyr) {
+      if (found) return;
+      var id0 = String((lyr && lyr.id) || "");
+      var title0 = String((lyr && lyr.title) || "");
+      var url0 = normalizeServiceUrl((lyr && lyr.url) || "");
+      var urlMatchesCad =
+        !!cadBaseUrl &&
+        (url0 === cadBaseUrl ||
+          url0.indexOf(cadBaseUrl + "/") === 0 ||
+          cadBaseUrl.indexOf(url0 + "/") === 0);
+      var isCad =
+        /cad/i.test(id0) ||
+        /cadastral/i.test(title0) ||
+        /haryana[_\s-]*cadastral/i.test(url0) ||
+        /msme_cadastral/i.test(url0) ||
+        urlMatchesCad;
+      if (isCad) found = lyr;
+    });
+    return found;
+  }
+
+  function openCadPanelTab() {
+    if (window.__msmeCadUiOpenedOnce) return true;
+    var openNavBtn = document.getElementById("btnOpenNav");
+    var aoiPanel = document.getElementById("aoiPanel");
+    if (openNavBtn && aoiPanel && aoiPanel.classList.contains("collapsed")) {
+      try {
+        openNavBtn.click();
+      } catch (e0) {}
+    }
+    var tabCad = document.getElementById("tabCad");
+    if (tabCad && typeof tabCad.click === "function") {
+      try {
+        tabCad.click();
+        window.__msmeCadUiOpenedOnce = true;
+        return true;
+      } catch (e1) {}
+    }
+    return false;
+  }
+
+  function ensureLayersPanelOpen() {
+    var panel = document.getElementById("toolsPanel");
+    var btn = document.getElementById("btnTogglePanel");
+    if (!panel || !btn || typeof btn.click !== "function") return false;
+    if (panel.classList.contains("collapsed")) {
+      try {
+        btn.click();
+      } catch (e0) {}
+    }
+    return !panel.classList.contains("collapsed");
+  }
+
+  function ensureCadastralLayerListVisible() {
+    var root = document.getElementById("layerListContainer");
+    if (!root) return false;
+
+    var items = root.querySelectorAll("calcite-list-item, .esri-layer-list__item, [role='listitem']");
+    var found = false;
+    var switched = false;
+
+    items.forEach(function (item) {
+      if (switched) return;
+      var text = String((item && item.textContent) || "").toLowerCase();
+      if (text.indexOf("cadastral") === -1 && text.indexOf("cad") === -1) return;
+      found = true;
+
+      var toggle = item.querySelector(
+        ".esri-layer-list__visibility-toggle, calcite-action[icon='view-hide'], calcite-action[icon='view-visible'], button[aria-pressed], [aria-label*='visibility' i], [title*='visibility' i]",
+      );
+      if (!toggle || typeof toggle.click !== "function") return;
+
+      var pressed = String(toggle.getAttribute("aria-pressed") || "");
+      var classText = String(toggle.className || "");
+      var iconText = String(toggle.getAttribute("icon") || "");
+      var offState = /view-hide|non-visible|eye-off|esri-icon-non-visible/i.test(classText + " " + iconText);
+
+      if (pressed === "false" || offState) {
+        try {
+          toggle.click();
+          switched = true;
+        } catch (e0) {}
+        return;
+      }
+
+      if (pressed === "true") switched = true;
+    });
+
+    return found && switched;
+  }
+
+  function openCadastralLayer(opts) {
+    opts = opts || {};
+    var openUi = !!opts.openUi;
+    var view = window.__msmeGisMapView;
+    if (!view || view.destroyed || !view.map) return false;
+    if (openUi) ensureLayersPanelOpen();
+    var cadLayer = findCadastralLayer(view.map);
+    if (!cadLayer) return false;
+    try {
+      cadLayer.visible = true;
+      cadLayer.opacity = 1;
+    } catch (e1) {}
+
+    if (openUi && typeof cadLayer.when === "function") {
+      cadLayer
+        .when(function () {
+          try {
+            if (cadLayer.sublayers) setVisibleForSublayers(cadLayer.sublayers);
+          } catch (e2) {}
+        })
+        .catch(function () {
+          return null;
+        });
+    }
+    if (openUi) {
+      openCadPanelTab();
+      ensureCadastralLayerListVisible();
+      window.setTimeout(ensureCadastralLayerListVisible, 300);
+      window.setTimeout(ensureCadastralLayerListVisible, 900);
+    }
+    return true;
+  }
+
+  window.msmeGisOpenCadastralLayer = function (openUi) {
+    return openCadastralLayer({ openUi: openUi !== false });
+  };
+
+  var tries = 0;
+  var timer = window.setInterval(function () {
+    tries += 1;
+    if (openCadastralLayer({ openUi: false })) {
+      window.clearInterval(timer);
+      return;
+    }
+    if (tries >= 80) window.clearInterval(timer);
+  }, 300);
+}
+
 installMeasurementLineTool();
 installRailTrackBufferTool();
+installCadastralLayerAutoOpen();

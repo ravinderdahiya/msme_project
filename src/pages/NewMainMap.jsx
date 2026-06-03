@@ -23,18 +23,16 @@ import {
   getAllSublayerEntries,
   SELECT_LAND_PATH,
   buildDefaultSelection,
-  otherMenu,
-  sidebarMenu,
 } from "./newmainmap/config";
 import "./NewMainMap.css";
-
-const THEME_STORAGE_KEY = "nm-main-map-theme";
+import "./newmainmap/GisDmpShell.css";
 
 export default function NewMainMap() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [theme, setTheme] = useState("dark");
-  const [search, setSearch] = useState("");
+  const [toolSearch, setToolSearch] = useState("");
+  const [activeRailKey, setActiveRailKey] = useState(null);
+  const [toolsPanelOpen, setToolsPanelOpen] = useState(false);
   const [layerSearch, setLayerSearch] = useState("");
   const [draftLayers, setDraftLayers] = useState(buildDefaultSelection);
   const [appliedLayers, setAppliedLayers] = useState(buildDefaultSelection);
@@ -92,6 +90,8 @@ export default function NewMainMap() {
 
   const handleSidebarItem = (item) => {
     if (item.route) {
+      if (item.key === "layers") setActiveRailKey("layers");
+      setToolsPanelOpen(false);
       navigate(item.route);
       return;
     }
@@ -107,20 +107,17 @@ export default function NewMainMap() {
   };
 
   useEffect(() => {
-    try {
-      localStorage.setItem(THEME_STORAGE_KEY, theme);
-    } catch {
-      /* ignore */
+    if (layersOpen) {
+      setActiveRailKey("layers");
+      setToolsPanelOpen(false);
+    } else if (!sidePanelOpen) {
+      setActiveRailKey(null);
     }
-  }, [theme]);
-
-  const toggleTheme = useCallback(() => {
-    setTheme((t) => (t === "dark" ? "light" : "dark"));
-  }, []);
+  }, [layersOpen, sidePanelOpen]);
 
   return (
     <div
-      className={`new-main-map-page${theme === "dark" ? " nm-theme-dark" : ""}${layersOpen ? " nm-page--layers-open" : ""}${
+      className={`new-main-map-page nm-shell-dmp${toolsPanelOpen ? " nm-sidebar-panel-open" : ""}${layersOpen ? " nm-page--layers-open" : ""}${
         bufferOpen ? " nm-page--buffer-open" : ""
       }${analysisOpen ? " nm-page--analysis-open" : ""}${
         selectLandOpen ? " nm-page--aoi-open" : ""
@@ -136,17 +133,16 @@ export default function NewMainMap() {
       )}
 
       <div className="nm-site-header">
-        <NewMainMapHeader
-          search={search}
-          setSearch={setSearch}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-        />
+        <NewMainMapHeader />
       </div>
 
       <MainSidebar
-        sidebarMenu={sidebarMenu}
-        otherMenu={otherMenu}
+        toolSearch={toolSearch}
+        setToolSearch={setToolSearch}
+        activeRailKey={activeRailKey}
+        setActiveRailKey={setActiveRailKey}
+        toolsPanelOpen={toolsPanelOpen}
+        setToolsPanelOpen={setToolsPanelOpen}
         isSidebarItemActive={isSidebarItemActive}
         onSidebarItemClick={handleSidebarItem}
       />
@@ -202,6 +198,11 @@ export default function NewMainMap() {
       {analysisOpen && <AnalysisPanel amenities={ANALYSIS_AMENITIES} onClose={closeSidePanel} />}
 
       {nearbyPlacesOpen && <NearbyPlacesPanel places={NEARBY_PLACES_RESULTS} onClose={closeSidePanel} />}
+
+      <footer className="nm-site-footer">
+        <span>Technical Collaboration with BISAG-N</span>
+        <span>Satellite Images Provided by ISRO</span>
+      </footer>
     </div>
   );
 }

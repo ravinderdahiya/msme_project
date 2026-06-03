@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { CheckSquare, Compass, LocateFixed, Minus, Plus } from "lucide-react";
 import { MapDecorChrome, MapDecorGeometries } from "./MapDecorLayer.jsx";
-import { findClosestDecorMarker } from "./mapDecorConfig.js";
 const MSME_MAP_IMG = "/images/msmemap.png";
 
 const MIN_SCALE = 1;
@@ -79,18 +78,6 @@ export default function MapStage({
     setToast("Opening nearby places.");
   }, [onOpenNearbyPlaces]);
 
-  const onClosestPoint = useCallback(() => {
-    const { approxKm, label } = findClosestDecorMarker();
-    setToast(`Closest feature: ${label} (~${approxKm} km from map centre, illustrative).`);
-  }, []);
-
-  const onPrint = useCallback(() => {
-    setToast("Opening print dialog…");
-    window.requestAnimationFrame(() => {
-      window.print();
-    });
-  }, []);
-
   const onLayers = useCallback(() => {
     onOpenLayers?.();
     setToast("Opening layers panel.");
@@ -100,10 +87,6 @@ export default function MapStage({
     fitExtent();
     setToast("Map centred on default Haryana extent.");
   }, [fitExtent]);
-
-  const onStreetView = useCallback(() => {
-    setToast("Street view will link to the live map engine when it is connected.");
-  }, []);
 
   const showDecorChrome = !bufferOpen && !analysisOpen;
 
@@ -159,11 +142,8 @@ export default function MapStage({
             onZoomOut={zoomOut}
             onFitExtent={fitExtent}
             onNearby={onNearby}
-            onClosestPoint={onClosestPoint}
-            onPrint={onPrint}
             onLayers={onLayers}
             onLocate={onLocate}
-            onStreetView={onStreetView}
             baseMapPopoverOpen={baseMapPopoverOpen}
             basemapMode={basemapMode}
             onToggleBaseMapPopover={toggleBaseMapPopover}
@@ -188,22 +168,6 @@ export default function MapStage({
           {bufferOpen && bufferApplied && (
             <div className={`nm-map-buffer-circle${bufferVisible ? "" : " is-hidden"}`} aria-hidden={!bufferVisible} />
           )}
-          <div className="nm-map-layer-summary" aria-live="polite">
-            {!bufferOpen && !analysisOpen && !nearbyPlacesOpen && (
-              <>
-                {activeLayerCount === 0 && <span>No thematic layers</span>}
-                {activeLayerCount > 0 && (
-                  <span>
-                    {activeLayerCount} layer{activeLayerCount === 1 ? "" : "s"} on map
-                  </span>
-                )}
-              </>
-            )}
-            {bufferOpen && <span>Buffer: {bufferDistance}</span>}
-            {analysisOpen && <span>Proximity analysis active</span>}
-            {nearbyPlacesOpen && <span>Nearby places</span>}
-          </div>
-
           {toast && (
             <div className="nm-map-toast" role="status">
               {toast}
