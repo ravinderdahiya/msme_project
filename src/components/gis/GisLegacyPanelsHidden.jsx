@@ -22,9 +22,10 @@ function populatePoiCheckboxGrid(containerId, checkboxClass, selectAllId) {
   if (!container || container.children.length > 0) return;
 
   POI_LAYERS.forEach((layer) => {
+    const isDefaultOff = /bus\s*stops?|metro\s*network/i.test(String(layer?.label || ""));
     const label = document.createElement("label");
     label.innerHTML =
-      `<input type="checkbox" class="${checkboxClass}" data-url="${layer.url}" data-layer="${layer.layerId}" checked /> ` +
+      `<input type="checkbox" class="${checkboxClass}" data-url="${layer.url}" data-layer="${layer.layerId}" ${isDefaultOff ? "" : "checked"} /> ` +
       layer.label;
     container.appendChild(label);
   });

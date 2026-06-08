@@ -32,8 +32,10 @@ export function extractCommunityPlaceNameFromAttributes(attrs, categoryKey, fall
   var itiFirst = [
     a.iti_name, a.ITI_NAME,
     a.itiName, a.ITI_NAME_EN,
+    a.iti_name_1, a.ITI_NAME_1,
     a.institute_name, a.INSTITUTE_NAME,
-    a.instituteName
+    a.instituteName,
+    a.institute, a.INSTITUTE
   ];
   var candidates = [
     a.name, a.NAME,

@@ -1250,55 +1250,58 @@ export default function CommunitySummaryPanel() {
     if (!displaySummary || waitingForCounts) return
     if (!selectedCategoryKeys.length) return
 
-    var combined = []
-    var seen = {}
-    var allowedKeys = {}
-    selectedCategoryKeys.forEach((k) => {
-      var key = String(k || '').toLowerCase()
-      if (key) allowedKeys[key] = true
-    })
-    var allowedLabels = []
-    rows.forEach((row) => {
-      var keyLower = String(row && row.key ? row.key : '').toLowerCase()
-      if (!allowedKeys[keyLower]) return
-      if (row && row.label) allowedLabels.push(String(row.label))
-      var focusItems = buildFocusItemsForRow(row, keyLower)
-      focusItems.forEach((focusItem) => {
-        var coords = getItemCoordinates(focusItem.item)
-        var lat = Number(focusItem.lat)
-        var lng = Number(focusItem.lng)
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-          if (!coords) return
-          lat = coords.lat
-          lng = coords.lng
-        }
-        var name = focusItem.name
-        var dedupeKey = `${keyLower}|${name}|${lat.toFixed(6)},${lng.toFixed(6)}`
-        if (seen[dedupeKey]) return
-        seen[dedupeKey] = true
-        combined.push({
-          name,
-          lat,
-          lng,
-          category: keyLower,
-          item: focusItem.item,
+    function dispatchFromCurrentSummaryRows() {
+      var combined = []
+      var seen = {}
+      var allowedKeys = {}
+      selectedCategoryKeys.forEach((k) => {
+        var key = String(k || '').toLowerCase()
+        if (key) allowedKeys[key] = true
+      })
+      var allowedLabels = []
+      rows.forEach((row) => {
+        var keyLower = String(row && row.key ? row.key : '').toLowerCase()
+        if (!allowedKeys[keyLower]) return
+        if (row && row.label) allowedLabels.push(String(row.label))
+        var focusItems = buildFocusItemsForRow(row, keyLower)
+        focusItems.forEach((focusItem) => {
+          var coords = getItemCoordinates(focusItem.item)
+          var lat = Number(focusItem.lat)
+          var lng = Number(focusItem.lng)
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            if (!coords) return
+            lat = coords.lat
+            lng = coords.lng
+          }
+          var name = focusItem.name
+          var dedupeKey = `${keyLower}|${name}|${lat.toFixed(6)},${lng.toFixed(6)}`
+          if (seen[dedupeKey]) return
+          seen[dedupeKey] = true
+          combined.push({
+            name,
+            lat,
+            lng,
+            category: keyLower,
+            item: focusItem.item,
+          })
         })
       })
-    })
 
-    if (combined.length > 0) {
-      window.dispatchEvent(
-        new CustomEvent('msme-gis-focus-community-category', {
-          detail: {
-            category: selectedCategoryKeys.length === 1 ? selectedCategoryKeys[0] : 'multi',
-            label: allowedLabels.length > 0 ? allowedLabels.join(' + ') : 'selected categories',
-            items: combined,
-            total: combined.length,
-            showAllRoutes: true,
-          },
-        }),
-      )
-      return
+      if (combined.length > 0) {
+        window.dispatchEvent(
+          new CustomEvent('msme-gis-focus-community-category', {
+            detail: {
+              category: selectedCategoryKeys.length === 1 ? selectedCategoryKeys[0] : 'multi',
+              label: allowedLabels.length > 0 ? allowedLabels.join(' + ') : 'selected categories',
+              items: combined,
+              total: combined.length,
+              showAllRoutes: true,
+            },
+          }),
+        )
+        return true
+      }
+      return false
     }
 
     if (
@@ -1310,18 +1313,20 @@ export default function CommunitySummaryPanel() {
           showAllRoutes: true,
         })
         .then(function (ok) {
-          if (!ok) {
-            window.alert(
-              'No POI coordinates found in buffer for selected categories. Increase closest/buffer distance and try again.',
-            )
-          }
+          if (ok) return
+          if (dispatchFromCurrentSummaryRows()) return
+          window.alert(
+            'No POI coordinates found in buffer for selected categories. Increase closest/buffer distance and try again.',
+          )
         })
       return
     }
 
-    window.alert(
-      'No POI coordinates available for the selected categories. Run buffer or closest analysis first.',
-    )
+    if (!dispatchFromCurrentSummaryRows()) {
+      window.alert(
+        'No POI coordinates available for the selected categories. Run buffer or closest analysis first.',
+      )
+    }
   }
 
   function toggleCategorySelection(categoryKey) {
@@ -1374,7 +1379,8 @@ export default function CommunitySummaryPanel() {
     var canExpandList = items.length > 0
     var focusItems = buildFocusItemsForRow(row, key)
 
-    if (focusItems.length > 0) {
+    function dispatchCategoryFromCurrentRows() {
+      if (focusItems.length <= 0) return false
       window.dispatchEvent(
         new CustomEvent('msme-gis-focus-community-category', {
           detail: {
@@ -1386,6 +1392,21 @@ export default function CommunitySummaryPanel() {
           },
         }),
       )
+      return true
+    }
+
+    if (
+      key &&
+      typeof window !== 'undefined' &&
+      typeof window.msmeGisDrawCommunityRoutesForCategories === 'function'
+    ) {
+      window.msmeGisDrawCommunityRoutesForCategories([key], {
+        showAllRoutes: true,
+      }).then(function (ok) {
+        if (!ok) dispatchCategoryFromCurrentRows()
+      })
+    } else {
+      dispatchCategoryFromCurrentRows()
     }
 
     if (canExpandList) {

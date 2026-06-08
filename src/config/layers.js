@@ -94,7 +94,7 @@ export const createMapLayers = () => {
   transportLayer.when(() => {
     transportLayer.allSublayers.forEach((sublayer) => {
       const isRoads = TRANSPORT_ROAD_SUBLAYER_IDS.has(sublayer.id);
-      sublayer.visible = isRoads;
+      sublayer.visible = false;
       if (isRoads) {
         sublayer.minScale = 0;
         sublayer.maxScale = 0;

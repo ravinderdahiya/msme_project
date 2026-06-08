@@ -1,5 +1,7 @@
 /** Rail panel open/close for Measurement Tool — matches legacy spatial/AOI/layers pattern. */
 
+import { closeAoiRoutePanel } from './aoiRoutePanel.js'
+
 const PANEL_BTN_PAIRS = [
   ['spatialPanel', 'btnOpenSpatial'],
   ['aoiPanel', 'btnOpenNav'],
@@ -41,6 +43,27 @@ export function closeMeasurementPanel() {
     window.msmeGisStopMeasurementLineDraw()
   }
   notifyLayout()
+}
+
+export function closeAoiPanel() {
+  closeAoiRoutePanel()
+  closeGisRailPanel('aoiPanel', 'btnOpenNav')
+  notifyLayout()
+}
+
+/** Collapse AOI rail panel only after the user clicks Plan Route. */
+export function bindAoiPanelCloseOnPlanRoute() {
+  if (typeof window === 'undefined' || window.__msmeAoiCloseOnPlanRouteBound) return
+  const btn = document.getElementById('btnRouteFromCurrentToAoi')
+  if (!btn) return
+  window.__msmeAoiCloseOnPlanRouteBound = true
+
+  btn.addEventListener('click', function () {
+    window.setTimeout(function () {
+      closeGisRailPanel('aoiPanel', 'btnOpenNav')
+      notifyLayout()
+    }, 0)
+  })
 }
 
 export function openMeasurementPanel() {

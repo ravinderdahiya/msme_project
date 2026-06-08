@@ -188,8 +188,10 @@ export default function HeaderGis({
     if (!el || typeof document === "undefined") return;
 
     const syncHeaderHeight = () => {
-      const next = Math.max(70, Math.ceil(el.getBoundingClientRect().height));
-      document.documentElement.style.setProperty("--header-h", `${next}px`);
+      const next = Math.ceil(el.getBoundingClientRect().height);
+      if (next > 0) {
+        document.documentElement.style.setProperty("--header-h", `${next}px`);
+      }
     };
 
     syncHeaderHeight();

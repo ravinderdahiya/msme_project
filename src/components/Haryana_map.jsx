@@ -5,7 +5,6 @@ import PrintScreenButton from './PrintScreenButton.jsx'
 import BasemapButton from './BasemapButton.jsx'
 import HomeButton from './HomeButton.jsx'
 import ShapeSketchButton from './ShapeSketchButton.jsx'
-
 function mapViewLooksReady() {
   const view = typeof window !== 'undefined' ? window.__msmeGisMapView : null
   return !!(view && view.destroyed === false)

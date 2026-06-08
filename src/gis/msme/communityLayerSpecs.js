@@ -1,7 +1,6 @@
 import { BASE_MS, INV_MS, SOC_MS, TRANS_MS, UTIL_MS, LAYER_ROADS_LINE } from "./serviceUrlsAndLayers.js";
 
 export var SCHOOL_LAYER_DEFS = [
-  { url: SOC_MS, layerId: 0 },
   { url: SOC_MS, layerId: 1 },
   { url: SOC_MS, layerId: 2 },
   { url: SOC_MS, layerId: 19 }
