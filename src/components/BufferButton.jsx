@@ -1,5 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { convertDistanceToMeters } from "../gis/msme/distanceUiHelpers.js";
+import { useHeaderToolbarHost } from "../gis/msme/msmeGisHeaderToolbarMount.js";
+import ShapeSketchButton from "./ShapeSketchButton.jsx";
 
 function parseLatLon(raw) {
   var text = String(raw || "").trim();
@@ -29,6 +32,7 @@ export default function BufferButton({ t }) {
   var [unit, setUnit] = useState("km");
   var [locationText, setLocationText] = useState("");
   var rootRef = useRef(null);
+  var toolbarHost = useHeaderToolbarHost();
 
   useEffect(() => {
     function onDocClick(ev) {
@@ -37,60 +41,11 @@ export default function BufferButton({ t }) {
       if (!root) return;
       if (!root.contains(ev.target)) setPanelMode(null);
     }
-    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("click", onDocClick);
     return function cleanup() {
-      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("click", onDocClick);
     };
   }, [panelMode]);
-
-  useEffect(() => {
-    var root = rootRef.current;
-    if (!root) return;
-
-    var originalParent = root.parentElement;
-    var originalNextSibling = root.nextSibling;
-    var mo = null;
-    var moveTimer = null;
-
-    function moveIntoTopRight() {
-      var host = document.querySelector("#viewDiv .esri-ui-top-right.esri-ui-corner");
-      if (!host || !root) return false;
-      if (root.parentElement !== host) {
-        host.insertBefore(root, host.firstChild || null);
-      }
-      return true;
-    }
-
-    // ArcGIS widgets mount asynchronously; keep trying briefly.
-    if (!moveIntoTopRight()) {
-      mo = new MutationObserver(function () {
-        if (moveIntoTopRight() && mo) {
-          mo.disconnect();
-          mo = null;
-        }
-      });
-      mo.observe(document.body, { childList: true, subtree: true });
-      moveTimer = window.setTimeout(function () {
-        if (mo) {
-          mo.disconnect();
-          mo = null;
-        }
-      }, 10000);
-    }
-
-    return function cleanupMountMove() {
-      if (mo) mo.disconnect();
-      if (moveTimer) window.clearTimeout(moveTimer);
-      if (!root || !originalParent) return;
-      if (root.parentElement !== originalParent) {
-        if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
-          originalParent.insertBefore(root, originalNextSibling);
-        } else {
-          originalParent.appendChild(root);
-        }
-      }
-    };
-  }, []);
 
   function stopQuickBufferOnDoubleClick(ev) {
     if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
@@ -250,14 +205,15 @@ export default function BufferButton({ t }) {
     return "Near By Proximity";
   }
 
-  return (
+  const toolbarContent = (
     <div className="buffer-fab-wrap esri-component" ref={rootRef}>
+      <ShapeSketchButton />
+
       <button
         type="button"
         id="closestMapFab"
         className="buffer-map-fab closest-map-fab esri-widget--button"
         data-map-label="Closest"
-        title="Closest"
         aria-label="Closest"
         aria-pressed={panelMode === "closest" ? "true" : "false"}
         onClick={() => togglePanel("closest")}
@@ -293,7 +249,6 @@ export default function BufferButton({ t }) {
         id="bufferMapFab"
         className="buffer-map-fab esri-widget--button"
         data-map-label="Proximity"
-        title="Proximity"
         aria-label="Proximity"
         aria-pressed={panelMode === "proximity" ? "true" : "false"}
         onClick={() => togglePanel("proximity")}
@@ -327,40 +282,6 @@ export default function BufferButton({ t }) {
         </svg>
       </button>
 
-      {/* <button
-        type="button"
-        id="trackMapFab"
-        className="buffer-map-fab track-map-fab esri-widget--button"
-        data-map-label="Track"
-        title="Track buffer"
-        aria-label="Track buffer"
-        aria-pressed={panelMode === "track" ? "true" : "false"}
-        onClick={runTrackNetworkBufferFromIcon}
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className="buffer-map-fab-ico"
-          aria-hidden="true"
-          focusable="false"
-        >
-          <path
-            d="M4 4l16 16M9.5 3.5l11 11M3.5 9.5l11 11"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.6"
-            strokeLinecap="round"
-            opacity="0.75"
-          />
-          <path
-            d="M6 7.5l2.2-2.2M9.5 11l2.2-2.2M13 14.5l2.2-2.2M16.5 18l2.2-2.2"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-        </svg>
-      </button> */}
-
       {panelMode ? (
         <div
           className="buffer-mini-panel"
@@ -380,7 +301,6 @@ export default function BufferButton({ t }) {
           </div>
           <div className="buffer-mini-panel__body">
             <label className="buffer-mini-panel__label">{panelMode === "track" ? "Buffer distance" : "Location"}</label>
-            <div className="buffer-mini-panel__icons" aria-hidden="true"></div>
             <div className="buffer-mini-panel__row">
               <input
                 type="number"
@@ -443,4 +363,6 @@ export default function BufferButton({ t }) {
       ) : null}
     </div>
   );
+
+  return toolbarHost ? createPortal(toolbarContent, toolbarHost) : toolbarContent;
 }

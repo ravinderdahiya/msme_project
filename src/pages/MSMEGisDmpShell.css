@@ -1,0 +1,762 @@
+/**
+ * MSME GIS — GatiShakti / NewMainMap DMP shell (UI only).
+ * Scoped to #msmeGisRoot.msme-gis-page.nm-shell-dmp — does not affect NewMainMap.
+ */
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp {
+  --nm-rail-w: 92px;
+  --nm-dmp-header-h: 52px;
+  --nm-dmp-footer-h: 0;
+  --nm-dmp-black: #081631;
+  --nm-dmp-rail-bg: #050f22;
+  --nm-dmp-border: rgba(255, 255, 255, 0.08);
+  --msme-gis-shell-pad: 0;
+  --msme-gis-inner-gap: 0;
+  --msme-rail-left-w: var(--nm-rail-w);
+  --msme-rail-total-w: var(--nm-rail-w);
+  --msme-rail-panels-w: min(300px, 28vw);
+  --msme-rail-card-gap: 0;
+  --msme-rail-panel-gap: 8px;
+  --msme-gis-panel-top-gap: 14px;
+  --msme-gis-panel-top: calc(var(--nm-dmp-header-h) + var(--msme-gis-panel-top-gap));
+  --msme-gis-map-toolbar-gap: 8px;
+  --msme-gis-map-toolbar-top: calc(var(--nm-dmp-header-h) + var(--msme-gis-map-toolbar-gap));
+  --msme-gis-content-top: var(--nm-dmp-header-h);
+  --header-h: var(--nm-dmp-header-h);
+
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: var(--nm-dmp-header-h) minmax(0, 1fr);
+  grid-template-columns: var(--nm-rail-w) minmax(0, 1fr);
+  gap: 0;
+  padding: 0;
+  background: var(--msme-shell-bg, #081631);
+  color-scheme: dark;
+}
+
+[data-theme='white'] #msmeGisRoot.msme-gis-page.nm-shell-dmp {
+  --nm-dmp-black: #ffffff;
+  --nm-dmp-rail-bg: #ffffff;
+  --nm-dmp-border: rgba(15, 23, 42, 0.1);
+  color-scheme: light;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp .nm-site-header {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-width: 0;
+  z-index: 200;
+  position: relative;
+}
+
+/* ---- Header (black DMP bar + center search) ---- */
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader.nmhdr.msme-gis-hdr-dmp {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  width: 100% !important;
+  min-height: var(--nm-dmp-header-h);
+  padding: 0 14px 0 6px !important;
+  margin: 0 !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: rgba(8, 22, 49, 0.28) !important;
+  backdrop-filter: blur(18px) saturate(1.1);
+  -webkit-backdrop-filter: blur(18px) saturate(1.1);
+  color: #ffffff;
+  display: grid !important;
+  grid-template-columns: var(--nm-rail-w) auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 16px;
+  row-gap: 0;
+  flex-wrap: nowrap !important;
+  overflow: visible;
+}
+
+/* Hamburger — same width column as left icon rail (stacked above sidebar) */
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-rail-slot {
+  grid-column: 1;
+  width: var(--nm-rail-w);
+  min-width: var(--nm-rail-w);
+  height: var(--nm-dmp-header-h);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  border-right: 1px solid var(--nm-dmp-border);
+  background: rgba(5, 15, 34, 0.22);
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-brand {
+  grid-column: 2;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  justify-self: start;
+  padding-left: 0;
+  position: relative;
+  z-index: 3;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-center {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 0;
+  min-width: 0;
+  width: max-content;
+  max-width: none;
+  overflow: visible;
+  pointer-events: none;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-center > * {
+  pointer-events: auto;
+  min-width: 0;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search {
+  grid-column: unset;
+  justify-self: auto;
+  flex: none;
+  flex-shrink: 0;
+  width: min(320px, 34vw) !important;
+  max-width: min(320px, 34vw) !important;
+  min-width: min(240px, 30vw);
+  min-height: 40px !important;
+  height: 40px !important;
+  margin: 0 !important;
+  position: relative;
+  z-index: 1;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .msme-gis-header-toolbar {
+  flex: none;
+  flex-shrink: 0;
+  min-width: 0;
+  max-width: calc(100vw - 520px);
+  overflow-x: auto;
+  overflow-y: visible;
+  scrollbar-width: none;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .msme-gis-header-toolbar::-webkit-scrollbar {
+  display: none;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search-toggle {
+  display: none !important;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-actions {
+  grid-column: 4;
+  justify-self: end;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 3;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-drawer-btn {
+  width: 40px;
+  height: 40px;
+  min-width: 40px;
+  min-height: 40px;
+  padding: 0;
+  border-radius: 10px;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-logo {
+  width: auto;
+  height: 44px;
+  max-width: none;
+  object-fit: contain;
+  object-position: left center;
+  flex-shrink: 0;
+  display: block;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-sep {
+  width: 1px;
+  height: 30px;
+  background: rgba(255, 255, 255, 0.35);
+  flex-shrink: 0;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-titles {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  min-width: 0;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-title {
+  font-size: 0.92rem;
+  font-weight: 600;
+  line-height: 1.2;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-subtitle {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.58);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-drawer-btn {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-drawer-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.35);
+  box-shadow: none;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search {
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--msme-cyan, #00e5ff);
+  border-radius: 999px;
+  padding: 0 4px 0 16px;
+  box-shadow:
+    0 1px 2px rgba(60, 64, 67, 0.14),
+    0 0 0 1px rgba(0, 229, 255, 0.2),
+    0 0 12px rgba(0, 229, 255, 0.18);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search:hover,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search:focus-within {
+  border-color: var(--msme-cyan, #00e5ff);
+  box-shadow:
+    0 1px 2px rgba(60, 64, 67, 0.14),
+    0 0 0 1px rgba(0, 229, 255, 0.28),
+    0 0 16px rgba(0, 229, 255, 0.28);
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search input {
+  color: #202124;
+  font-size: 0.875rem;
+  padding: 0 6px 0 0;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search input::placeholder {
+  color: #70757a;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search-icon {
+  display: none;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search-btn {
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+  color: var(--msme-cyan, #00e5ff);
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search-btn:hover:not(:disabled) {
+  color: var(--msme-cyan, #00e5ff);
+  background: var(--msme-cyan-dim, rgba(0, 229, 255, 0.14));
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-actions {
+  flex-shrink: 0;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-theme-btn,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-lang,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-login {
+  border-color: rgba(255, 255, 255, 0.22);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-lang .is-active {
+  color: #00e5ff;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-lang-sep {
+  color: rgba(255, 255, 255, 0.45);
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-emblem {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  padding: 2px;
+  flex-shrink: 0;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-flip,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-titles {
+  display: none !important;
+}
+
+/* ---- Dark icon rail ---- */
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail.rail-nm.nm-sidebar-dmp {
+  grid-row: 2;
+  grid-column: 1;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  bottom: auto !important;
+  width: var(--nm-rail-w) !important;
+  min-width: 0 !important;
+  max-width: none !important;
+  height: 100% !important;
+  max-height: none !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  grid-template-areas: none !important;
+  border: none !important;
+  border-right: 1px solid var(--nm-dmp-border) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  background: transparent !important;
+  overflow: hidden;
+  z-index: 60;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-sidebar-left {
+  display: none !important;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-sidebar-rail {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  background: var(--nm-dmp-rail-bg);
+  color: #ffffff;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-list {
+  list-style: none;
+  margin: 0;
+  padding: 8px 0;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-btn {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 10px 4px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font: inherit;
+  cursor: pointer;
+  text-align: center;
+  position: relative;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-btn:hover,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-btn.active {
+  background: rgba(0, 229, 255, 0.08);
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-icon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #00e5ff;
+  background: transparent !important;
+  border: 1px solid rgba(0, 229, 255, 0.45) !important;
+  box-sizing: border-box !important;
+  transition:
+    color 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-btn:hover .nm-rail-icon {
+  border-color: rgba(0, 229, 255, 0.7) !important;
+  box-shadow: 0 0 12px rgba(0, 229, 255, 0.2) !important;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-btn.active .nm-rail-icon {
+  border-color: #00e5ff !important;
+  box-shadow: 0 0 16px rgba(0, 229, 255, 0.35) !important;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-icon svg {
+  width: 28px;
+  height: 28px;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-label {
+  font-size: 0.85rem;
+  line-height: 1.25;
+  max-width: 92px;
+  word-break: break-word;
+  font-weight: 600;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-brand {
+  flex-shrink: 0;
+  padding: 10px 6px 12px;
+  display: grid;
+  place-items: center;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-rail-brand-img {
+  width: 42px;
+  height: 42px;
+  object-fit: contain;
+  opacity: 0.9;
+}
+
+/* Cancel MSMEGisPageShell fixed rail / wide min-width — keep only the icon column in grid */
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail.rail-nm.nm-sidebar,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail.rail-nm.nm-sidebar-dmp,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail.rail-nm.nm-sidebar:has(#spatialPanel:not(.collapsed)),
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail.rail-nm.nm-sidebar:has(#aoiPanel:not(.collapsed)),
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail.rail-nm.nm-sidebar:has(#toolsPanel:not(.collapsed)),
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail.rail-nm.nm-sidebar:has(#selectToolsPanel:not(.collapsed)),
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail.rail-nm.nm-sidebar:has(#measurementPanel:not(.collapsed)) {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  min-width: 0 !important;
+  width: var(--nm-rail-w) !important;
+  max-width: var(--nm-rail-w) !important;
+  display: flex !important;
+  flex-direction: column !important;
+  grid-template-columns: none !important;
+  grid-template-rows: none !important;
+  grid-template-areas: none !important;
+  gap: 0 !important;
+}
+
+/* Tool panels: fixed beside rail, never over the icon column */
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-sidebar-gis-panels {
+  position: fixed !important;
+  z-index: 85 !important;
+  top: var(--msme-gis-panel-top) !important;
+  left: calc(var(--nm-rail-w) + var(--msme-rail-panel-gap)) !important;
+  right: auto !important;
+  bottom: var(--nm-dmp-footer-h) !important;
+  width: min(var(--msme-rail-panels-w), calc(100vw - var(--nm-rail-w) - var(--msme-rail-panel-gap) - 16px)) !important;
+  max-width: var(--msme-rail-panels-w) !important;
+  height: fit-content !important;
+  max-height: calc(
+    100dvh - var(--nm-dmp-header-h) - var(--msme-gis-panel-top-gap) - var(--nm-dmp-footer-h) - 16px
+  ) !important;
+  min-height: 0;
+  margin: 0;
+  padding: 0 !important;
+  overflow: visible;
+  pointer-events: none;
+  display: none;
+  flex-direction: column;
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  grid-area: unset !important;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail:has(#spatialPanel:not(.collapsed)) .nm-sidebar-gis-panels,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail:has(#aoiPanel:not(.collapsed)) .nm-sidebar-gis-panels,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail:has(#toolsPanel:not(.collapsed)) .nm-sidebar-gis-panels,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail:has(#selectToolsPanel:not(.collapsed)) .nm-sidebar-gis-panels,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail:has(#measurementPanel:not(.collapsed)) .nm-sidebar-gis-panels {
+  display: flex !important;
+  pointer-events: auto;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail #spatialPanel,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail #selectToolsPanel,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail #measurementPanel,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail #toolsPanel,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #rail #aoiPanel {
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: 100% !important;
+  transform: none !important;
+}
+
+/* ---- Map stage ---- */
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #viewDiv {
+  grid-row: 2;
+  grid-column: 2;
+  position: relative !important;
+  top: auto !important;
+  left: auto !important;
+  right: auto !important;
+  bottom: auto !important;
+  width: auto !important;
+  height: 100% !important;
+  min-height: 0;
+  border-radius: 0 !important;
+  border: none !important;
+  box-shadow: none !important;
+  overflow: hidden;
+  z-index: 1;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #gisLoadingOverlay {
+  top: var(--nm-dmp-header-h);
+  left: var(--nm-rail-w);
+  right: 0;
+  bottom: var(--nm-dmp-footer-h);
+  border-radius: 0;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #coordBar {
+  bottom: calc(var(--nm-dmp-footer-h) + 12px);
+  right: 12px;
+  left: auto;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp #legendFab.legend-map-fab {
+  left: calc(var(--nm-rail-w) + 12px);
+  bottom: calc(var(--nm-dmp-footer-h) + 88px);
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp .assembly-map-inline-panel {
+  top: var(--nm-dmp-header-h);
+  left: var(--nm-rail-w);
+  right: 0;
+  bottom: var(--nm-dmp-footer-h);
+  border-radius: 0;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp.msme-gis-rail-hidden {
+  grid-template-columns: 0 minmax(0, 1fr);
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp.msme-gis-rail-hidden #rail.rail-nm.nm-sidebar-dmp {
+  width: 0 !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp.msme-gis-rail-hidden #viewDiv,
+#msmeGisRoot.msme-gis-page.nm-shell-dmp.msme-gis-rail-hidden #gisLoadingOverlay {
+  left: 0;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp.msme-gis-rail-hidden #rail .nm-sidebar-gis-panels {
+  left: var(--msme-rail-panel-gap) !important;
+}
+
+/* MSMEGisPageShell @max-width:1100 bottom-sheet — keep panels beside rail on DMP layout */
+@media (max-width: 1100px) and (min-width: 769px) {
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-sidebar-gis-panels {
+    left: calc(var(--nm-rail-w) + var(--msme-rail-panel-gap)) !important;
+    right: auto !important;
+    top: var(--msme-gis-panel-top) !important;
+    bottom: var(--nm-dmp-footer-h) !important;
+    width: min(var(--msme-rail-panels-w), calc(100vw - var(--nm-rail-w) - var(--msme-rail-panel-gap) - 16px)) !important;
+    max-height: calc(
+      100dvh - var(--nm-dmp-header-h) - var(--msme-gis-panel-top-gap) - var(--nm-dmp-footer-h) - 16px
+    ) !important;
+    border-radius: 0 !important;
+    animation: none !important;
+  }
+}
+
+@media (max-width: 1200px) {
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search {
+    width: min(280px, 30vw) !important;
+    max-width: min(280px, 30vw) !important;
+    min-width: min(220px, 28vw);
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .msme-gis-header-toolbar {
+    max-width: calc(100vw - 460px);
+  }
+}
+
+@media (max-width: 900px) {
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp {
+    grid-template-columns: 1fr;
+    grid-template-rows: var(--nm-dmp-header-h) minmax(0, 1fr);
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail.rail-nm.nm-sidebar-dmp {
+    grid-row: auto;
+    grid-column: 1;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #viewDiv {
+    grid-column: 1;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search {
+    flex: 1 1 200px;
+    max-width: none;
+  }
+}
+
+@media (max-width: 768px) {
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader.nmhdr.msme-gis-hdr-dmp {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    padding: 0 10px !important;
+    column-gap: 8px;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-rail-slot {
+    width: auto;
+    min-width: 0;
+    border-right: none;
+    background: transparent;
+    padding: 0 4px;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-brand {
+    grid-column: 1;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-logo {
+    height: 38px;
+    width: auto;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-dmp-titles {
+    display: none;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search-toggle {
+    display: inline-flex !important;
+    grid-column: 2;
+    justify-self: end;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-center {
+    position: static;
+    left: auto;
+    top: auto;
+    transform: none;
+    grid-column: 1 / -1;
+    grid-row: 2;
+    grid-template-columns: auto minmax(0, 1fr);
+    column-gap: 10px;
+    width: 100%;
+    max-width: none;
+    pointer-events: auto;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-search {
+    grid-column: unset;
+    grid-row: unset;
+    flex: 0 1 220px;
+    width: auto !important;
+    max-width: none !important;
+    justify-self: stretch;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .msme-gis-header-toolbar {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .msme-gis-header-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .nmhdr-actions {
+    grid-column: 3;
+    grid-row: 1;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp:not(.msme-gis-mobile-drawer-open) #rail.rail-nm.nm-sidebar-dmp {
+    visibility: hidden !important;
+    pointer-events: none !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp.msme-gis-mobile-drawer-open #rail.rail-nm.nm-sidebar-dmp {
+    visibility: visible !important;
+    position: fixed !important;
+    top: var(--nm-dmp-header-h) !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: auto !important;
+    height: auto !important;
+    z-index: 360 !important;
+    background: transparent !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding: 12px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp.msme-gis-mobile-drawer-open #rail .nm-sidebar-rail {
+    pointer-events: auto !important;
+    width: 100% !important;
+    max-width: min(400px, calc(100vw - 24px)) !important;
+    max-height: min(75vh, 560px) !important;
+    overflow-y: auto !important;
+    border-radius: 16px !important;
+    box-shadow: 0 20px 48px rgba(0, 0, 0, 0.35) !important;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp.msme-gis-mobile-drawer-open #rail .nm-rail-list {
+    display: grid !important;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #viewDiv {
+    grid-column: 1;
+  }
+}

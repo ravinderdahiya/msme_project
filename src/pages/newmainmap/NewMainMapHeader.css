@@ -175,25 +175,37 @@
 }
 
 .nmhdr-search {
-  flex: 1 1 320px;
+  flex: 1 1 280px;
   min-width: 0;
-  max-width: min(720px, 100%);
+  max-width: min(480px, 100%);
   display: flex;
-  align-items: stretch;
+  align-items: center;
   margin: 0 auto;
-  padding: 4px 4px 4px 14px;
+  min-height: 40px;
+  height: 40px;
+  padding: 0 4px 0 16px;
   border-radius: 999px;
   background: var(--hdr-search-bg);
   border: 1px solid var(--hdr-search-border);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  box-shadow:
+    0 1px 2px rgba(60, 64, 67, 0.12),
+    0 1px 4px rgba(60, 64, 67, 0.08);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.nmhdr-search:hover,
+.nmhdr-search:focus-within {
+  border-color: #00e5ff;
+  box-shadow:
+    0 1px 2px rgba(60, 64, 67, 0.12),
+    0 0 0 1px rgba(0, 229, 255, 0.2),
+    0 0 12px rgba(0, 229, 255, 0.18);
 }
 
 .nmhdr-search-icon {
-  display: grid;
-  place-items: center;
-  color: var(--hdr-subtitle);
-  flex-shrink: 0;
-  padding-right: 6px;
+  display: none;
 }
 
 .nmhdr-search input {
@@ -202,9 +214,10 @@
   border: none;
   outline: none;
   background: transparent;
-  font-size: 0.92rem;
+  font-size: 0.875rem;
   color: var(--hdr-control-color);
-  padding: 10px 8px 10px 0;
+  padding: 0 8px 0 0;
+  line-height: 1.2;
 }
 
 .nmhdr-search input::placeholder {
@@ -213,19 +226,27 @@
 
 .nmhdr-search-btn {
   flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
   border: none;
-  border-radius: 999px;
-  padding: 10px 22px;
-  font-weight: 700;
-  font-size: 0.9rem;
+  border-radius: 50%;
+  padding: 0;
   cursor: pointer;
-  color: #ffffff;
-  background:#1e63d5;
-  box-shadow: 0 2px 8px rgba(26, 138, 92, 0.35);
+  color: #00e5ff;
+  background: transparent;
+  box-shadow: none;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
 }
 
 .nmhdr-search-btn:hover {
-  filter: brightness(1.05);
+  color: #00e5ff;
+  background: rgba(0, 229, 255, 0.14);
 }
 
 .nmhdr-actions {
@@ -377,9 +398,9 @@
   }
 
   .nmhdr-search.is-expanded {
-    max-height: 120px;
+    max-height: 48px;
     opacity: 1;
-    padding: 4px 4px 4px 14px;
+    padding: 0 4px 0 16px;
     margin-top: 4px;
     border-width: 1px;
     pointer-events: auto;
@@ -420,8 +441,11 @@
   }
 
   .nmhdr-search-btn {
-    padding: 10px 14px;
-    font-size: 0.85rem;
+    width: 34px;
+    height: 34px;
+    min-width: 34px;
+    min-height: 34px;
+    padding: 0;
   }
 }
 

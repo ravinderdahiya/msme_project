@@ -13,74 +13,12 @@ export default function ShapeSketchButton() {
       if (!root) return
       if (!root.contains(ev.target)) setOpen(false)
     }
-    document.addEventListener('mousedown', onDocClick)
+    if (!open) return undefined
+    document.addEventListener('click', onDocClick)
     return function cleanup() {
-      document.removeEventListener('mousedown', onDocClick)
+      document.removeEventListener('click', onDocClick)
     }
-  }, [])
-
-  useEffect(() => {
-    var root = rootRef.current
-    if (!root) return
-
-    var originalParent = root.parentElement
-    var originalNextSibling = root.nextSibling
-    var mo = null
-    var moveTimer = null
-
-    function moveIntoTopRight() {
-      var host = document.querySelector('#viewDiv .esri-ui-top-right.esri-ui-corner')
-      if (!host || !root) return false
-      var closestFab = document.getElementById('closestMapFab')
-      var bufferWrap = closestFab ? closestFab.closest('.buffer-fab-wrap') : null
-
-      if (bufferWrap) {
-        if (root.parentElement !== bufferWrap) {
-          var afterClosest = closestFab.nextSibling
-          if (afterClosest && afterClosest.parentNode === bufferWrap) {
-            bufferWrap.insertBefore(root, afterClosest)
-          } else {
-            bufferWrap.appendChild(root)
-          }
-        }
-        return true
-      }
-
-      if (root.parentElement !== host) {
-        host.insertBefore(root, host.firstChild || null)
-      }
-      return true
-    }
-
-    if (!moveIntoTopRight()) {
-      mo = new MutationObserver(function () {
-        if (moveIntoTopRight() && mo) {
-          mo.disconnect()
-          mo = null
-        }
-      })
-      mo.observe(document.body, { childList: true, subtree: true })
-      moveTimer = window.setTimeout(function () {
-        if (mo) {
-          mo.disconnect()
-          mo = null
-        }
-      }, 10000)
-    }
-
-    return function cleanupMountMove() {
-      if (mo) mo.disconnect()
-      if (moveTimer) window.clearTimeout(moveTimer)
-      if (!root || !originalParent) return
-      if (root.parentElement !== originalParent) {
-        if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
-          originalParent.insertBefore(root, originalNextSibling)
-        } else {
-          originalParent.appendChild(root)
-        }
-      }
-    }
-  }, [])
+  }, [open])
 
   function distanceInputStep() {
     if (unit === 'km') return '0.1'
@@ -145,7 +83,7 @@ export default function ShapeSketchButton() {
   }
 
   return (
-    <div className="buffer-fab-wrap esri-component" ref={rootRef}>
+    <div className="msme-shape-fab-host" ref={rootRef}>
       {/* <button
         type="button"
         id="shapeMapFab"
@@ -172,7 +110,6 @@ export default function ShapeSketchButton() {
         id="trackMapFab"
         className="buffer-map-fab track-map-fab esri-widget--button"
         data-map-label="Analysis by Shape"
-        title="Analysis by Shape"
         aria-label="Analysis by Shape"
         aria-expanded={open ? 'true' : 'false'}
         aria-haspopup="dialog"

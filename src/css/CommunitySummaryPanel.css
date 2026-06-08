@@ -845,7 +845,8 @@
   font-weight: 800;
 }
 
-.community-ba-card__stat > span[style] {
+.community-ba-card__stat > span[style],
+.community-ba-card__stat-label {
   display: block;
   margin-top: 2px;
   font-size: 12px;

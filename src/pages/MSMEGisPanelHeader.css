@@ -1,0 +1,89 @@
+/**
+ * Unified header for all MSME GIS rail side panels.
+ */
+
+#msmeGisRoot.msme-gis-page #rail #spatialPanel .sp-head,
+#msmeGisRoot.msme-gis-page #rail #aoiPanel .ap-head,
+#msmeGisRoot.msme-gis-page #rail #selectToolsPanel .stools-head,
+#msmeGisRoot.msme-gis-page #rail #measurementPanel .sp-head,
+#msmeGisRoot.msme-gis-page #rail #toolsPanel .tp-head {
+  flex-shrink: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  backdrop-filter: none !important;
+}
+
+#msmeGisRoot.msme-gis-page #rail .msme-gis-panel-head {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 12px 10px 8px;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+}
+
+#msmeGisRoot.msme-gis-page #rail .msme-gis-panel-head__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0;
+}
+
+#msmeGisRoot.msme-gis-page #rail .msme-gis-panel-head h2,
+#msmeGisRoot.msme-gis-page #rail .msme-gis-panel-head__row h2 {
+  margin: 0 !important;
+  flex: 1;
+  min-width: 0;
+  font-size: 0.98rem !important;
+  font-weight: 700 !important;
+  line-height: 1.25 !important;
+  color: #ffffff !important;
+  letter-spacing: -0.01em;
+}
+
+#msmeGisRoot.msme-gis-page #rail .msme-gis-panel-head__close,
+#msmeGisRoot.msme-gis-page #rail .msme-gis-panel-head .ap-close {
+  flex-shrink: 0;
+  width: 32px !important;
+  height: 32px !important;
+  min-width: 32px !important;
+  min-height: 32px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 8px !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-size: 1.2rem !important;
+  line-height: 1 !important;
+  cursor: pointer;
+  box-shadow: none !important;
+}
+
+#msmeGisRoot.msme-gis-page #rail .msme-gis-panel-head__close:hover,
+#msmeGisRoot.msme-gis-page #rail .msme-gis-panel-head .ap-close:hover {
+  color: #00e5ff !important;
+  border-color: rgba(0, 229, 255, 0.35) !important;
+  background: rgba(0, 229, 255, 0.1) !important;
+}
+
+/* Optional intro line directly under header (panel-specific text) */
+#msmeGisRoot.msme-gis-page #rail .msme-gis-panel-intro,
+#msmeGisRoot.msme-gis-page #rail #spatialPanel .sp-intro,
+#msmeGisRoot.msme-gis-page #rail #selectToolsPanel .stools-intro,
+#msmeGisRoot.msme-gis-page #rail #measurementPanel .sp-intro {
+  margin: 0 !important;
+  padding: 0 10px 8px !important;
+  font-size: 0.78rem !important;
+  line-height: 1.5 !important;
+  font-weight: 400 !important;
+  color: rgba(255, 255, 255, 0.48) !important;
+  text-transform: none !important;
+  letter-spacing: 0 !important;
+}

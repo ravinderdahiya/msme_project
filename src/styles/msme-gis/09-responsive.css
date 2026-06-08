@@ -352,15 +352,15 @@
   .buffer-mini-panel {
     left: 0;
     right: auto;
-    top: calc(100% + 10px);
+    top: calc(100% + 8px);
     bottom: auto;
-    width: min(320px, calc(100vw - 24px));
+    width: min(270px, calc(100vw - 24px));
   }
 
   .shape-mini-panel {
     left: 0;
     right: auto;
-    top: calc(100% + 10px);
+    top: calc(100% + 8px);
     width: min(250px, calc(100vw - 24px));
   }
 

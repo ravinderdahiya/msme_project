@@ -4,7 +4,6 @@ import BufferButton from './BufferButton.jsx'
 import PrintScreenButton from './PrintScreenButton.jsx'
 import BasemapButton from './BasemapButton.jsx'
 import HomeButton from './HomeButton.jsx'
-import ShapeSketchButton from './ShapeSketchButton.jsx'
 
 function mapViewLooksReady() {
   const view = typeof window !== 'undefined' ? window.__msmeGisMapView : null
@@ -13,13 +12,14 @@ function mapViewLooksReady() {
 
 function mapToolbarControlsAreDocked() {
   if (typeof document === 'undefined') return false
-  const host = document.querySelector('#viewDiv .esri-ui-top-right.esri-ui-corner')
+  const host = document.querySelector('#appHeader .msme-gis-header-toolbar')
   if (!host) return false
   const bufferWrap = host.querySelector('.buffer-fab-wrap')
+  const shapeFab = host.querySelector('#trackMapFab')
   const homeFab = host.querySelector('.home-map-fab')
   const printFab = host.querySelector('.closest-print-fab')
   const basemapHost = host.querySelector('.msme-basemap-fab-host')
-  return !!(bufferWrap && homeFab && printFab && basemapHost)
+  return !!(bufferWrap && shapeFab && homeFab && printFab && basemapHost)
 }
 
 function showGisLoadingOverlay() {
@@ -131,7 +131,6 @@ export default function HaryanaMap({ t, onMapBootComplete }) {
 
       {/* <LocationButton t={t} /> */}
       <BufferButton t={t} />
-      <ShapeSketchButton />
       <PrintScreenButton t={t} />
       <HomeButton t={t} />
       <BasemapButton t={t} />

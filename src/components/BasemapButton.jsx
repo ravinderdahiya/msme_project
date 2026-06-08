@@ -4,6 +4,7 @@ import BasemapGalleryViewModel from "@arcgis/core/widgets/BasemapGallery/Basemap
 import { watch } from "@arcgis/core/core/reactiveUtils.js";
 import { getBasemapThumbnailUrl } from "@arcgis/core/support/basemapUtils.js";
 import { getAssetUrl } from "@arcgis/core/assets.js";
+import { useHeaderToolbarHost } from "../gis/msme/msmeGisHeaderToolbarMount.js";
 
 function fallbackThumbnailUrl() {
   try {
@@ -15,6 +16,7 @@ function fallbackThumbnailUrl() {
 
 export default function BasemapButton({ t }) {
   const hostRef = useRef(null);
+  const toolbarHost = useHeaderToolbarHost();
   const menuRef = useRef(null);
   const galleryVmRef = useRef(null);
   const watchHandleRef = useRef(null);
@@ -177,52 +179,6 @@ export default function BasemapButton({ t }) {
     };
   }, []);
 
-  useEffect(() => {
-    const root = hostRef.current;
-    if (!root) return;
-
-    const originalParent = root.parentElement;
-    const originalNextSibling = root.nextSibling;
-    let mo = null;
-    let moveTimer = null;
-
-    function moveIntoTopRight() {
-      const host = document.querySelector("#viewDiv .esri-ui-top-right.esri-ui-corner");
-      if (!host || !root) return false;
-      if (root.parentElement !== host) host.appendChild(root);
-      return true;
-    }
-
-    if (!moveIntoTopRight()) {
-      mo = new MutationObserver(() => {
-        if (moveIntoTopRight() && mo) {
-          mo.disconnect();
-          mo = null;
-        }
-      });
-      mo.observe(document.body, { childList: true, subtree: true });
-      moveTimer = window.setTimeout(() => {
-        if (mo) {
-          mo.disconnect();
-          mo = null;
-        }
-      }, 10000);
-    }
-
-    return () => {
-      if (mo) mo.disconnect();
-      if (moveTimer) window.clearTimeout(moveTimer);
-      if (!root || !originalParent) return;
-      if (root.parentElement !== originalParent) {
-        if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
-          originalParent.insertBefore(root, originalNextSibling);
-        } else {
-          originalParent.appendChild(root);
-        }
-      }
-    };
-  }, []);
-
   const toggleOpen = useCallback((ev) => {
     if (ev && typeof ev.preventDefault === "function") ev.preventDefault();
     if (ev && typeof ev.stopPropagation === "function") ev.stopPropagation();
@@ -258,14 +214,13 @@ export default function BasemapButton({ t }) {
   const { vmState, rows, activeIndex } = galleryState;
   const loading = vmState === "loading" || (vmState === "ready" && rows.length === 0);
 
-  return (
+  const host = (
     <div ref={hostRef} className="msme-basemap-fab-host esri-component">
       <button
         type="button"
         id="basemapFab"
         className={`buffer-map-fab basemap-map-fab esri-component esri-widget--button${open ? " is-open" : ""}`}
         data-map-label={labelTitle}
-        title={labelTitle}
         aria-label={labelTitle}
         aria-expanded={open}
         aria-haspopup="listbox"
@@ -346,4 +301,6 @@ export default function BasemapButton({ t }) {
         )}
     </div>
   );
+
+  return toolbarHost ? createPortal(host, toolbarHost) : host;
 }

@@ -1,7 +1,10 @@
 import { useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
+import { useHeaderToolbarHost } from "../gis/msme/msmeGisHeaderToolbarMount.js";
 
 export default function PrintScreenButton({ t }) {
   const rootRef = useRef(null);
+  const toolbarHost = useHeaderToolbarHost();
 
   function triggerPrint() {
     if (typeof window !== "undefined" && typeof window.msmeGisDownloadClosestPdf === "function") {
@@ -25,58 +28,18 @@ export default function PrintScreenButton({ t }) {
 
     root.addEventListener("click", onClickCapture, true);
 
-    const originalParent = root.parentElement;
-    const originalNextSibling = root.nextSibling;
-    let mo = null;
-    let moveTimer = null;
-
-    function moveIntoTopRight() {
-      const host = document.querySelector("#viewDiv .esri-ui-top-right.esri-ui-corner");
-      if (!host || !root) return false;
-      if (root.parentElement !== host) {
-        host.appendChild(root);
-      }
-      return true;
-    }
-
-    if (!moveIntoTopRight()) {
-      mo = new MutationObserver(() => {
-        if (moveIntoTopRight() && mo) {
-          mo.disconnect();
-          mo = null;
-        }
-      });
-      mo.observe(document.body, { childList: true, subtree: true });
-      moveTimer = window.setTimeout(() => {
-        if (mo) {
-          mo.disconnect();
-          mo = null;
-        }
-      }, 10000);
-    }
-
     return () => {
       root.removeEventListener("click", onClickCapture, true);
-      if (mo) mo.disconnect();
-      if (moveTimer) window.clearTimeout(moveTimer);
-      if (!root || !originalParent) return;
-      if (root.parentElement !== originalParent) {
-        if (originalNextSibling && originalNextSibling.parentNode === originalParent) {
-          originalParent.insertBefore(root, originalNextSibling);
-        } else {
-          originalParent.appendChild(root);
-        }
-      }
     };
   }, []);
 
-  return (
+  const button = (
     <button
       ref={rootRef}
       type="button"
       id="closestPrintFab"
       className="closest-print-fab esri-component esri-widget--button"
-      title={t?.("printScreenPdf") || "Print"}
+      data-map-label={t?.("printScreenPdf") || "Print"}
       aria-label={t?.("printScreenPdf") || "Print"}
     >
       <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
@@ -87,4 +50,6 @@ export default function PrintScreenButton({ t }) {
       </svg>
     </button>
   );
+
+  return toolbarHost ? createPortal(button, toolbarHost) : button;
 }

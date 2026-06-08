@@ -238,19 +238,6 @@ const LOADING_ROWS = [
   { key: 'entertainment', label: 'Entertainment' },
 ]
 
-const CATEGORY_COLORS = [
-  '#9b7ad6',
-  '#e56292',
-  '#ef4444',
-  '#f97316',
-  '#d8923a',
-  '#4f89db',
-  '#2f8f83',
-  '#6c68cf',
-  '#d36d48',
-  '#556270',
-]
-
 const CATEGORY_DESCRIPTIONS = {
   schools: 'Nearby schools and education infrastructure in the selected area',
   iti: 'Industrial training institutes close to your selected point or buffer',
@@ -272,10 +259,6 @@ const CATEGORY_DESCRIPTIONS = {
   hsvpplots: 'HSVP plot features available around your selected area',
   hsvpsectorboundary: 'HSVP sector boundary features near your selected area',
   entertainment: 'Entertainment and leisure destinations around your selected area',
-}
-
-function getCategoryColor(index) {
-  return CATEGORY_COLORS[index % CATEGORY_COLORS.length]
 }
 
 function getCategoryDescription(row) {
@@ -1739,7 +1722,6 @@ export default function CommunitySummaryPanel() {
             var key = String(row && row.key ? row.key : idx)
             var keyLower = key.toLowerCase()
             var showLoadingBadge = !displaySummary || waitingForCounts
-            var color = getCategoryColor(idx)
             var items = getCategoryItems(row)
             var canExpandList = !isClosestMode && items.length > 0
             var canFocusCategory = buildFocusItemsForRow(row, keyLower).length > 0
@@ -1774,8 +1756,8 @@ export default function CommunitySummaryPanel() {
                   onClick={() => handleCategoryClick(row)}
                   disabled={!canFocusCategory && !canExpandList}
                 >
-                  <strong style={{ color }}>{showLoadingBadge ? '...' : count}</strong>
-                  <span style={{ color }}>
+                  <strong>{showLoadingBadge ? '...' : count}</strong>
+                  <span className="community-ba-card__stat-label">
                     {isClosestMode ? (count > 0 ? 'Nearest' : 'None') : label}
                   </span>
                   {canExpandList ? (

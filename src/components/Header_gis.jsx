@@ -8,8 +8,7 @@ import "../pages/newmainmap/NewMainMapHeader.css";
 import "./Header_gis_nm.css";
 import { MSME_GIS_REOPEN_DRAWER_EVENT } from "./gis/GisMobilePanelCloseBehaviour.jsx";
 
-const SEARCH_PLACEHOLDER =
-  "Search places across Haryana or use the sidebar record search";
+const SEARCH_PLACEHOLDER = "Search places in Haryana";
 
 const MOBILE_DRAWER_BP = 768;
 
@@ -30,6 +29,7 @@ function useIsMobileNav(breakpoint = MOBILE_DRAWER_BP) {
 }
 
 export default function HeaderGis({
+  dmpShell = false,
   searchQuery,
   setSearchQuery,
   searchBusy,
@@ -188,6 +188,10 @@ export default function HeaderGis({
     if (!el || typeof document === "undefined") return;
 
     const syncHeaderHeight = () => {
+      if (dmpShell) {
+        document.documentElement.style.setProperty("--header-h", "52px");
+        return;
+      }
       const next = Math.max(70, Math.ceil(el.getBoundingClientRect().height));
       document.documentElement.style.setProperty("--header-h", `${next}px`);
     };
@@ -205,7 +209,7 @@ export default function HeaderGis({
       window.removeEventListener("resize", syncHeaderHeight);
       if (ro) ro.disconnect();
     };
-  }, [lang, searchQuery, searchBusy, searchExpanded, railHidden, mobileDrawerOpen]);
+  }, [dmpShell, lang, searchQuery, searchBusy, searchExpanded, railHidden, mobileDrawerOpen]);
 
   function handleDrawerClick() {
     if (isMobile) {
@@ -218,7 +222,11 @@ export default function HeaderGis({
   const drawerExpanded = isMobile ? mobileDrawerOpen : !railHidden;
 
   return (
-    <header id="appHeader" ref={headerRef} className="nmhdr nmhdr-gis">
+    <header
+      id="appHeader"
+      ref={headerRef}
+      className={`nmhdr nmhdr-gis${dmpShell ? " msme-gis-hdr-dmp" : ""}`}
+    >
       {isMobile && mobileDrawerOpen && (
         <button
           type="button"
@@ -227,6 +235,51 @@ export default function HeaderGis({
           onClick={() => setMobileDrawerOpen(false)}
         />
       )}
+      {dmpShell ? (
+        <>
+          <div className="nmhdr-dmp-rail-slot">
+            <button
+              type="button"
+              className={`nmhdr-drawer-btn${isMobile && mobileDrawerOpen ? " is-close" : ""}`}
+              aria-label={
+                isMobile
+                  ? mobileDrawerOpen
+                    ? "Close menu"
+                    : "Open map tools"
+                  : railHidden
+                    ? "Show map tools sidebar"
+                    : "Hide sidebar — full map"
+              }
+              aria-expanded={drawerExpanded}
+              aria-controls="rail"
+              title={
+                isMobile
+                  ? mobileDrawerOpen
+                    ? "Close"
+                    : "Map tools"
+                  : railHidden
+                    ? "Show map tools"
+                    : "Full map"
+              }
+              onClick={handleDrawerClick}
+            >
+              {isMobile && mobileDrawerOpen ? (
+                <X size={20} strokeWidth={2} />
+              ) : (
+                <Menu size={20} strokeWidth={2} />
+              )}
+            </button>
+          </div>
+          <div className="nmhdr-dmp-brand">
+            <img src="/images/hepc-logo.png" alt="MSME Haryana" className="nmhdr-dmp-logo" />
+            <span className="nmhdr-dmp-sep" aria-hidden />
+            <div className="nmhdr-dmp-titles">
+              <span className="nmhdr-dmp-title">Invest, Haryana</span>
+              <span className="nmhdr-dmp-subtitle">GIS Investment Portal, Haryana</span>
+            </div>
+          </div>
+        </>
+      ) : (
       <div className="nmhdr-brand">
         <button
           type="button"
@@ -269,6 +322,7 @@ export default function HeaderGis({
           <span className="nmhdr-subtitle">GIS Investment Portal, Haryana</span>
         </div>
       </div>
+      )}
 
       <button
         type="button"
@@ -281,34 +335,38 @@ export default function HeaderGis({
         <span className="nmhdr-sr-only">Toggle place search</span>
       </button>
 
-      <form
-        id="gis-header-search-form"
-        className={`nmhdr-search${searchExpanded ? " is-expanded" : ""}`}
-        onSubmit={onSearchSubmit}
-        role="search"
-        aria-label="Place search"
-      >
-        <span className="nmhdr-search-icon" aria-hidden>
-          <Search size={18} strokeWidth={2} />
-        </span>
-        <label htmlFor="gisGlobalSearch" className="visually-hidden">
-          Search
-        </label>
-        <input
-          id="gisGlobalSearch"
-          type="search"
-          name="q"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder={SEARCH_PLACEHOLDER}
-          aria-label="Search places"
-          disabled={searchBusy}
-          autoComplete="off"
+      <div className="nmhdr-center">
+        <form
+          id="gis-header-search-form"
+          className={`nmhdr-search${searchExpanded ? " is-expanded" : ""}`}
+          onSubmit={onSearchSubmit}
+          role="search"
+          aria-label="Place search"
+        >
+          <label htmlFor="gisGlobalSearch" className="visually-hidden">
+            Search
+          </label>
+          <input
+            id="gisGlobalSearch"
+            type="search"
+            name="q"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={SEARCH_PLACEHOLDER}
+            aria-label="Search places"
+            disabled={searchBusy}
+            autoComplete="off"
+          />
+          <button type="submit" className="nmhdr-search-btn" disabled={searchBusy} aria-label="Search">
+            <Search size={18} strokeWidth={2.25} aria-hidden="true" />
+          </button>
+        </form>
+        <div
+          id="msmeGisHeaderToolbar"
+          className="msme-gis-header-toolbar"
+          aria-label="Map tools"
         />
-        <button type="submit" className="nmhdr-search-btn" disabled={searchBusy} aria-label="Search">
-          Search
-        </button>
-      </form>
+      </div>
 
       <div className="nmhdr-actions">
         <button

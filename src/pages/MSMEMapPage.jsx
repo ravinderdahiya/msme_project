@@ -11,6 +11,14 @@ import HeaderGis from "../components/Header_gis.jsx";
 import GisMobilePanelCloseBehaviour from "../components/gis/GisMobilePanelCloseBehaviour.jsx";
 import "../msme-webgis.css";
 import "./MSMEGisPageShell.css";
+import "./MSMEGisDmpShell.css";
+import "./MSMEGisBrandTheme.css";
+import "./MSMEGisAoiPanel.css";
+import "./MSMEGisPanelHeader.css";
+import "./MSMEGisRailPanelShell.css";
+import "./MSMEGisMapMiniPanel.css";
+import "./MSMEGisBrandThemeLight.css";
+import "./MSMEGisMapToolbarPills.css";
 import { dismissGisBootLoader, installGisLoadingBridge } from "../gis/msme/gisLoadingBridge.js";
 
 const MSMEGISPage = () => {
@@ -19,7 +27,15 @@ const MSMEGISPage = () => {
   const { t, lang, setLang, languages } = useIn();
   const [searchQuery, setSearchQuery] = useState("");
   const [searchBusy, setSearchBusy] = useState(false);
-  const [theme, setTheme] = useState("black");
+  const [theme, setTheme] = useState(() => {
+    if (typeof window === "undefined") return "black";
+    try {
+      const saved = localStorage.getItem("msme-ui-theme");
+      return saved === "white" || saved === "black" ? saved : "black";
+    } catch {
+      return "black";
+    }
+  });
   const [assemblyMapOpen, setAssemblyMapOpen] = useState(false);
   const [mapBootComplete, setMapBootComplete] = useState(false);
   const [mapBootError, setMapBootError] = useState("");
@@ -305,19 +321,24 @@ const MSMEGISPage = () => {
   return (
     <div
       id="msmeGisRoot"
-      className={`msme-gis-page${mapBootComplete ? " msme-gis-map-ready" : " msme-gis-map-booting"}`}
+      className={`msme-gis-page nm-shell-dmp msme-gis-shell-dmp${
+        mapBootComplete ? " msme-gis-map-ready" : " msme-gis-map-booting"
+      }`}
     >
-      <HeaderGis
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        searchBusy={searchBusy}
-        onSearchSubmit={handleTopSearchSubmit}
-        theme={theme}
-        onToggleTheme={() => setTheme((v) => (v === "black" ? "white" : "black"))}
-        lang={lang}
-        setLang={setLang}
-        languages={languages}
-      />
+      <div className="nm-site-header">
+        <HeaderGis
+          dmpShell
+          searchQuery={searchQuery}
+          setSearchQuery={setSearchQuery}
+          searchBusy={searchBusy}
+          onSearchSubmit={handleTopSearchSubmit}
+          theme={theme}
+          onToggleTheme={() => setTheme((v) => (v === "black" ? "white" : "black"))}
+          lang={lang}
+          setLang={setLang}
+          languages={languages}
+        />
+      </div>
       <Sidebar t={t} onOpenAssemblyMap={() => setAssemblyMapOpen(true)} />
       <GisMobilePanelCloseBehaviour />
       <HaryanaMap t={t} onMapBootComplete={() => setMapBootComplete(true)} />

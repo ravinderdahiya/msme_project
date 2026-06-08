@@ -38,21 +38,21 @@
   flex-direction: column;
   align-items: center;
   text-align: center;
-  gap: 18px;
-  width: min(420px, calc(100vw - 48px));
-  padding: 44px 36px 40px;
-  border-radius: 24px;
+  gap: 10px;
+  width: min(300px, calc(100vw - 48px));
+  padding: 22px 24px 20px;
+  border-radius: 16px;
   border: 1px solid rgba(15, 35, 64, 0.08);
   background: #ffffff;
   color: #0a3d2e;
   box-shadow:
-    0 28px 64px rgba(15, 23, 42, 0.14),
-    0 10px 24px rgba(15, 23, 42, 0.08);
+    0 16px 36px rgba(15, 23, 42, 0.12),
+    0 6px 16px rgba(15, 23, 42, 0.06);
 }
 
 .gis-loading-title {
   margin: 0;
-  font-size: clamp(1.25rem, 2.6vw, 1.6rem);
+  font-size: clamp(1rem, 2.2vw, 1.15rem);
   font-weight: 800;
   letter-spacing: -0.02em;
   line-height: 1.2;
@@ -61,20 +61,20 @@
 
 .gis-loading-sub {
   margin: 0;
-  max-width: 34ch;
-  font-size: 0.95rem;
+  max-width: 28ch;
+  font-size: 0.82rem;
   font-weight: 500;
-  line-height: 1.45;
+  line-height: 1.35;
   color: #6b7280;
 }
 
 .gis-loading-spinner {
   box-sizing: border-box;
-  width: 76px;
-  height: 76px;
+  width: 48px;
+  height: 48px;
   flex-shrink: 0;
   border-radius: 50%;
-  border: 5px solid #e5e7eb;
+  border: 4px solid #e5e7eb;
   border-top-color: #0d5c45;
   animation: gisSpinnerSpin 0.85s linear infinite;
 }
@@ -315,18 +315,25 @@
   right: 50px;
   bottom: 258px;
   z-index: 96;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--primary-dark);
-  box-shadow: var(--shadow);
+  width: auto;
+  height: auto;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  color: #3c4043;
+  box-shadow:
+    0 1px 2px rgba(60, 64, 67, 0.12),
+    0 1px 3px rgba(60, 64, 67, 0.08);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(12px);
+  gap: 7px;
+  flex-shrink: 0;
+  backdrop-filter: none;
 }
 
 .closest-print-fab:hover {
@@ -334,8 +341,9 @@
 }
 
 .closest-print-fab svg {
-  width: 21px;
-  height: 21px;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
 }
 
 .buffer-map-fab {
@@ -343,19 +351,26 @@
   right: 46px;
   bottom: 283px;
   z-index: 96;
-  width: 50px;
-  height: 50px;
-  border-radius: 50%;
-  border: 1px solid var(--border);
-  background: rgba(255, 255, 255, 0.94);
-  color: var(--primary-dark);
-  box-shadow: var(--shadow);
+  width: auto;
+  height: auto;
+  min-height: 36px;
+  padding: 8px 14px;
+  border-radius: 999px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #ffffff;
+  color: #3c4043;
+  box-shadow:
+    0 1px 2px rgba(60, 64, 67, 0.12),
+    0 1px 3px rgba(60, 64, 67, 0.08);
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
+  flex-direction: row;
   align-items: center;
   justify-content: center;
-  backdrop-filter: blur(12px);
-  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+  gap: 7px;
+  flex-shrink: 0;
+  backdrop-filter: none;
+  transition: background 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
 }
 
 .buffer-map-fab:hover {
@@ -375,26 +390,13 @@
 
 .buffer-map-fab[data-map-label]::after {
   content: attr(data-map-label);
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 11px;
-  font-weight: 700;
+  position: static;
+  font-size: 14px;
+  font-weight: 500;
   line-height: 1;
-  color: var(--primary-dark);
+  color: #3c4043;
   white-space: nowrap;
   pointer-events: none;
-}
-
-/* Two-line map label — button stays circular */
-.buffer-map-fab.track-map-fab[data-map-label]::after,
-#trackMapFab[data-map-label]::after {
-  content: "Analysis by\A Shape";
-  white-space: pre;
-  text-align: center;
-  line-height: 1.15;
-  font-size: 10px;
 }
 
 .buffer-fab-wrap {
@@ -405,7 +407,7 @@
   z-index: 97;
   display: flex;
   align-items: center;
-  gap: 26px;
+  gap: 8px;
 }
 
 .buffer-fab-wrap .buffer-map-fab {
@@ -438,17 +440,12 @@
   bottom: auto;
 }
 
-.buffer-fab-wrap .track-map-fab {
+.buffer-fab-wrap .track-map-fab,
+.msme-shape-fab-host .track-map-fab {
   position: relative;
   top: auto;
   right: auto;
   order: 4;
-  border-color: #9ac3e8;
-  background: linear-gradient(180deg, #f6fbff 0%, #ebf4fe 100%);
-}
-
-.buffer-fab-wrap .track-map-fab:hover {
-  border-color: #4b8fcc;
 }
 
 .shape-fab-wrap {
@@ -475,8 +472,8 @@
 .shape-mini-panel {
   position: absolute;
   left: 0;
-  top: calc(100% + 10px);
-  width: min(270px, calc(100vw - 28px));
+  top: calc(100% + 8px);
+  width: min(260px, calc(100vw - 28px));
   border-radius: 14px;
   border: 1px solid #2f855a;
   overflow: hidden;
@@ -505,9 +502,9 @@
   position: absolute;
   left: 0;
   right: auto;
-  top: calc(100% + 10px);
+  top: calc(100% + 8px);
   bottom: auto;
-  width: min(340px, calc(100vw - 28px));
+  width: min(280px, calc(100vw - 28px));
   border-radius: 14px;
   border: 1px solid #1f6fb8;
   overflow: hidden;
@@ -538,9 +535,9 @@
 }
 
 .buffer-mini-panel__body {
-  padding: 10px 12px 12px;
+  padding: 8px 10px 10px;
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .buffer-mini-panel__label {

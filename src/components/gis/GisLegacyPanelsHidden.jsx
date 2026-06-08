@@ -6,7 +6,32 @@ import { useEffect, useMemo, useState } from "react";
 import { POI_LAYERS } from "../../gis/msme/serviceUrlsAndLayers.js";
 import { haversineMeters } from "../../gis/msme/geometryUtils.js";
 import { closeMeasurementPanel } from "../../gis/msme/measurementPanelShell.js";
+import GisPanelHeader from "./GisPanelHeader.jsx";
 import "../../css/MeasurementDistancePanel.css";
+
+const ANALYZE_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" focusable="false">
+    <path d="M4 18V6M4 18h16" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <path d="M7 14l3-4 3 2 4-6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const ROUTE_ICON = (
+  <svg viewBox="0 0 24 24" fill="none" focusable="false">
+    <path d="M5 19c2-4 4-6 7-6s5 2 7 6" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+    <circle cx="7" cy="7" r="2.2" stroke="currentColor" strokeWidth="1.8" />
+    <circle cx="17" cy="11" r="2.2" stroke="currentColor" strokeWidth="1.8" />
+  </svg>
+);
+
+function AoiAccTab({ id, panelId, label }) {
+  return (
+    <button type="button" id={id} data-mpanel={panelId} className="aoi-acc-tab">
+      <span className="aoi-acc-tab__label">{label}</span>
+      <span className="aoi-acc-tab__chev" aria-hidden />
+    </button>
+  );
+}
 
 const SPATIAL_DISTANCE_UNIT_OPTIONS = (
   <>
@@ -264,15 +289,12 @@ export default function GisLegacyPanelsHidden({ t }) {
         aria-hidden="true"
         aria-labelledby="spatialPanelTitle"
       >
-        <div className="sp-head">
-          <div className="ap-head-row">
-            <h2 id="spatialPanelTitle">{t("spatialTitle")}</h2>
-            <button type="button" className="ap-close" id="btnSpatialClose" title={t("closePanel")}>
-              &times;
-            </button>
-          </div>
-          {/* <p className="sp-intro">{t("spatialIntro")}</p> */}
-        </div>
+        <GisPanelHeader
+          titleId="spatialPanelTitle"
+          title={t("spatialTitle")}
+          closeId="btnSpatialClose"
+          closeTitle={t("closePanel")}
+        />
         <div className="sp-scroll">
           <div id="spatialToolbar" aria-label={t("spatialToolbarAria")}>
             <div className="st-tabs" role="tablist">
@@ -436,15 +458,12 @@ export default function GisLegacyPanelsHidden({ t }) {
         role="complementary"
         aria-labelledby="gisToolsPanelTitle"
       >
-        <div className="tp-head">
-          <div className="ap-head-row">
-            <h2 id="gisToolsPanelTitle">{t("layersTitle")}</h2>
-            <button type="button" className="ap-close" id="btnToolsPanelClose" title={t("closePanel")}>
-              &times;
-            </button>
-          </div>
-          {/* <p>{t("layersIntro")}</p> */}
-        </div>
+        <GisPanelHeader
+          titleId="gisToolsPanelTitle"
+          title={t("layersTitle")}
+          closeId="btnToolsPanelClose"
+          closeTitle={t("closePanel")}
+        />
         <div className="gis-tools-layer-search">
           <span className="gis-tools-layer-search-ico" aria-hidden>
             🔎
@@ -478,20 +497,16 @@ export default function GisLegacyPanelsHidden({ t }) {
         role="complementary"
         aria-labelledby="aoiModalTitle"
       >
-        <div className="ap-head">
-          <div className="ap-head-row">
-            <h2 id="aoiModalTitle">{t("aoiLandTitle")}</h2>
-            <button type="button" className="ap-close" id="btnNavClose" title={t("closePanel")}>
-              &times;
-            </button>
-          </div>
-        </div>
+        <GisPanelHeader
+          titleId="aoiModalTitle"
+          title={t("aoiLandTitle")}
+          closeId="btnNavClose"
+          closeTitle={t("closePanel")}
+        />
 
         <div className="ap-scroll">
-          <div className="modal-tabs" role="tablist">
-            <button type="button" id="tabAoi" data-mpanel="mpAoi">
-              {t("tabAoi")}
-            </button>
+          <div className="modal-tabs aoi-acc-stack" role="tablist">
+            <AoiAccTab id="tabAoi" panelId="mpAoi" label={t("tabAoi")} />
 
             <div id="mpAoi" className="modal-panel inline-tab-panel">
               <section className="aoi-card">
@@ -528,13 +543,19 @@ export default function GisLegacyPanelsHidden({ t }) {
                 </div>
 
                 <div className="actions">
-                  <button type="button" className="btn-go" id="btnNavApply">
+                  <button type="button" className="btn-go aoi-btn-analyze" id="btnNavApply">
+                    <span className="aoi-btn-icon" aria-hidden>
+                      {ANALYZE_ICON}
+                    </span>
                     Analyze
                   </button>
                   <button type="button" className="btn-clear" id="btnNavClear">
                     {t("clear")}
                   </button>
-                  <button type="button" className="btn-clear btn-route" id="btnRouteFromCurrentToAoi">
+                  <button type="button" className="btn-route" id="btnRouteFromCurrentToAoi">
+                    <span className="aoi-btn-icon" aria-hidden>
+                      {ROUTE_ICON}
+                    </span>
                     Plan Route
                   </button>
                 </div>
@@ -554,9 +575,11 @@ export default function GisLegacyPanelsHidden({ t }) {
               </section>
             </div>
 
-            <button type="button" id="tabParliamentary" data-mpanel="mpParliamentary">
-              {t("tabParliamentaryBoundary")}
-            </button>
+            <AoiAccTab
+              id="tabParliamentary"
+              panelId="mpParliamentary"
+              label={t("tabParliamentaryBoundary")}
+            />
             <div id="mpParliamentary" className="modal-panel inline-tab-panel">
               <section className="aoi-card">
                 <h3 className="aoi-card-title">{t("tabParliamentaryBoundary")}</h3>
@@ -588,9 +611,11 @@ export default function GisLegacyPanelsHidden({ t }) {
               </section>
             </div>
 
-            <button type="button" id="tabAssemblyBoundary" data-mpanel="mpAssemblyBoundary">
-              Assembly Boundary
-            </button>
+            <AoiAccTab
+              id="tabAssemblyBoundary"
+              panelId="mpAssemblyBoundary"
+              label="Assembly Boundary"
+            />
             <div id="mpAssemblyBoundary" className="modal-panel inline-tab-panel">
               <section className="aoi-card">
                 <h3 className="aoi-card-title">Assembly Boundary</h3>
@@ -611,9 +636,7 @@ export default function GisLegacyPanelsHidden({ t }) {
               </section>
             </div>
 
-            <button type="button" id="tabCad" data-mpanel="mpCad">
-              {t("tabCad")}
-            </button>
+            <AoiAccTab id="tabCad" panelId="mpCad" label={t("tabCad")} />
             <div id="mpCad" className="modal-panel inline-tab-panel">
               <section className="aoi-card">
                 <h3 className="aoi-card-title">{t("aoiSectionCad")}</h3>
@@ -680,9 +703,7 @@ export default function GisLegacyPanelsHidden({ t }) {
               </section>
             </div>
 
-            <button type="button" id="tabHsvp" data-mpanel="mpHsvp">
-              {t("tabHsvp")}
-            </button>
+            <AoiAccTab id="tabHsvp" panelId="mpHsvp" label={t("tabHsvp")} />
             <div id="mpHsvp" className="modal-panel inline-tab-panel">
               <section className="aoi-card">
                 <h3 className="aoi-card-title">{t("hsvpTitle")}</h3>
@@ -721,15 +742,13 @@ export default function GisLegacyPanelsHidden({ t }) {
         role="complementary"
         aria-labelledby="selectToolsTitle"
       >
-        <div className="stools-head">
-          <div className="ap-head-row">
-            <h2 id="selectToolsTitle">{t("selectToolsLabel")}</h2>
-            <button type="button" className="ap-close" id="btnSelectToolsClose" title={t("closePanel")}>
-              &times;
-            </button>
-          </div>
-          <p className="stools-intro">{t("selectToolsIntro")}</p>
-        </div>
+        <GisPanelHeader
+          titleId="selectToolsTitle"
+          title={t("selectToolsLabel")}
+          closeId="btnSelectToolsClose"
+          closeTitle={t("closePanel")}
+        />
+        <p className="msme-gis-panel-intro stools-intro">{t("selectToolsIntro")}</p>
 
         <div className="stools-body" role="toolbar" aria-label={t("selectToolsLabel")}>
           <div className="stools-grid">
@@ -860,21 +879,14 @@ export default function GisLegacyPanelsHidden({ t }) {
         role="complementary"
         aria-labelledby="measurementPanelTitle"
       >
-        <div className="sp-head">
-          <div className="ap-head-row">
-            <h2 id="measurementPanelTitle">{t("measurementPanelTitle")}</h2>
-            <button
-              type="button"
-              className="ap-close"
-              id="btnMeasurementClose"
-              title={t("closePanel")}
-              onClick={closeMeasurementPanel}
-            >
-              &times;
-            </button>
-          </div>
-          <p className="sp-intro">{t("measurementPanelIntro")}</p>
-        </div>
+        <GisPanelHeader
+          titleId="measurementPanelTitle"
+          title={t("measurementPanelTitle")}
+          closeId="btnMeasurementClose"
+          closeTitle={t("closePanel")}
+          onClose={closeMeasurementPanel}
+        />
+        <p className="msme-gis-panel-intro sp-intro">{t("measurementPanelIntro")}</p>
         <div className="sp-scroll">
           <div id="measurementToolbar" aria-label={t("measurementPanelTitle")}>
             <section className="aoi-card">

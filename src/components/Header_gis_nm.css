@@ -2,14 +2,111 @@
  * GIS #appHeader — search button accent (layout / gaps live in MSMEGisPageShell.css).
  */
 
+/* Search + map toolbar row — side by side, no overlap */
+#appHeader.nmhdr-gis .nmhdr-center {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  column-gap: 14px;
+  row-gap: 0;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: visible;
+}
+
+#appHeader.nmhdr-gis .nmhdr-search {
+  flex: none;
+  flex-shrink: 0;
+  max-width: min(440px, 100%);
+  min-height: 40px;
+  height: 40px;
+  padding: 0 4px 0 16px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--msme-cyan, #00e5ff);
+  box-shadow:
+    0 1px 2px rgba(60, 64, 67, 0.14),
+    0 0 0 1px rgba(0, 229, 255, 0.2),
+    0 0 12px rgba(0, 229, 255, 0.18);
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+#appHeader.nmhdr-gis .nmhdr-search:hover,
+#appHeader.nmhdr-gis .nmhdr-search:focus-within {
+  border-color: var(--msme-cyan, #00e5ff);
+  box-shadow:
+    0 1px 2px rgba(60, 64, 67, 0.14),
+    0 0 0 1px rgba(0, 229, 255, 0.28),
+    0 0 16px rgba(0, 229, 255, 0.28);
+}
+
+#appHeader.nmhdr-gis .nmhdr-search input {
+  font-size: 0.875rem;
+  padding: 0 6px 0 0;
+}
+
+#appHeader.nmhdr-gis .nmhdr-search input::placeholder {
+  color: #70757a;
+}
+
 #appHeader.nmhdr-gis .nmhdr-search-btn {
-  background: linear-gradient(180deg, #2a6fea 0%, #1d61d1 100%);
-  box-shadow: 0 2px 10px rgba(29, 97, 209, 0.35);
+  width: 34px;
+  height: 34px;
+  min-width: 34px;
+  min-height: 34px;
+  color: var(--msme-cyan, #00e5ff);
+  background: transparent;
+  box-shadow: none;
+  transition:
+    color 0.2s ease,
+    background 0.2s ease;
+}
+
+#appHeader.nmhdr-gis .nmhdr-search-btn:hover:not(:disabled) {
+  color: var(--msme-cyan, #00e5ff);
+  background: var(--msme-cyan-dim, rgba(0, 229, 255, 0.14));
 }
 
 #appHeader.nmhdr-gis .nmhdr-search-btn:disabled {
-  opacity: 0.65;
+  opacity: 0.5;
   cursor: wait;
+}
+
+[data-theme='black'] #appHeader.nmhdr-gis .nmhdr-search {
+  background: rgba(26, 35, 50, 0.88);
+  border-color: var(--msme-cyan, #00e5ff);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(0, 229, 255, 0.22),
+    0 0 14px rgba(0, 229, 255, 0.2);
+}
+
+[data-theme='black'] #appHeader.nmhdr-gis .nmhdr-search input {
+  color: #e8edf5;
+}
+
+[data-theme='black'] #appHeader.nmhdr-gis .nmhdr-search input::placeholder {
+  color: rgba(232, 237, 245, 0.45);
+}
+
+[data-theme='black'] #appHeader.nmhdr-gis .nmhdr-search:hover,
+[data-theme='black'] #appHeader.nmhdr-gis .nmhdr-search:focus-within {
+  border-color: var(--msme-cyan, #00e5ff);
+  box-shadow:
+    0 1px 3px rgba(0, 0, 0, 0.28),
+    0 0 0 1px rgba(0, 229, 255, 0.32),
+    0 0 18px rgba(0, 229, 255, 0.28);
+}
+
+[data-theme='black'] #appHeader.nmhdr-gis .nmhdr-search-btn {
+  color: var(--msme-cyan, #00e5ff);
+}
+
+[data-theme='black'] #appHeader.nmhdr-gis .nmhdr-search-btn:hover:not(:disabled) {
+  color: var(--msme-cyan, #00e5ff);
+  background: var(--msme-cyan-dim, rgba(0, 229, 255, 0.14));
 }
 
 /* MSME GIS header: HEPC logo (static; sizing overrides NewMainMapHeader.css). */
