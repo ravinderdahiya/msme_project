@@ -1,10 +1,10 @@
 import React from "react";
-import { Info, MapPin } from "lucide-react";
-import DeviceInfo from "./DeviceInfo";
+import { Info } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import Table from "./Table";
+import { parseUserAgent } from "../../utils/userAgent";
 
-export default function SessionTable({ sessions, onViewMap, onSessionInfo }) {
+export default function SessionTable({ sessions, onSessionInfo }) {
     return (
         <Table
             columns={["Login Time", "Logout Time", "IP Address", "Device / Browser", "Location", "Status", "Actions"]}
@@ -16,19 +16,15 @@ export default function SessionTable({ sessions, onViewMap, onSessionInfo }) {
                     <td className="px-5 py-4 text-sm font-medium text-slate-700">{session.loginAt}</td>
                     <td className="px-5 py-4 text-sm text-slate-600">{session.logoutAt || "-"}</td>
                     <td className="px-5 py-4 text-sm text-slate-700">{session.ipAddress}</td>
-                    <td className="px-5 py-4 text-sm text-slate-600">
-                        <DeviceInfo browser={session.browser} version={session.browserVersion} platform={session.platform} />
+                    <td className="px-5 py-4 text-sm text-slate-600" title={session.userAgent || ""}>
+                        {parseUserAgent(session.userAgent)}
                     </td>
                     <td className="px-5 py-4 text-sm text-slate-700">
-                        <strong className="block text-slate-900">{session.latitude}, {session.longitude}</strong>
-                        <span>{session.location}</span>
+                        <LocationCell session={session} />
                     </td>
                     <td className="px-5 py-4"><StatusBadge status={session.isActive ? "Active" : "Logged Out"} /></td>
                     <td className="px-5 py-4">
                         <div className="flex items-center gap-2">
-                            <button type="button" className="grid h-9 w-9 place-items-center rounded-xl border border-blue-200 text-blue-600 transition hover:bg-blue-600 hover:text-white" title="View Location on Map" onClick={() => onViewMap(session)}>
-                                <MapPin size={17} />
-                            </button>
                             <button type="button" className="grid h-9 w-9 place-items-center rounded-xl border border-slate-200 text-slate-600 transition hover:bg-slate-900 hover:text-white" title="Session Info" onClick={() => onSessionInfo(session)}>
                                 <Info size={17} />
                             </button>
@@ -37,5 +33,26 @@ export default function SessionTable({ sessions, onViewMap, onSessionInfo }) {
                 </tr>
             ))}
         </Table>
+    );
+}
+
+function LocationCell({ session }) {
+    const latitude = Number(session?.latitude);
+    const longitude = Number(session?.longitude);
+    const hasLocation = Number.isFinite(latitude) && Number.isFinite(longitude) && latitude !== 0 && longitude !== 0;
+
+    if (!hasLocation) {
+        return (
+            <span className="inline-flex rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-500">
+                Location unavailable
+            </span>
+        );
+    }
+
+    return (
+        <div>
+            <strong className="block text-slate-900">{session.locationName || session.location || "Location captured"}</strong>
+            <span className="block text-xs font-medium text-slate-500">{latitude.toFixed(4)}, {longitude.toFixed(4)}</span>
+        </div>
     );
 }

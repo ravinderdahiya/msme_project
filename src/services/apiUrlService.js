@@ -5,6 +5,20 @@ export const getApiUrls = async () => {
   return res.data?.data || []
 }
 
+export const getApiUrlsPaginated = async ({ page = 1, limit = 10, search = "", category = "All", status = "All" } = {}) => {
+  const res = await http.get("/api-url", {
+    params: {
+      page,
+      limit,
+      search,
+      category,
+      status,
+    },
+  })
+
+  return res.data || {}
+}
+
 export const createApiUrl = async (payload) => {
   const res = await http.post("/api-url", payload)
   return res.data?.data
