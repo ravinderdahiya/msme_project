@@ -551,9 +551,7 @@
 }
 
 #msmeGisRoot.msme-gis-page.nm-shell-dmp #coordBar {
-  bottom: calc(var(--nm-dmp-footer-h) + 12px);
-  right: 12px;
-  left: auto;
+  display: none !important;
 }
 
 #msmeGisRoot.msme-gis-page.nm-shell-dmp #legendFab.legend-map-fab {

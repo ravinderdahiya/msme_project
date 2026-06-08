@@ -24,7 +24,7 @@ export default function MapStage({
   onOpenNearbyPlaces,
   nearbyPlacesOpen,
 }) {
-  const [basemapMode, setBasemapMode] = useState(0);
+  const [basemapMode, setBasemapMode] = useState(2);
   const [baseMapPopoverOpen, setBaseMapPopoverOpen] = useState(false);
   const [scale, setScale] = useState(1);
   const [toast, setToast] = useState(null);

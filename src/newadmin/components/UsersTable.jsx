@@ -1,5 +1,5 @@
 import React from "react";
-import { Eye, MapPin, Trash2 } from "lucide-react";
+import { Activity, Eye, Trash2 } from "lucide-react";
 import StatusBadge from "./StatusBadge";
 import Table from "./Table";
 
@@ -40,8 +40,8 @@ export default function UsersTable({ users, onDetails, onLocation, onDelete, foo
                             <button type="button" title="View Details" onClick={() => onDetails(user)} className="grid h-9 w-9 place-items-center rounded-xl border border-blue-100 bg-blue-50 text-blue-600 transition hover:bg-blue-600 hover:text-white">
                                 <Eye size={16} />
                             </button>
-                            <button type="button" title="View Location" onClick={() => onLocation(user)} className="grid h-9 w-9 place-items-center rounded-xl border border-violet-100 bg-violet-50 text-violet-600 transition hover:bg-violet-600 hover:text-white">
-                                <MapPin size={16} />
+                            <button type="button" title="View Sessions / Activity" onClick={() => onLocation(user)} className="grid h-9 w-9 place-items-center rounded-xl border border-violet-100 bg-violet-50 text-violet-600 transition hover:bg-violet-600 hover:text-white">
+                                <Activity size={16} />
                             </button>
                             <button type="button" title="Delete User" onClick={() => onDelete(user)} className="grid h-9 w-9 place-items-center rounded-xl border border-rose-100 bg-rose-50 text-rose-600 transition hover:bg-rose-600 hover:text-white">
                                 <Trash2 size={16} />

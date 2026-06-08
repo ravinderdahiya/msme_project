@@ -9,91 +9,51 @@ import CommunitySummaryPanel from './CommunitySummaryPanel.jsx'
 import GisLegacyPanelsHidden from './gis/GisLegacyPanelsHidden.jsx'
 
 import {
-
+  bindAoiPanelCloseOnPlanRoute,
   bindMeasurementPanelExclusivity,
-
   toggleMeasurementPanel,
-
 } from '../gis/msme/measurementPanelShell.js'
 
-
-
 export default function Sidebar({ t, onOpenAssemblyMap }) {
-
   useEffect(function () {
-
+    bindAoiPanelCloseOnPlanRoute()
     bindMeasurementPanelExclusivity()
-
     const btn = document.getElementById('btnMeasurementTool')
-
     if (!btn) return
-
     function onClick() {
-
       toggleMeasurementPanel()
-
     }
-
     btn.addEventListener('click', onClick)
-
     return function () {
-
       btn.removeEventListener('click', onClick)
-
     }
-
   }, [])
 
   function openClosestPanelAndStart() {
-
     var spatialPanel = document.getElementById("spatialPanel");
-
     var openSpatialBtn = document.getElementById("btnOpenSpatial");
-
     if (spatialPanel && spatialPanel.classList.contains("collapsed") && openSpatialBtn) {
-
       openSpatialBtn.click();
-
     }
-
-
 
     var closestTab = document.querySelector('#spatialToolbar .st-tabs .tab[data-panel="pC"]');
-
     if (closestTab && typeof closestTab.click === "function") {
-
       closestTab.click();
-
     }
-
-
 
     if (window.msmeGisStartClosestPointSelection) {
-
       window.msmeGisStartClosestPointSelection();
-
     }
-
   }
-
-
 
   function openAssemblyMapInline() {
-
     if (typeof onOpenAssemblyMap === "function") {
-
       onOpenAssemblyMap();
-
     }
-
   }
 
-
-
   return (
-
     <>
-
       <aside id="rail" className="nm-sidebar nm-sidebar-dmp rail-nm" aria-label="Map tools">
         <nav className="nm-sidebar-rail" aria-label="Map tools">
           <ul className="nm-rail-list">
@@ -182,17 +142,9 @@ export default function Sidebar({ t, onOpenAssemblyMap }) {
         <GisLegacyPanelsHidden t={t} />
       </aside>
 
-
-
       {/* <ResultsFlyout /> */}
-
       <CommunitySummaryPanel />
-
       <LandLocationReport />
-
     </>
-
   )
-
 }
-

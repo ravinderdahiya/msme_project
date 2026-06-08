@@ -7,7 +7,29 @@ import { toDevArcGisProxyUrl, toDevInvesthryProxyUrl } from "./resolveMapService
 let arcgisRequestsInFlight = 0
 let arcgisActiveNetworkRequests = 0
 const arcgisPendingNetworkRequests = []
-const MAX_PARALLEL_ARCGIS_REQUESTS = 6
+const MAX_PARALLEL_ARCGIS_REQUESTS = (() => {
+  const raw = Number(import.meta.env.VITE_GIS_MAX_PARALLEL_REQUESTS)
+  if (!Number.isFinite(raw)) return 14
+  return Math.max(4, Math.min(20, Math.round(raw)))
+})()
+const DEFAULT_ARCGIS_MAX_ATTEMPTS = (() => {
+  const raw = Number(import.meta.env.VITE_GIS_MAX_ATTEMPTS)
+  if (!Number.isFinite(raw)) return 2
+  return Math.max(1, Math.min(4, Math.round(raw)))
+})()
+const DEFAULT_ARCGIS_TIMEOUT_MS = (() => {
+  const raw = Number(import.meta.env.VITE_GIS_REQUEST_TIMEOUT_MS)
+  if (!Number.isFinite(raw)) return 18000
+  return Math.max(8000, Math.min(120000, Math.round(raw)))
+})()
+const REQUEST_RESPONSE_CACHE_TTL_MS = (() => {
+  const raw = Number(import.meta.env.VITE_GIS_QUERY_CACHE_TTL_MS)
+  if (!Number.isFinite(raw)) return 8000
+  return Math.max(0, Math.min(15000, Math.round(raw)))
+})()
+const recentRequestCache = new Map()
+const inFlightRequestMap = new Map()
+const MAX_RECENT_CACHE_ENTRIES = 250
 
 function runWithArcgisRequestSlot(task) {
   return new Promise((resolve, reject) => {
@@ -61,6 +83,52 @@ function endGisLoading(url) {
 function delay(ms) {
   return new Promise((resolve) => {
     globalThis.setTimeout(resolve, ms)
+  })
+}
+
+function stableValueForCache(value) {
+  if (Array.isArray(value)) return value.map(stableValueForCache)
+  if (value && typeof value === "object") {
+    const out = {}
+    Object.keys(value)
+      .sort()
+      .forEach((key) => {
+        out[key] = stableValueForCache(value[key])
+      })
+    return out
+  }
+  return value
+}
+
+function buildRequestCacheKey(url, options) {
+  const o = options || {}
+  return JSON.stringify({
+    url: String(url || ""),
+    responseType: String(o.responseType || ""),
+    query: stableValueForCache(o.query || {}),
+  })
+}
+
+function readCachedRecentResponse(cacheKey) {
+  if (!REQUEST_RESPONSE_CACHE_TTL_MS) return null
+  const cached = recentRequestCache.get(cacheKey)
+  if (!cached) return null
+  if (Date.now() > cached.expiresAt) {
+    recentRequestCache.delete(cacheKey)
+    return null
+  }
+  return cached.response
+}
+
+function cacheRecentResponse(cacheKey, response) {
+  if (!REQUEST_RESPONSE_CACHE_TTL_MS) return
+  if (recentRequestCache.size >= MAX_RECENT_CACHE_ENTRIES) {
+    const oldestKey = recentRequestCache.keys().next().value
+    if (oldestKey) recentRequestCache.delete(oldestKey)
+  }
+  recentRequestCache.set(cacheKey, {
+    response,
+    expiresAt: Date.now() + REQUEST_RESPONSE_CACHE_TTL_MS,
   })
 }
 
@@ -131,15 +199,20 @@ function mapQueryPublicFallbackUrl(requestUrl) {
 }
 
 export function requestArcGisJson(url, options) {
-  const maxAttempts = options && options.maxAttempts ? options.maxAttempts : 4
-  const delays = [500, 1500, 3000]
+  const maxAttempts = options && options.maxAttempts ? options.maxAttempts : DEFAULT_ARCGIS_MAX_ATTEMPTS
+  const delays = [250, 700, 1400, 2400, 3200]
+  const cacheKey = buildRequestCacheKey(url, options)
+  const cached = readCachedRecentResponse(cacheKey)
+  if (cached) return Promise.resolve(cached)
+  const inFlight = inFlightRequestMap.get(cacheKey)
+  if (inFlight) return inFlight
 
   function run(requestUrl, attempt, usedFallback) {
     const token = getToken()
     const requestOptions = {
       ...(options || {}),
       authMode: 'anonymous',
-      timeout: (options && options.timeout) || 90000,
+      timeout: (options && options.timeout) || DEFAULT_ARCGIS_TIMEOUT_MS,
       headers: {
         ...((options && options.headers) || {}),
         ...(token && String(requestUrl).includes("/mapserver/service/")
@@ -186,9 +259,17 @@ export function requestArcGisJson(url, options) {
   }
 
   beginGisLoading(url)
-  return run(url, 0, false).finally(() => {
-    endGisLoading(url)
-  })
+  const requestPromise = run(url, 0, false)
+    .then((response) => {
+      cacheRecentResponse(cacheKey, response)
+      return response
+    })
+    .finally(() => {
+      inFlightRequestMap.delete(cacheKey)
+      endGisLoading(url)
+    })
+  inFlightRequestMap.set(cacheKey, requestPromise)
+  return requestPromise
 }
 
 /**
@@ -197,7 +278,7 @@ export function requestArcGisJson(url, options) {
 export function queryLayer(url, layerId, query) {
   var q = query || {}
   var wantsGeometry = q.returnGeometry !== false || q.returnExtentOnly === true
-  var base = { f: 'json', returnTrueCurves: false }
+  var base = { f: 'json', returnTrueCurves: false, cacheHint: true }
   if (wantsGeometry) base.outSR = 32643
   return requestArcGisJson(url + '/' + layerId + '/query', {
     query: Object.assign(base, q),

@@ -5,21 +5,13 @@ import PrintScreenButton from './PrintScreenButton.jsx'
 import BasemapButton from './BasemapButton.jsx'
 import HomeButton from './HomeButton.jsx'
 
+
+
+import ShapeSketchButton from './ShapeSketchButton.jsx'
+
 function mapViewLooksReady() {
   const view = typeof window !== 'undefined' ? window.__msmeGisMapView : null
   return !!(view && view.destroyed === false)
-}
-
-function mapToolbarControlsAreDocked() {
-  if (typeof document === 'undefined') return false
-  const host = document.querySelector('#appHeader .msme-gis-header-toolbar')
-  if (!host) return false
-  const bufferWrap = host.querySelector('.buffer-fab-wrap')
-  const shapeFab = host.querySelector('#trackMapFab')
-  const homeFab = host.querySelector('.home-map-fab')
-  const printFab = host.querySelector('.closest-print-fab')
-  const basemapHost = host.querySelector('.msme-basemap-fab-host')
-  return !!(bufferWrap && shapeFab && homeFab && printFab && basemapHost)
 }
 
 function showGisLoadingOverlay() {
@@ -46,8 +38,11 @@ export default function HaryanaMap({ t, onMapBootComplete }) {
 
     function notifyMapBootComplete() {
       if (mapBootCompleteFired.current) return
-      if (!el.classList.contains('is-hidden') || !mapViewLooksReady()) return
-      if (!mapToolbarControlsAreDocked()) return
+      if (!mapViewLooksReady()) return
+      if (!el.classList.contains('is-hidden')) {
+        el.classList.add('is-hidden')
+        el.setAttribute('aria-hidden', 'true')
+      }
       mapBootCompleteFired.current = true
       gisBootLoaderDismissed.current = true
       if (typeof onMapBootComplete === 'function') {
@@ -126,8 +121,6 @@ export default function HaryanaMap({ t, onMapBootComplete }) {
       <div id="legendPanel" aria-label={t('legendPanelLabel')}>
         <div id="legendInner"></div>
       </div>
-
-      <div id="coordBar">{t('coordPlaceholder')}</div>
 
       {/* <LocationButton t={t} /> */}
       <BufferButton t={t} />

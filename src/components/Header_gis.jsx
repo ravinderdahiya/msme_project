@@ -194,6 +194,7 @@ export default function HeaderGis({
       }
       const next = Math.max(70, Math.ceil(el.getBoundingClientRect().height));
       document.documentElement.style.setProperty("--header-h", `${next}px`);
+
     };
 
     syncHeaderHeight();

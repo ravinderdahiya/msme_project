@@ -38,9 +38,9 @@ export const LAYER_GROUPS = [
     id: "transport",
     label: "Transport",
     sublayers: [
-      { id: "bus", label: "Bus Stands", defaultOn: true },
+      { id: "bus", label: "Bus Stands", defaultOn: false },
       { id: "railway", label: "Railway Stations", defaultOn: true },
-      { id: "roads", label: "Roads", defaultOn: true },
+      { id: "roads", label: "Roads", defaultOn: false },
     ],
   },
   {
@@ -55,6 +55,7 @@ export const LAYER_GROUPS = [
     id: "land-use",
     label: "Land use",
     sublayers: [
+      { id: "imagery", label: "Imagery", defaultOn: true },
       { id: "industrial", label: "Industrial Areas", defaultOn: false },
       { id: "other", label: "Other Layers", defaultOn: false },
     ],

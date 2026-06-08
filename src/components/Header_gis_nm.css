@@ -115,26 +115,102 @@
   border-color: rgba(15, 35, 64, 0.1) !important;
 }
 
-/* HEPC logo: slightly larger than default NewMainMap header (52×52 / 36px img) */
+/* HEPC: wider only — height locked to drawer row (44px) so header does not grow */
+#appHeader.nmhdr-gis .nmhdr-brand {
+  align-items: center;
+  flex-shrink: 0;
+}
+
 #appHeader.nmhdr-gis .nmhdr-flip {
-  width: 56px;
-  height: 56px;
+  width: 86px;
+  height: 40px;
+  flex-shrink: 0;
+}
+
+#appHeader.nmhdr-gis .nmhdr-flip-face {
+  border-radius: 999px;
 }
 
 #appHeader.nmhdr-gis .nmhdr-flip-face img {
+  width: 56px;
+  height: 32px;
+  max-height: 32px;
+  object-fit: contain;
+  border-radius: 0;
+  transform: scaleX(1.42);
+  transform-origin: center center;
+}
+
+#msmeGisRoot.msme-gis-page #appHeader.nmhdr.nmhdr-gis {
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px 14px;
+}
+
+/* Compact GIS header row — slightly shorter than default nmhdr */
+#appHeader.nmhdr-gis .nmhdr-brand {
+  gap: 10px;
+}
+
+#appHeader.nmhdr-gis .nmhdr-drawer-btn {
   width: 40px;
   height: 40px;
 }
 
+#appHeader.nmhdr-gis .nmhdr-titles {
+  gap: 0;
+}
+
+#appHeader.nmhdr-gis .nmhdr-title {
+  line-height: 1.15;
+}
+
+#appHeader.nmhdr-gis .nmhdr-subtitle {
+  line-height: 1.2;
+  font-size: 0.76rem;
+}
+
+#appHeader.nmhdr-gis .nmhdr-search {
+  padding: 2px 2px 2px 12px;
+}
+
+#appHeader.nmhdr-gis .nmhdr-search input {
+  padding: 6px 6px 6px 0;
+  font-size: 0.88rem;
+}
+
+#appHeader.nmhdr-gis .nmhdr-search-btn {
+  padding: 7px 18px;
+  font-size: 0.86rem;
+}
+
+#appHeader.nmhdr-gis .nmhdr-theme-btn,
+#appHeader.nmhdr-gis .nmhdr-search-toggle {
+  width: 38px;
+  height: 38px;
+}
+
+#appHeader.nmhdr-gis .nmhdr-lang {
+  padding: 6px 10px;
+  font-size: 0.82rem;
+}
+
+#appHeader.nmhdr-gis .nmhdr-login {
+  padding: 7px 12px;
+  font-size: 0.86rem;
+}
+
 @media (max-width: 520px) {
   #appHeader.nmhdr-gis .nmhdr-flip {
-    width: 50px;
-    height: 50px;
+    width: 68px;
+    height: 40px;
   }
 
   #appHeader.nmhdr-gis .nmhdr-flip-face img {
-    width: 36px;
-    height: 36px;
+    width: 32px;
+    height: 32px;
+    max-height: 32px;
+    transform: scaleX(1.35);
   }
 }
 

@@ -341,6 +341,12 @@ function hasCategoryData(row) {
   return false
 }
 
+function getRowDisplayCount(row, isClosestMode) {
+  if (isClosestMode) return getClosestRowCount(row)
+  var count = Number(row && row.count)
+  return Number.isFinite(count) ? count : 0
+}
+
 function getItemName(item, fallbackIndex) {
   if (!item) return `Location ${fallbackIndex + 1}`
 
@@ -573,9 +579,11 @@ export default function CommunitySummaryPanel() {
   const [pinnedTehsilMetrics, setPinnedTehsilMetrics] = useState(null)
   const [assemblyMetricsLoading, setAssemblyMetricsLoading] = useState(false)
   const [assemblyMetricsError, setAssemblyMetricsError] = useState('')
+  const [placeDetailsLoading, setPlaceDetailsLoading] = useState(false)
   const [resolvedLookupPoint, setResolvedLookupPoint] = useState(null)
   const placeLookupCacheRef = useRef({})
   const assemblyLookupCacheRef = useRef({})
+  const assemblyTehsilFetchKeyRef = useRef('')
   const autoAssemblySelectionRef = useRef('')
   const panelRef = useRef(null)
 
@@ -769,10 +777,10 @@ export default function CommunitySummaryPanel() {
 
   useEffect(() => {
     var cancelled = false
-    placeLookupCacheRef.current = {}
 
     if (placeDetailsFromSnapshot) {
       setRuntimePlaceDetails(null)
+      setPlaceDetailsLoading(false)
       return () => {
         cancelled = true
       }
@@ -780,6 +788,7 @@ export default function CommunitySummaryPanel() {
 
     if (!resolvedLookupPoint) {
       setRuntimePlaceDetails(null)
+      setPlaceDetailsLoading(false)
       return () => {
         cancelled = true
       }
@@ -788,13 +797,16 @@ export default function CommunitySummaryPanel() {
     var cacheKey = `${resolvedLookupPoint.lat.toFixed(6)},${resolvedLookupPoint.lon.toFixed(6)}`
     if (placeLookupCacheRef.current[cacheKey]) {
       setRuntimePlaceDetails(placeLookupCacheRef.current[cacheKey])
+      setPlaceDetailsLoading(false)
       return () => {
         cancelled = true
       }
     }
 
+    setPlaceDetailsLoading(true)
     queryPlaceDetailsByPointWgs84(resolvedLookupPoint).then((details) => {
       if (cancelled) return
+      setPlaceDetailsLoading(false)
       if (!details) {
         setRuntimePlaceDetails(null)
         return
@@ -816,8 +828,15 @@ export default function CommunitySummaryPanel() {
     if (!district || !tehsil) {
       setPinnedTehsilMetrics(null)
       setAssemblyMetricsError('')
+      assemblyTehsilFetchKeyRef.current = ''
       return () => {}
     }
+
+    var tehsilFetchKey = `${normalizePlaceLabel(district)}|${normalizePlaceLabel(tehsil)}`
+    if (assemblyTehsilFetchKeyRef.current === tehsilFetchKey && pinnedTehsilMetrics) {
+      return () => {}
+    }
+    assemblyTehsilFetchKeyRef.current = tehsilFetchKey
 
     setAssemblyMetricsLoading(true)
     setAssemblyMetricsError('')
@@ -908,8 +927,18 @@ export default function CommunitySummaryPanel() {
       setRuntimeAssemblyDetails((prev) => mergeAssemblyDetails(prev, merged))
     }
 
-    var loadPromise =
+    var tehsilFetchKey =
       districtHint && tehsilHint
+        ? `${normalizePlaceLabel(districtHint)}|${normalizePlaceLabel(tehsilHint)}`
+        : ''
+    var tehsilFetchHandledElsewhere =
+      tehsilFetchKey &&
+      assemblyTehsilFetchKeyRef.current === tehsilFetchKey &&
+      (assemblyMetricsLoading || pinnedTehsilMetrics)
+
+    var loadPromise = tehsilFetchHandledElsewhere
+      ? Promise.resolve(pinnedTehsilMetrics || runtimeAssemblyDetails)
+      : districtHint && tehsilHint
         ? fetchTehsilAssemblyMetrics(districtHint, tehsilHint).then((metrics) => {
             if (metrics && hasAssemblyMetricDetailsFromRow(metrics)) {
               if (hasAssemblyAreaBreakupFromRow(metrics)) return metrics
@@ -937,7 +966,7 @@ export default function CommunitySummaryPanel() {
             },
           )
         }
-        if (districtHint && tehsilHint) {
+        if (districtHint && tehsilHint && !tehsilFetchHandledElsewhere) {
           return fetchTehsilAssemblyMetrics(districtHint, tehsilHint).then((metrics) => {
             if (metrics && hasAssemblyMetricDetailsFromRow(metrics)) applyAssemblyDetails(metrics)
           })
@@ -956,7 +985,6 @@ export default function CommunitySummaryPanel() {
 
     return () => {
       cancelled = true
-      setAssemblyMetricsLoading(false)
     }
   }, [
     assemblyDetailsFromSnapshot,
@@ -965,6 +993,9 @@ export default function CommunitySummaryPanel() {
     placeDetails && placeDetails.tehsil,
     displaySummary,
     latestReport,
+    pinnedTehsilMetrics,
+    assemblyMetricsLoading,
+    runtimeAssemblyDetails,
   ])
 
   useEffect(() => {
@@ -986,14 +1017,18 @@ export default function CommunitySummaryPanel() {
   const placeHeaderLines = useMemo(() => {
     if (!placeCardShouldRender) return null
     const formatField = (field) => {
-      const value = (placeDetails && placeDetails[field.key]) || '-'
-      return `${field.label}: ${value}`
+      const value = placeDetails && placeDetails[field.key]
+      if (value) return `${field.label}: ${value}`
+      if (placeDetailsLoading || (resolvedLookupPoint && !placeDetailsFromSnapshot)) {
+        return `${field.label}: …`
+      }
+      return `${field.label}: -`
     }
     return {
       line1: PLACE_DETAIL_FIELDS.slice(0, 3).map(formatField).join(' · '),
       line2: PLACE_DETAIL_FIELDS.slice(3).map(formatField).join(' · '),
     }
-  }, [placeCardShouldRender, placeDetails])
+  }, [placeCardShouldRender, placeDetails, placeDetailsLoading, resolvedLookupPoint, placeDetailsFromSnapshot])
   const assemblyCardShouldRender = useMemo(() => {
     if (hasAssemblyDetails) return true
     if (!latestReport) return false
@@ -1061,19 +1096,16 @@ export default function CommunitySummaryPanel() {
     ? displaySummary.categories
     : LOADING_ROWS
 
-  // Show every category from a completed summary (including 0). While loading, show placeholders.
-  const rows = displaySummary ? allRows : allRows
+  const rows = displaySummary
+    ? allRows.filter((row) => getRowDisplayCount(row, isClosestMode) > 0 || hasCategoryData(row))
+    : allRows
 
   const hasUnavailable = allRows.some((r) => r && r.available === false)
 
-  const totalCountNum = rows.reduce((sum, row) => {
-    var value = isClosestMode
-      ? getClosestRowCount(row)
-      : row && Number.isFinite(Number(row.count))
-        ? Number(row.count)
-        : 0
-    return sum + value
-  }, 0)
+  const totalCountNum = rows.reduce(
+    (sum, row) => sum + Math.max(0, getRowDisplayCount(row, isClosestMode)),
+    0,
+  )
 
   const totalCount = displaySummary ? totalCountNum : '...'
 
@@ -1201,55 +1233,58 @@ export default function CommunitySummaryPanel() {
     if (!displaySummary || waitingForCounts) return
     if (!selectedCategoryKeys.length) return
 
-    var combined = []
-    var seen = {}
-    var allowedKeys = {}
-    selectedCategoryKeys.forEach((k) => {
-      var key = String(k || '').toLowerCase()
-      if (key) allowedKeys[key] = true
-    })
-    var allowedLabels = []
-    rows.forEach((row) => {
-      var keyLower = String(row && row.key ? row.key : '').toLowerCase()
-      if (!allowedKeys[keyLower]) return
-      if (row && row.label) allowedLabels.push(String(row.label))
-      var focusItems = buildFocusItemsForRow(row, keyLower)
-      focusItems.forEach((focusItem) => {
-        var coords = getItemCoordinates(focusItem.item)
-        var lat = Number(focusItem.lat)
-        var lng = Number(focusItem.lng)
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-          if (!coords) return
-          lat = coords.lat
-          lng = coords.lng
-        }
-        var name = focusItem.name
-        var dedupeKey = `${keyLower}|${name}|${lat.toFixed(6)},${lng.toFixed(6)}`
-        if (seen[dedupeKey]) return
-        seen[dedupeKey] = true
-        combined.push({
-          name,
-          lat,
-          lng,
-          category: keyLower,
-          item: focusItem.item,
+    function dispatchFromCurrentSummaryRows() {
+      var combined = []
+      var seen = {}
+      var allowedKeys = {}
+      selectedCategoryKeys.forEach((k) => {
+        var key = String(k || '').toLowerCase()
+        if (key) allowedKeys[key] = true
+      })
+      var allowedLabels = []
+      rows.forEach((row) => {
+        var keyLower = String(row && row.key ? row.key : '').toLowerCase()
+        if (!allowedKeys[keyLower]) return
+        if (row && row.label) allowedLabels.push(String(row.label))
+        var focusItems = buildFocusItemsForRow(row, keyLower)
+        focusItems.forEach((focusItem) => {
+          var coords = getItemCoordinates(focusItem.item)
+          var lat = Number(focusItem.lat)
+          var lng = Number(focusItem.lng)
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+            if (!coords) return
+            lat = coords.lat
+            lng = coords.lng
+          }
+          var name = focusItem.name
+          var dedupeKey = `${keyLower}|${name}|${lat.toFixed(6)},${lng.toFixed(6)}`
+          if (seen[dedupeKey]) return
+          seen[dedupeKey] = true
+          combined.push({
+            name,
+            lat,
+            lng,
+            category: keyLower,
+            item: focusItem.item,
+          })
         })
       })
-    })
 
-    if (combined.length > 0) {
-      window.dispatchEvent(
-        new CustomEvent('msme-gis-focus-community-category', {
-          detail: {
-            category: selectedCategoryKeys.length === 1 ? selectedCategoryKeys[0] : 'multi',
-            label: allowedLabels.length > 0 ? allowedLabels.join(' + ') : 'selected categories',
-            items: combined,
-            total: combined.length,
-            showAllRoutes: true,
-          },
-        }),
-      )
-      return
+      if (combined.length > 0) {
+        window.dispatchEvent(
+          new CustomEvent('msme-gis-focus-community-category', {
+            detail: {
+              category: selectedCategoryKeys.length === 1 ? selectedCategoryKeys[0] : 'multi',
+              label: allowedLabels.length > 0 ? allowedLabels.join(' + ') : 'selected categories',
+              items: combined,
+              total: combined.length,
+              showAllRoutes: true,
+            },
+          }),
+        )
+        return true
+      }
+      return false
     }
 
     if (
@@ -1261,18 +1296,20 @@ export default function CommunitySummaryPanel() {
           showAllRoutes: true,
         })
         .then(function (ok) {
-          if (!ok) {
-            window.alert(
-              'No POI coordinates found in buffer for selected categories. Increase closest/buffer distance and try again.',
-            )
-          }
+          if (ok) return
+          if (dispatchFromCurrentSummaryRows()) return
+          window.alert(
+            'No POI coordinates found in buffer for selected categories. Increase closest/buffer distance and try again.',
+          )
         })
       return
     }
 
-    window.alert(
-      'No POI coordinates available for the selected categories. Run buffer or closest analysis first.',
-    )
+    if (!dispatchFromCurrentSummaryRows()) {
+      window.alert(
+        'No POI coordinates available for the selected categories. Run buffer or closest analysis first.',
+      )
+    }
   }
 
   function toggleCategorySelection(categoryKey) {
@@ -1325,7 +1362,8 @@ export default function CommunitySummaryPanel() {
     var canExpandList = items.length > 0
     var focusItems = buildFocusItemsForRow(row, key)
 
-    if (focusItems.length > 0) {
+    function dispatchCategoryFromCurrentRows() {
+      if (focusItems.length <= 0) return false
       window.dispatchEvent(
         new CustomEvent('msme-gis-focus-community-category', {
           detail: {
@@ -1333,9 +1371,25 @@ export default function CommunitySummaryPanel() {
             label: row && row.label ? row.label : key,
             items: focusItems,
             total: focusItems.length,
+            showAllRoutes: true,
           },
         }),
       )
+      return true
+    }
+
+    if (
+      key &&
+      typeof window !== 'undefined' &&
+      typeof window.msmeGisDrawCommunityRoutesForCategories === 'function'
+    ) {
+      window.msmeGisDrawCommunityRoutesForCategories([key], {
+        showAllRoutes: true,
+      }).then(function (ok) {
+        if (!ok) dispatchCategoryFromCurrentRows()
+      })
+    } else {
+      dispatchCategoryFromCurrentRows()
     }
 
     if (canExpandList) {
@@ -1493,12 +1547,14 @@ export default function CommunitySummaryPanel() {
                 <AssemblyMetricIcon tone={metric.tone} />
                 <strong>{metric.label}</strong>
                 <span>
-                  {metric.suffix
-                    ? formatMetricValue(
-                        resolveAssemblyMetricDisplayValue(displayAssemblyMetrics, metric.key),
-                        metric.suffix,
-                      )
-                    : resolveAssemblyMetricDisplayValue(displayAssemblyMetrics, metric.key) || '-'}
+                  {assemblyMetricsLoading && !hasAssemblyMetricDetails
+                    ? '…'
+                    : metric.suffix
+                      ? formatMetricValue(
+                          resolveAssemblyMetricDisplayValue(displayAssemblyMetrics, metric.key),
+                          metric.suffix,
+                        )
+                      : resolveAssemblyMetricDisplayValue(displayAssemblyMetrics, metric.key) || '-'}
                 </span>
               </article>
             ))}
@@ -1713,11 +1769,7 @@ export default function CommunitySummaryPanel() {
 
         <div className="community-ba-cards">
           {rows.map((row, idx) => {
-            var count = isClosestMode
-              ? getClosestRowCount(row)
-              : row && Number.isFinite(Number(row.count))
-                ? Number(row.count)
-                : 0
+            var count = getRowDisplayCount(row, isClosestMode)
             var label = row && row.label ? row.label : 'Category'
             var key = String(row && row.key ? row.key : idx)
             var keyLower = key.toLowerCase()
