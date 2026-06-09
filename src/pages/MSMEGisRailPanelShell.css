@@ -6,8 +6,9 @@
 /* Gap below site header before floating panels (DMP shell sets --msme-gis-panel-top) */
 #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .nm-sidebar-gis-panels {
   top: var(--msme-gis-panel-top, calc(var(--header-h, 52px) + 14px)) !important;
-  max-height: calc(
-    100dvh - var(--header-h, 52px) - var(--msme-gis-panel-top-gap, 14px) - 16px
+  max-height: var(
+    --msme-gis-panel-max-h,
+    calc(100dvh - var(--header-h, 52px) - var(--msme-gis-panel-top-gap, 14px) - 66px)
   ) !important;
 }
 

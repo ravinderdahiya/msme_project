@@ -6,9 +6,9 @@
   top: calc(var(--header-h, 64px) + 12px);
   right: 18px;
   bottom: auto;
-  width: min(560px, calc(100vw - 28px));
+  width: min(400px, calc(100vw - 28px));
   height: auto;
-  max-height: calc(100vh - var(--header-h, 64px) - 28px);
+  max-height: calc(100dvh - var(--header-h, 64px) - 64px);
   z-index: 98;
   display: flex;
   flex-direction: column;
@@ -1032,13 +1032,205 @@
 
 /* Responsive */
 
+/* Desktop (all sizes incl. large monitors) — compact MSME REPORT */
+@media (min-width: 641px) {
+  #msmeGisRoot.msme-gis-page .community-summary-panel.community-ba-panel {
+    right: 12px;
+    top: calc(var(--header-h, 52px) + 10px);
+    width: min(400px, calc(100vw - 96px));
+    max-height: calc(100dvh - var(--header-h, 52px) - 64px);
+    border-radius: 12px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-reopen-btn {
+    width: 44px;
+    height: 44px;
+    right: 26px;
+    top: calc(var(--header-h, 52px) + 22px);
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-head {
+    padding: 6px 10px;
+    border-radius: 12px 12px 0 0;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-head h3 {
+    font-size: 12px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-head-logo {
+    width: 28px;
+    height: 28px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-head-place-lines {
+    padding-left: 36px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-head-place-line {
+    font-size: 10px;
+    line-height: 1.35;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-icon-btn {
+    width: 28px;
+    height: 28px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-scroll {
+    padding: 8px;
+    gap: 8px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-section {
+    padding: 10px;
+    border-radius: 8px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-section__title {
+    margin-bottom: 6px;
+    font-size: 11px;
+    gap: 6px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-section-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 6px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-place-grid {
+    gap: 8px 12px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-place-field__icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 6px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-place-field__text span {
+    font-size: 12px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-assembly-name {
+    font-size: 15px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-assembly-sub {
+    font-size: 10px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-assembly-grid,
+  #msmeGisRoot.msme-gis-page .community-ba-planning-grid {
+    gap: 5px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-assembly-metric {
+    min-height: 54px;
+    padding: 6px 8px 6px 34px;
+    border-radius: 7px;
+    gap: 2px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-assembly-metric__icon {
+    left: 6px;
+    top: 6px;
+    width: 22px;
+    height: 22px;
+    border-radius: 5px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-assembly-metric strong {
+    font-size: 10px;
+    line-height: 1.25;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-assembly-metric span {
+    font-size: 16px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-assembly-note {
+    margin-top: 6px;
+    padding: 6px 8px;
+    font-size: 10px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-planning-item {
+    min-height: 50px;
+    padding: 8px;
+    border-radius: 7px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-planning-item strong {
+    font-size: 10px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-planning-item span {
+    font-size: 18px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-toolbar-actions {
+    gap: 5px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-toolbar .community-ba-fit-btn,
+  #msmeGisRoot.msme-gis-page .community-ba-toolbar .community-ba-download-btn {
+    min-height: 34px;
+    font-size: 10px;
+    border-radius: 7px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-tool-btn {
+    padding: 5px 4px;
+    gap: 3px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-intro-card {
+    padding: 8px 10px;
+    margin-bottom: 8px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-intro-icon {
+    width: 34px;
+    height: 34px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-intro-card h4 {
+    font-size: 12px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-cards {
+    gap: 8px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-card__title {
+    font-size: 12px;
+  }
+}
+
+@media (max-width: 1280px) and (min-width: 641px) {
+  #msmeGisRoot.msme-gis-page .community-summary-panel.community-ba-panel {
+    width: min(360px, calc(100vw - 84px));
+    max-height: calc(100dvh - var(--header-h, 52px) - 58px);
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-assembly-metric span {
+    font-size: 15px;
+  }
+
+  #msmeGisRoot.msme-gis-page .community-ba-planning-item span {
+    font-size: 16px;
+  }
+}
+
 @media (max-width: 900px) {
   .community-summary-panel.community-ba-panel {
     right: 14px;
     bottom: auto;
     top: calc(var(--header-h, 64px) + 18px);
-    width: min(480px, calc(100vw - 28px));
-    max-height: calc(100vh - var(--header-h, 64px) - 28px);
+    width: min(400px, calc(100vw - 28px));
+    max-height: calc(100dvh - var(--header-h, 64px) - 64px);
   }
 
   .community-ba-reopen-btn {
