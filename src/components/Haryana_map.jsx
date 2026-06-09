@@ -8,6 +8,7 @@ import HomeButton from './HomeButton.jsx'
 
 
 import ShapeSketchButton from './ShapeSketchButton.jsx'
+import { installMapFooterScaleDock } from '../gis/msme/mapFooterDock.js'
 
 function mapViewLooksReady() {
   const view = typeof window !== 'undefined' ? window.__msmeGisMapView : null
@@ -30,6 +31,10 @@ export default function HaryanaMap({ t, onMapBootComplete }) {
 
   useLayoutEffect(function () {
     showGisLoadingOverlay()
+  }, [])
+
+  useEffect(function () {
+    return installMapFooterScaleDock()
   }, [])
 
   useEffect(function () {

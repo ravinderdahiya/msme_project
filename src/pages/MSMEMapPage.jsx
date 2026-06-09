@@ -342,6 +342,12 @@ const MSMEGISPage = () => {
       <Sidebar t={t} onOpenAssemblyMap={() => setAssemblyMapOpen(true)} />
       <GisMobilePanelCloseBehaviour />
       <HaryanaMap t={t} onMapBootComplete={() => setMapBootComplete(true)} />
+      <footer id="msmeGisMapFooter" className="msme-gis-map-footer" aria-label="Map status">
+        <div id="msmeGisMapScaleSlot" className="msme-gis-map-footer__scale" />
+        <div id="coordBar" className="msme-gis-map-footer__coords">
+          {t("coordPlaceholder")}
+        </div>
+      </footer>
       {mapBootError ? (
         <div className="msme-gis-boot-error" role="alert">
           <p className="msme-gis-boot-error-title">Map could not start</p>

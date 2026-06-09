@@ -6,7 +6,7 @@
 #msmeGisRoot.msme-gis-page.nm-shell-dmp {
   --nm-rail-w: 92px;
   --nm-dmp-header-h: 52px;
-  --nm-dmp-footer-h: 0;
+  --nm-dmp-footer-h: 0px;
   --nm-dmp-black: #081631;
   --nm-dmp-rail-bg: #050f22;
   --nm-dmp-border: rgba(255, 255, 255, 0.08);
@@ -26,7 +26,7 @@
 
   min-height: 100vh;
   display: grid;
-  grid-template-rows: var(--nm-dmp-header-h) minmax(0, 1fr);
+  grid-template-rows: var(--nm-dmp-header-h) minmax(0, 1fr) var(--nm-dmp-footer-h);
   grid-template-columns: var(--nm-rail-w) minmax(0, 1fr);
   gap: 0;
   padding: 0;
@@ -525,7 +525,7 @@
 
 /* ---- Map stage ---- */
 #msmeGisRoot.msme-gis-page.nm-shell-dmp #viewDiv {
-  grid-row: 2;
+  grid-row: 2 / 4;
   grid-column: 2;
   position: relative !important;
   top: auto !important;
@@ -550,8 +550,97 @@
   border-radius: 0;
 }
 
+/* ---- Map footer (scale + coordinates) ---- */
+#msmeGisRoot.msme-gis-page .msme-gis-map-footer {
+  grid-row: 2 / 4;
+  grid-column: 2;
+  align-self: end;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 28px 16px;
+  min-height: 0;
+  height: auto;
+  background: transparent !important;
+  border-top: 0 !important;
+  z-index: 40;
+  pointer-events: none;
+}
+
+#msmeGisRoot.msme-gis-page .msme-gis-map-footer__scale {
+  display: flex;
+  align-items: center;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+#msmeGisRoot.msme-gis-page .msme-gis-map-footer__coords {
+  flex: 0 1 auto;
+  margin-left: auto;
+  max-width: min(100%, 420px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 #msmeGisRoot.msme-gis-page.nm-shell-dmp #coordBar {
-  display: none !important;
+  display: block !important;
+  position: static !important;
+  margin: 0 !important;
+  padding: 6px 14px !important;
+  border-radius: 999px !important;
+  background: rgba(10, 10, 10, 0.94) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  font-variant-numeric: tabular-nums !important;
+  backdrop-filter: blur(10px) !important;
+}
+
+#msmeGisRoot.msme-gis-page #msmeGisMapScaleSlot .esri-scale-bar__label {
+  position: static !important;
+  left: auto !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: auto !important;
+  transform: none !important;
+  z-index: auto !important;
+  pointer-events: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  margin: 0 !important;
+  padding: 6px 14px !important;
+  border-radius: 999px !important;
+  background: rgba(10, 10, 10, 0.94) !important;
+  color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  box-shadow: none !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  line-height: 1 !important;
+  font-variant-numeric: tabular-nums !important;
+}
+
+#msmeGisRoot.msme-gis-page #msmeGisMapScaleSlot .esri-scale-bar__label esri-scale-bar-number,
+#msmeGisRoot.msme-gis-page #msmeGisMapScaleSlot .esri-scale-bar__label esri-scale-bar-unit {
+  position: static !important;
+  display: inline !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  color: inherit !important;
+  font: inherit !important;
+}
+
+#msmeGisRoot.msme-gis-page.nm-shell-dmp.msme-gis-rail-hidden .msme-gis-map-footer {
+  grid-column: 1 / -1;
 }
 
 #msmeGisRoot.msme-gis-page.nm-shell-dmp #legendFab.legend-map-fab {
@@ -619,7 +708,7 @@
 @media (max-width: 900px) {
   #msmeGisRoot.msme-gis-page.nm-shell-dmp {
     grid-template-columns: 1fr;
-    grid-template-rows: var(--nm-dmp-header-h) minmax(0, 1fr);
+    grid-template-rows: var(--nm-dmp-header-h) minmax(0, 1fr) var(--nm-dmp-footer-h);
   }
 
   #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail.rail-nm.nm-sidebar-dmp {
@@ -628,6 +717,10 @@
   }
 
   #msmeGisRoot.msme-gis-page.nm-shell-dmp #viewDiv {
+    grid-column: 1;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp .msme-gis-map-footer {
     grid-column: 1;
   }
 

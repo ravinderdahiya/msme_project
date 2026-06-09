@@ -924,7 +924,7 @@ html:not([data-theme='black']) #msmeGisRoot.msme-gis-page #rail #measurementPane
 }
 
 #msmeGisRoot.msme-gis-page #coordBar {
-  display: none !important;
+  display: block;
 }
 
 /* Esri default UI padding lifts bottom widgets — zero it so chips share one baseline. */
