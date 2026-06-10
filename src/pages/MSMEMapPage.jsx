@@ -9,6 +9,7 @@ import Sidebar from "../components/Sidebar.jsx";
 import HaryanaMap from "../components/Haryana_map.jsx";
 import HeaderGis from "../components/Header_gis.jsx";
 import GisMobilePanelCloseBehaviour from "../components/gis/GisMobilePanelCloseBehaviour.jsx";
+import GisMobileSearchDock from "../components/gis/GisMobileSearchDock.jsx";
 import "../msme-webgis.css";
 import "./MSMEGisPageShell.css";
 import "./MSMEGisDmpShell.css";
@@ -19,6 +20,8 @@ import "./MSMEGisRailPanelShell.css";
 import "./MSMEGisMapMiniPanel.css";
 import "./MSMEGisBrandThemeLight.css";
 import "./MSMEGisMapToolbarPills.css";
+import "./MSMEGisHeaderResponsive.css";
+import "./MSMEGisMobileShell.css";
 import { dismissGisBootLoader, installGisLoadingBridge } from "../gis/msme/gisLoadingBridge.js";
 
 const MSMEGISPage = () => {
@@ -338,6 +341,15 @@ const MSMEGISPage = () => {
           setLang={setLang}
           languages={languages}
         />
+      </div>
+      <GisMobileSearchDock
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        searchBusy={searchBusy}
+        onSearchSubmit={handleTopSearchSubmit}
+      />
+      <div id="msmeGisMapToolbarDock" className="msme-gis-map-toolbar-dock" aria-label="Map tools">
+        <div className="msme-gis-header-toolbar" aria-label="Map tools" />
       </div>
       <Sidebar t={t} onOpenAssemblyMap={() => setAssemblyMapOpen(true)} />
       <GisMobilePanelCloseBehaviour />

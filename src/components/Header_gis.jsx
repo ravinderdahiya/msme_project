@@ -1,31 +1,52 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { LogIn, LogOut, Menu, Moon, Search, Sun, X } from "lucide-react";
+import { LogIn, LogOut, Menu, Moon, Search, Settings, Sun, X } from "lucide-react";
 import { setHttpAuthToken } from "../api/axios";
 import { clearAuthSession, getToken } from "../utils/authStorage";
 import { logoutApi } from "../services/authService";
 import "../pages/newmainmap/NewMainMapHeader.css";
 import "./Header_gis_nm.css";
 import { MSME_GIS_REOPEN_DRAWER_EVENT } from "./gis/GisMobilePanelCloseBehaviour.jsx";
+import {
+  GIS_COMPACT_SHELL_MAX_PX,
+  GIS_PHONE_MAX_PX,
+} from "../gis/msme/gisShellBreakpoints.js";
 
 const SEARCH_PLACEHOLDER = "Search places in Haryana";
 
-const MOBILE_DRAWER_BP = 768;
+const TOOLBAR_DOCK_BP = 1400;
+const GIS_TOOL_PANEL_IDS = [
+  "spatialPanel",
+  "aoiPanel",
+  "toolsPanel",
+  "selectToolsPanel",
+  "measurementPanel",
+];
+export const MSME_GIS_OPEN_SETTINGS_EVENT = "msme-gis-open-settings";
+export const MSME_GIS_CLOSE_DRAWER_EVENT = "msme-gis-close-drawer";
 
-function useIsMobileNav(breakpoint = MOBILE_DRAWER_BP) {
-  const [isMobile, setIsMobile] = useState(() =>
-    typeof window !== "undefined" ? window.matchMedia(`(max-width: ${breakpoint}px)`).matches : false
+function isAnyGisToolPanelOpen() {
+  if (typeof document === "undefined") return false;
+  return GIS_TOOL_PANEL_IDS.some((id) => {
+    const panel = document.getElementById(id);
+    return panel && !panel.classList.contains("collapsed");
+  });
+}
+
+function useMediaMaxWidth(maxPx) {
+  const [matches, setMatches] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia(`(max-width: ${maxPx}px)`).matches : false
   );
 
   useEffect(() => {
-    const mq = window.matchMedia(`(max-width: ${breakpoint}px)`);
-    const sync = () => setIsMobile(mq.matches);
+    const mq = window.matchMedia(`(max-width: ${maxPx}px)`);
+    const sync = () => setMatches(mq.matches);
     sync();
     mq.addEventListener("change", sync);
     return () => mq.removeEventListener("change", sync);
-  }, [breakpoint]);
+  }, [maxPx]);
 
-  return isMobile;
+  return matches;
 }
 
 export default function HeaderGis({
@@ -43,14 +64,20 @@ export default function HeaderGis({
   const navigate = useNavigate();
   const location = useLocation();
   const headerRef = useRef(null);
+  const settingsRef = useRef(null);
   const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getToken()));
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [searchExpanded, setSearchExpanded] = useState(false);
   /** Desktop / tablet: hide rail for full-width map */
   const [railHidden, setRailHidden] = useState(false);
   /** Mobile: overlay menu open (reference Digital Land Record drawer) */
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [gisToolPanelOpen, setGisToolPanelOpen] = useState(false);
 
-  const isMobile = useIsMobileNav(MOBILE_DRAWER_BP);
+  /** ≤1024px: iPad Mini / tablet + phone compact shell */
+  const isCompactShell = useMediaMaxWidth(GIS_COMPACT_SHELL_MAX_PX);
+  /** ≤767px: small-phone tweaks only */
+  const isPhone = useMediaMaxWidth(GIS_PHONE_MAX_PX);
 
   const enCode =
     (languages || []).find((l) => /^en/i.test(String(l.code)))?.code ?? "en";
@@ -91,8 +118,8 @@ export default function HeaderGis({
   }, []);
 
   useEffect(() => {
-    if (!isMobile) setMobileDrawerOpen(false);
-  }, [isMobile]);
+    if (!isCompactShell) setMobileDrawerOpen(false);
+  }, [isCompactShell]);
 
   useEffect(() => {
     const onReopen = () => setMobileDrawerOpen(true);
@@ -101,33 +128,110 @@ export default function HeaderGis({
   }, []);
 
   useEffect(() => {
+    const onOpenSettings = () => setSettingsOpen(true);
+    window.addEventListener(MSME_GIS_OPEN_SETTINGS_EVENT, onOpenSettings);
+    return () => window.removeEventListener(MSME_GIS_OPEN_SETTINGS_EVENT, onOpenSettings);
+  }, []);
+
+  useEffect(() => {
+    const onCloseDrawer = () => setMobileDrawerOpen(false);
+    window.addEventListener(MSME_GIS_CLOSE_DRAWER_EVENT, onCloseDrawer);
+    return () => window.removeEventListener(MSME_GIS_CLOSE_DRAWER_EVENT, onCloseDrawer);
+  }, []);
+
+  useEffect(() => {
+    if (!settingsOpen) return;
+    function onDocClick(ev) {
+      if (settingsRef.current && !settingsRef.current.contains(ev.target)) {
+        setSettingsOpen(false);
+      }
+    }
+    function onKey(ev) {
+      if (ev.key === "Escape") setSettingsOpen(false);
+    }
+    document.addEventListener("click", onDocClick, true);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("click", onDocClick, true);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [settingsOpen]);
+
+  useEffect(() => {
+    const root = document.getElementById("msmeGisRoot");
+    if (!root) return;
+
+    let observers = [];
+    let retryId = 0;
+
+    const sync = () => {
+      const open = isAnyGisToolPanelOpen();
+      setGisToolPanelOpen(open);
+      root.classList.toggle("msme-gis-mobile-tool-open", open);
+    };
+
+    const attach = () => {
+      observers.forEach((obs) => obs.disconnect());
+      observers = [];
+
+      const panels = GIS_TOOL_PANEL_IDS.map((id) => document.getElementById(id)).filter(Boolean);
+      if (!panels.length) return false;
+
+      sync();
+      observers = panels.map((panel) => {
+        const obs = new MutationObserver(sync);
+        obs.observe(panel, { attributes: true, attributeFilter: ["class"] });
+        return obs;
+      });
+      return true;
+    };
+
+    if (!attach()) {
+      retryId = window.setTimeout(() => attach(), 120);
+    }
+
+    return () => {
+      window.clearTimeout(retryId);
+      observers.forEach((obs) => obs.disconnect());
+      root.classList.remove("msme-gis-mobile-tool-open");
+    };
+  }, []);
+
+  useEffect(() => {
     const root = typeof document !== "undefined" ? document.getElementById("msmeGisRoot") : null;
     if (!root) return;
-    root.classList.toggle("msme-gis-rail-hidden", !isMobile && railHidden);
-    root.classList.toggle("msme-gis-mobile-drawer-open", isMobile && mobileDrawerOpen);
+    root.classList.toggle(
+      "msme-gis-rail-hidden",
+      (!isCompactShell && railHidden) || (isCompactShell && !mobileDrawerOpen && !gisToolPanelOpen)
+    );
+    root.classList.toggle("msme-gis-mobile-drawer-open", isCompactShell && mobileDrawerOpen);
+    root.classList.toggle("msme-gis-compact-shell", isCompactShell);
+    root.classList.toggle("msme-gis-phone-shell", isPhone);
     return () => {
       root.classList.remove("msme-gis-rail-hidden");
       root.classList.remove("msme-gis-mobile-drawer-open");
+      root.classList.remove("msme-gis-compact-shell");
+      root.classList.remove("msme-gis-phone-shell");
     };
-  }, [isMobile, railHidden, mobileDrawerOpen]);
+  }, [isCompactShell, isPhone, railHidden, mobileDrawerOpen, gisToolPanelOpen]);
 
   useEffect(() => {
-    if (!isMobile || !mobileDrawerOpen) return;
+    if (!isCompactShell || !mobileDrawerOpen) return;
     document.body.style.overflow = "hidden";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isMobile, mobileDrawerOpen]);
+  }, [isCompactShell, mobileDrawerOpen]);
 
   useEffect(() => {
     const onKey = (e) => {
       if (e.key !== "Escape") return;
-      if (isMobile && mobileDrawerOpen) {
+      if (isCompactShell && mobileDrawerOpen) {
         setMobileDrawerOpen(false);
         return;
       }
       /* Close visible GIS bottom sheet first (mobile tool panels live under #rail) */
-      if (isMobile && !mobileDrawerOpen) {
+      if (isCompactShell && !mobileDrawerOpen) {
         const spatial = document.getElementById("spatialPanel");
         const aoi = document.getElementById("aoiPanel");
         const tools = document.getElementById("toolsPanel");
@@ -149,25 +253,25 @@ export default function HeaderGis({
           return;
         }
       }
-      if (!isMobile && railHidden) setRailHidden(false);
+      if (!isCompactShell && railHidden) setRailHidden(false);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [isMobile, mobileDrawerOpen, railHidden]);
+  }, [isCompactShell, mobileDrawerOpen, railHidden]);
 
-  /* Close mobile drawer after choosing a rail tool */
+  /* Close mobile drawer after choosing a rail tool (DMP: .nm-rail-btn, legacy: .nm-sidebar-item) */
   useEffect(() => {
-    if (!isMobile || !mobileDrawerOpen) return;
+    if (!isCompactShell || !mobileDrawerOpen) return;
     const rail = document.getElementById("rail");
     if (!rail) return;
     const onPick = (e) => {
-      if (e.target.closest(".nm-sidebar-item")) {
-        window.setTimeout(() => setMobileDrawerOpen(false), 280);
+      if (e.target.closest(".nm-rail-btn") || e.target.closest(".nm-sidebar-item")) {
+        setMobileDrawerOpen(false);
       }
     };
     rail.addEventListener("click", onPick);
     return () => rail.removeEventListener("click", onPick);
-  }, [isMobile, mobileDrawerOpen]);
+  }, [isCompactShell, mobileDrawerOpen]);
 
   useEffect(() => {
     const t = window.setTimeout(() => {
@@ -181,7 +285,7 @@ export default function HeaderGis({
       }
     }, 320);
     return () => window.clearTimeout(t);
-  }, [isMobile, railHidden, mobileDrawerOpen]);
+  }, [isCompactShell, railHidden, mobileDrawerOpen]);
 
   useEffect(() => {
     const el = headerRef.current;
@@ -189,46 +293,108 @@ export default function HeaderGis({
 
     const syncHeaderHeight = () => {
       if (dmpShell) {
-        document.documentElement.style.setProperty("--header-h", "52px");
+        const headerBarH = Math.max(52, Math.ceil(el.getBoundingClientRect().height));
+        document.documentElement.style.setProperty("--nm-dmp-header-h", `${headerBarH}px`);
+
+        const toolbar = el.querySelector(".msme-gis-header-toolbar");
+        const mapDock = document.getElementById("msmeGisMapToolbarDock");
+        const docked =
+          typeof window !== "undefined" &&
+          window.matchMedia(`(max-width: ${TOOLBAR_DOCK_BP - 1}px)`).matches;
+        const mobileMq =
+          typeof window !== "undefined" &&
+          window.matchMedia(`(max-width: ${GIS_COMPACT_SHELL_MAX_PX}px)`).matches;
+        let searchDockH = 0;
+        if (mobileMq) {
+          const searchDock = document.getElementById("msmeGisMapSearchDock");
+          if (searchDock) {
+            const sh = Math.ceil(searchDock.getBoundingClientRect().height);
+            searchDockH = sh > 0 ? sh : 0;
+          }
+        }
+
+        let dockH = 0;
+        if (docked && mapDock) {
+          const th = Math.ceil(mapDock.getBoundingClientRect().height);
+          dockH = th > 0 ? th + 4 : 0;
+        } else if (docked && toolbar) {
+          const th = Math.ceil(toolbar.getBoundingClientRect().height);
+          dockH = th > 0 ? th + 4 : 0;
+        }
+
+        const chromeTop = mobileMq ? headerBarH + searchDockH : headerBarH;
+        const totalH = chromeTop + dockH;
+        document.documentElement.style.setProperty("--msme-gis-mobile-search-h", `${searchDockH}px`);
+        document.documentElement.style.setProperty(
+          "--msme-gis-mobile-chrome-top",
+          `${chromeTop}px`
+        );
+        document.documentElement.style.setProperty("--header-h", `${totalH}px`);
+        document.documentElement.style.setProperty("--msme-gis-toolbar-dock-h", `${dockH}px`);
+        document.documentElement.style.setProperty("--msme-gis-map-toolbar-top", `${totalH}px`);
+        document.documentElement.style.setProperty("--msme-gis-content-top", `${totalH}px`);
+        try {
+          const view = typeof window !== "undefined" ? window.__msmeGisMapView : null;
+          if (view && view.destroyed === false && typeof view.resize === "function") {
+            view.resize();
+          }
+        } catch {
+          /* ignore */
+        }
         return;
       }
       const next = Math.max(70, Math.ceil(el.getBoundingClientRect().height));
       document.documentElement.style.setProperty("--header-h", `${next}px`);
-
     };
 
     syncHeaderHeight();
     window.addEventListener("resize", syncHeaderHeight);
 
+    const dockMq =
+      typeof window !== "undefined"
+        ? window.matchMedia(`(max-width: ${TOOLBAR_DOCK_BP - 1}px)`)
+        : null;
+    const onDockBp = () => syncHeaderHeight();
+    dockMq?.addEventListener("change", onDockBp);
+
     let ro = null;
     if (typeof ResizeObserver !== "undefined") {
       ro = new ResizeObserver(() => syncHeaderHeight());
       ro.observe(el);
+      const toolbar = el.querySelector(".msme-gis-header-toolbar");
+      if (toolbar) ro.observe(toolbar);
+      const mapDock = document.getElementById("msmeGisMapToolbarDock");
+      if (mapDock) ro.observe(mapDock);
+      const searchDock = document.getElementById("msmeGisMapSearchDock");
+      if (searchDock) ro.observe(searchDock);
     }
 
     return () => {
       window.removeEventListener("resize", syncHeaderHeight);
+      dockMq?.removeEventListener("change", onDockBp);
       if (ro) ro.disconnect();
     };
-  }, [dmpShell, lang, searchQuery, searchBusy, searchExpanded, railHidden, mobileDrawerOpen]);
+  }, [dmpShell, lang, searchQuery, searchBusy, searchExpanded, railHidden, mobileDrawerOpen, isCompactShell]);
 
   function handleDrawerClick() {
-    if (isMobile) {
+    if (isCompactShell) {
       setMobileDrawerOpen((v) => !v);
     } else {
       setRailHidden((v) => !v);
     }
   }
 
-  const drawerExpanded = isMobile ? mobileDrawerOpen : !railHidden;
+  const drawerExpanded = isCompactShell ? mobileDrawerOpen : !railHidden;
 
   return (
     <header
       id="appHeader"
       ref={headerRef}
-      className={`nmhdr nmhdr-gis${dmpShell ? " msme-gis-hdr-dmp" : ""}`}
+      className={`nmhdr nmhdr-gis${dmpShell ? " msme-gis-hdr-dmp" : ""}${
+        dmpShell && isCompactShell ? " msme-gis-hdr-mobile" : ""
+      }`}
     >
-      {isMobile && mobileDrawerOpen && (
+      {isCompactShell && mobileDrawerOpen && (
         <button
           type="button"
           className="msme-gis-mobile-drawer-scrim"
@@ -241,9 +407,9 @@ export default function HeaderGis({
           <div className="nmhdr-dmp-rail-slot">
             <button
               type="button"
-              className={`nmhdr-drawer-btn${isMobile && mobileDrawerOpen ? " is-close" : ""}`}
+              className={`nmhdr-drawer-btn${isCompactShell && mobileDrawerOpen ? " is-close" : ""}`}
               aria-label={
-                isMobile
+                isCompactShell
                   ? mobileDrawerOpen
                     ? "Close menu"
                     : "Open map tools"
@@ -254,7 +420,7 @@ export default function HeaderGis({
               aria-expanded={drawerExpanded}
               aria-controls="rail"
               title={
-                isMobile
+                isCompactShell
                   ? mobileDrawerOpen
                     ? "Close"
                     : "Map tools"
@@ -264,7 +430,7 @@ export default function HeaderGis({
               }
               onClick={handleDrawerClick}
             >
-              {isMobile && mobileDrawerOpen ? (
+              {isCompactShell && mobileDrawerOpen ? (
                 <X size={20} strokeWidth={2} />
               ) : (
                 <Menu size={20} strokeWidth={2} />
@@ -284,9 +450,9 @@ export default function HeaderGis({
       <div className="nmhdr-brand">
         <button
           type="button"
-          className={`nmhdr-drawer-btn${isMobile && mobileDrawerOpen ? " is-close" : ""}`}
+          className={`nmhdr-drawer-btn${isCompactShell && mobileDrawerOpen ? " is-close" : ""}`}
           aria-label={
-            isMobile
+            isCompactShell
               ? mobileDrawerOpen
                 ? "Close menu"
                 : "Open map tools"
@@ -297,7 +463,7 @@ export default function HeaderGis({
           aria-expanded={drawerExpanded}
           aria-controls="rail"
           title={
-            isMobile
+            isCompactShell
               ? mobileDrawerOpen
                 ? "Close"
                 : "Map tools"
@@ -307,7 +473,7 @@ export default function HeaderGis({
           }
           onClick={handleDrawerClick}
         >
-          {isMobile && mobileDrawerOpen ? (
+          {isCompactShell && mobileDrawerOpen ? (
             <X size={20} strokeWidth={2} />
           ) : (
             <Menu size={20} strokeWidth={2} />
@@ -370,29 +536,89 @@ export default function HeaderGis({
       </div>
 
       <div className="nmhdr-actions">
-        <button
-          type="button"
-          className={`nmhdr-theme-btn${theme === "black" ? " is-dark" : ""}`}
-          onClick={onToggleTheme}
-          aria-pressed={theme === "black"}
-          aria-label={theme === "black" ? "Switch to light mode" : "Switch to dark mode"}
-          title={theme === "black" ? "Light mode" : "Dark mode"}
-        >
-          {theme === "black" ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
-        </button>
-        <button
-          type="button"
-          className="nmhdr-lang"
-          onClick={cycleLang}
-          aria-label="Switch language"
-          title="Switch language"
-        >
-          <span className={lang === enCode ? "is-active" : ""}>EN</span>
-          <span className="nmhdr-lang-sep" aria-hidden>
-            |
-          </span>
-          <span className={lang === hiCode ? "is-active" : ""}>हि</span>
-        </button>
+        {isCompactShell ? (
+          <div className="nmhdr-settings-wrap" ref={settingsRef}>
+            <button
+              type="button"
+              className={`nmhdr-settings-btn${settingsOpen ? " is-open" : ""}`}
+              onClick={(e) => {
+                e.stopPropagation();
+                setSettingsOpen((v) => !v);
+              }}
+              aria-expanded={settingsOpen}
+              aria-haspopup="dialog"
+              aria-label="Settings"
+              title="Settings"
+            >
+              <Settings size={18} strokeWidth={2} />
+            </button>
+            {settingsOpen ? (
+              <div className="nmhdr-settings-panel" role="dialog" aria-label="Settings">
+                <p className="nmhdr-settings-panel__title">Settings</p>
+                <button
+                  type="button"
+                  className="nmhdr-settings-panel__row"
+                  onClick={() => {
+                    onToggleTheme();
+                  }}
+                >
+                  <span className="nmhdr-settings-panel__icon" aria-hidden>
+                    {theme === "black" ? <Sun size={18} /> : <Moon size={18} />}
+                  </span>
+                  <span>{theme === "black" ? "Light mode" : "Dark mode"}</span>
+                </button>
+                <fieldset className="nmhdr-settings-panel__lang">
+                  <legend className="nmhdr-settings-panel__legend">Language</legend>
+                  <label className="nmhdr-settings-panel__radio">
+                    <input
+                      type="radio"
+                      name="gis-lang"
+                      checked={lang === enCode}
+                      onChange={() => setLang?.(enCode)}
+                    />
+                    <span>English</span>
+                  </label>
+                  <label className="nmhdr-settings-panel__radio">
+                    <input
+                      type="radio"
+                      name="gis-lang"
+                      checked={lang === hiCode}
+                      onChange={() => setLang?.(hiCode)}
+                    />
+                    <span>Hindi</span>
+                  </label>
+                </fieldset>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="nmhdr-actions-desktop">
+          <button
+            type="button"
+            className={`nmhdr-theme-btn${theme === "black" ? " is-dark" : ""}`}
+            onClick={onToggleTheme}
+            aria-pressed={theme === "black"}
+            aria-label={theme === "black" ? "Switch to light mode" : "Switch to dark mode"}
+            title={theme === "black" ? "Light mode" : "Dark mode"}
+          >
+            {theme === "black" ? <Sun size={18} strokeWidth={2} /> : <Moon size={18} strokeWidth={2} />}
+          </button>
+          <button
+            type="button"
+            className="nmhdr-lang"
+            onClick={cycleLang}
+            aria-label="Switch language"
+            title="Switch language"
+          >
+            <span className={lang === enCode ? "is-active" : ""}>EN</span>
+            <span className="nmhdr-lang-sep" aria-hidden>
+              |
+            </span>
+            <span className={lang === hiCode ? "is-active" : ""}>हि</span>
+          </button>
+        </div>
+
         {isLoggedIn ? (
           <button type="button" className="nmhdr-login" onClick={handleLogout}>
             <LogOut size={18} strokeWidth={2} />

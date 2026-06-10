@@ -223,7 +223,7 @@
   text-decoration: underline;
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   #toolsPanel.gis-tools-layer-panel #layerListContainer.gis-layer-list-mount {
     min-height: 120px;
   }

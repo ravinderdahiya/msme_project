@@ -1693,7 +1693,7 @@ function patchLegacySource(source) {
     /function getUiZoomPadding\(\) \{[\s\S]*?return \{ top: 76, bottom: 56, left: left, right: 44 \};\s*\}/;
   var uiZoomPaddingReplacement = [
     "function getUiZoomPadding() {",
-    "  var isMobileLayout = typeof window !== \"undefined\" && window.matchMedia && window.matchMedia(\"(max-width: 768px)\").matches;",
+    "  var isMobileLayout = typeof window !== \"undefined\" && window.matchMedia && window.matchMedia(\"(max-width: 1024px)\").matches;",
     "  var inset = isMobileLayout ? 12 : 44;",
     "  return {",
     "    top: isMobileLayout ? 68 : 76,",

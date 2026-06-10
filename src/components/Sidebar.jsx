@@ -1,6 +1,7 @@
 ﻿// import ResultsFlyout from './ResultsFlyout.jsx'
 
 import { useEffect } from "react";
+import { X } from "lucide-react";
 
 import LandLocationReport from './LandLocationReport.jsx'
 
@@ -13,6 +14,11 @@ import {
   bindMeasurementPanelExclusivity,
   toggleMeasurementPanel,
 } from '../gis/msme/measurementPanelShell.js'
+import { MSME_GIS_CLOSE_DRAWER_EVENT } from './Header_gis.jsx'
+
+function closeMobileDrawer() {
+  window.dispatchEvent(new CustomEvent(MSME_GIS_CLOSE_DRAWER_EVENT))
+}
 
 export default function Sidebar({ t, onOpenAssemblyMap }) {
   useEffect(function () {
@@ -56,6 +62,17 @@ export default function Sidebar({ t, onOpenAssemblyMap }) {
     <>
       <aside id="rail" className="nm-sidebar nm-sidebar-dmp rail-nm" aria-label="Map tools">
         <nav className="nm-sidebar-rail" aria-label="Map tools">
+          <div className="msme-gis-mobile-rail-sheet-head">
+            <h2 className="msme-gis-mobile-rail-sheet-title">Map tools</h2>
+            <button
+              type="button"
+              className="msme-gis-mobile-rail-sheet-close"
+              aria-label="Close menu"
+              onClick={closeMobileDrawer}
+            >
+              <X size={22} strokeWidth={2} aria-hidden />
+            </button>
+          </div>
           <ul className="nm-rail-list">
             <li>
               <button

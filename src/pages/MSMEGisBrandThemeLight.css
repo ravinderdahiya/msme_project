@@ -452,23 +452,23 @@
 }
 
 /* ========== MAP TOOLBAR FABs (header) ========== */
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .buffer-map-fab,
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .closest-map-fab,
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .closest-print-fab,
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .basemap-map-fab,
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .home-map-fab,
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .buffer-fab-wrap .buffer-map-fab {
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .buffer-map-fab,
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .closest-map-fab,
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .closest-print-fab,
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .basemap-map-fab,
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .home-map-fab,
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .buffer-fab-wrap .buffer-map-fab {
   background: var(--msme-map-fab-bg) !important;
   border-color: var(--msme-border) !important;
   color: var(--msme-cyan) !important;
   box-shadow: 0 4px 14px rgba(15, 23, 42, 0.1) !important;
 }
 
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .buffer-fab-wrap .buffer-map-fab:hover,
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .closest-map-fab:hover,
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .closest-print-fab:hover,
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .basemap-map-fab:hover,
-[data-theme='white'] #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .home-map-fab:hover {
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .buffer-fab-wrap .buffer-map-fab:hover,
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .closest-map-fab:hover,
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .closest-print-fab:hover,
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .basemap-map-fab:hover,
+[data-theme='white'] #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar .home-map-fab:hover {
   background: var(--msme-cyan-dim) !important;
   border-color: var(--msme-cyan) !important;
   box-shadow: 0 0 20px var(--msme-cyan-glow) !important;

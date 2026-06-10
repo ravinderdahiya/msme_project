@@ -800,6 +800,14 @@ html:not([data-theme='black']) #msmeGisRoot.msme-gis-page #rail #measurementPane
 #msmeGisRoot.msme-gis-page.msme-gis-map-ready #appHeader .msme-gis-header-toolbar .msme-basemap-fab-host,
 #msmeGisRoot.msme-gis-page.msme-gis-map-ready #appHeader .msme-gis-header-toolbar .msme-shape-fab-host,
 #msmeGisRoot.msme-gis-page.msme-gis-map-ready #appHeader .msme-gis-header-toolbar .buffer-fab-wrap .msme-shape-fab-host,
+#msmeGisRoot.msme-gis-page.msme-gis-map-ready .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .buffer-fab-wrap,
+#msmeGisRoot.msme-gis-page.msme-gis-map-ready .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .buffer-map-fab,
+#msmeGisRoot.msme-gis-page.msme-gis-map-ready .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .closest-print-fab,
+#msmeGisRoot.msme-gis-page.msme-gis-map-ready .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .home-map-fab,
+#msmeGisRoot.msme-gis-page.msme-gis-map-ready .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .basemap-map-fab,
+#msmeGisRoot.msme-gis-page.msme-gis-map-ready .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .msme-basemap-fab-host,
+#msmeGisRoot.msme-gis-page.msme-gis-map-ready .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .msme-shape-fab-host,
+#msmeGisRoot.msme-gis-page.msme-gis-map-ready .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .buffer-fab-wrap .msme-shape-fab-host,
 #msmeGisRoot.msme-gis-page.msme-gis-map-ready #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-fab-wrap,
 #msmeGisRoot.msme-gis-page.msme-gis-map-ready #viewDiv .esri-ui-top-right.esri-ui-corner .buffer-map-fab,
 #msmeGisRoot.msme-gis-page.msme-gis-map-ready #viewDiv .esri-ui-top-right.esri-ui-corner .closest-print-fab,
@@ -1320,7 +1328,19 @@ html:not([data-theme='black']) #msmeGisRoot.msme-gis-page #rail #measurementPane
 #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .msme-basemap-fab-host,
 #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .home-map-fab,
 #msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .buffer-mini-panel,
-#msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .shape-mini-panel {
+#msmeGisRoot.msme-gis-page #appHeader .msme-gis-header-toolbar .shape-mini-panel,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .buffer-fab-wrap,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .buffer-fab-wrap .buffer-map-fab,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .buffer-fab-wrap .closest-map-fab,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .buffer-fab-wrap .track-map-fab,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .msme-shape-fab-host,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .msme-shape-fab-host .track-map-fab,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .closest-print-fab,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .basemap-map-fab,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .msme-basemap-fab-host,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .home-map-fab,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .buffer-mini-panel,
+#msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-header-toolbar .shape-mini-panel {
   visibility: visible !important;
   opacity: 1 !important;
   pointer-events: auto !important;
@@ -3409,7 +3429,7 @@ html:not([data-theme='black'])
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   #msmeGisRoot.msme-gis-page {
     --msme-gis-shell-pad: 12px;
     --msme-gis-inner-gap: 10px;
@@ -3443,8 +3463,8 @@ html:not([data-theme='black'])
   }
 }
 
-/* Mobile GIS tool sheets — forms, tabs, scroll (inside bottom sheet / drawer) */
-@media (max-width: 768px) {
+/* Compact GIS tool sheets — forms, tabs, scroll (inside bottom sheet / drawer) */
+@media (max-width: 1024px) {
   #msmeGisRoot.msme-gis-page #rail .nm-sidebar-gis-panels {
     overscroll-behavior: contain;
   }
@@ -3604,7 +3624,7 @@ html:not([data-theme='black'])
  * Mobile map: Proximity / Closest / Print / Home / Basemap FAB row — one horizontal line (scroll if narrow).
  * Overrides max-width:1100px flex-wrap:wrap on .esri-ui-top-right.
  */
-@media (max-width: 768px) {
+@media (max-width: 1024px) {
   #msmeGisRoot.msme-gis-page #viewDiv .esri-ui-top-right.esri-ui-corner {
     /* Centered on map, directly below header */
     position: fixed !important;

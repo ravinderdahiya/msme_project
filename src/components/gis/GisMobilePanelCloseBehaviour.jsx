@@ -1,11 +1,10 @@
 import { useEffect } from "react";
-
-const MOBILE_BP = 768;
+import { GIS_COMPACT_SHELL_MAX_PX } from "../../gis/msme/gisShellBreakpoints.js";
 
 export const MSME_GIS_REOPEN_DRAWER_EVENT = "msme-gis-mobile-reopen-drawer";
 
 function isMobileLayout() {
-  return typeof window !== "undefined" && window.matchMedia(`(max-width: ${MOBILE_BP}px)`).matches;
+  return typeof window !== "undefined" && window.matchMedia(`(max-width: ${GIS_COMPACT_SHELL_MAX_PX}px)`).matches;
 }
 
 /**
