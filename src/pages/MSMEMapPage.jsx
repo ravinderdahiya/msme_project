@@ -10,6 +10,7 @@ import HaryanaMap from "../components/Haryana_map.jsx";
 import HeaderGis from "../components/Header_gis.jsx";
 import GisMobilePanelCloseBehaviour from "../components/gis/GisMobilePanelCloseBehaviour.jsx";
 import GisMobileSearchDock from "../components/gis/GisMobileSearchDock.jsx";
+import GisMobileToolbarDock from "../components/gis/GisMobileToolbarDock.jsx";
 import "../msme-webgis.css";
 import "./MSMEGisPageShell.css";
 import "./MSMEGisDmpShell.css";
@@ -348,9 +349,7 @@ const MSMEGISPage = () => {
         searchBusy={searchBusy}
         onSearchSubmit={handleTopSearchSubmit}
       />
-      <div id="msmeGisMapToolbarDock" className="msme-gis-map-toolbar-dock" aria-label="Map tools">
-        <div className="msme-gis-header-toolbar" aria-label="Map tools" />
-      </div>
+      <GisMobileToolbarDock />
       <Sidebar t={t} onOpenAssemblyMap={() => setAssemblyMapOpen(true)} />
       <GisMobilePanelCloseBehaviour />
       <HaryanaMap t={t} onMapBootComplete={() => setMapBootComplete(true)} />

@@ -220,3 +220,10 @@
   background: #050f1e !important;
   color: #ffffff !important;
 }
+
+@media (max-width: 1399px) {
+  #msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .shape-mini-panel,
+  #msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .buffer-mini-panel {
+    width: auto !important;
+  }
+}

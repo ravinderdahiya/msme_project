@@ -207,11 +207,13 @@ export default function HeaderGis({
     root.classList.toggle("msme-gis-mobile-drawer-open", isCompactShell && mobileDrawerOpen);
     root.classList.toggle("msme-gis-compact-shell", isCompactShell);
     root.classList.toggle("msme-gis-phone-shell", isPhone);
+    root.classList.toggle("msme-gis-tablet-shell", isCompactShell && !isPhone);
     return () => {
       root.classList.remove("msme-gis-rail-hidden");
       root.classList.remove("msme-gis-mobile-drawer-open");
       root.classList.remove("msme-gis-compact-shell");
       root.classList.remove("msme-gis-phone-shell");
+      root.classList.remove("msme-gis-tablet-shell");
     };
   }, [isCompactShell, isPhone, railHidden, mobileDrawerOpen, gisToolPanelOpen]);
 
@@ -304,8 +306,11 @@ export default function HeaderGis({
         const mobileMq =
           typeof window !== "undefined" &&
           window.matchMedia(`(max-width: ${GIS_COMPACT_SHELL_MAX_PX}px)`).matches;
+        const phoneMq =
+          typeof window !== "undefined" &&
+          window.matchMedia(`(max-width: ${GIS_PHONE_MAX_PX}px)`).matches;
         let searchDockH = 0;
-        if (mobileMq) {
+        if (phoneMq) {
           const searchDock = document.getElementById("msmeGisMapSearchDock");
           if (searchDock) {
             const sh = Math.ceil(searchDock.getBoundingClientRect().height);

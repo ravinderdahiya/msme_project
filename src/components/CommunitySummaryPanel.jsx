@@ -198,6 +198,7 @@ function reportHasPlaceLookupContext(reportSnap) {
 
 function shouldAutoOpenCommunityPanel(reportSnap) {
   if (!reportSnap) return false
+  if (isMapClickPlaceOnlyReport(reportSnap)) return false
   if (resolvePlaceDetails(null, reportSnap)) return true
   if (resolveAssemblyDetails(null, reportSnap)) return true
   if (reportHasPlaceLookupContext(reportSnap)) return true
@@ -1006,6 +1007,7 @@ export default function CommunitySummaryPanel() {
   const hasPlaceDetails = !!placeDetails
   const hasAssemblyDetails = !!assemblyDetails
   const placeCardShouldRender = useMemo(() => {
+    if (isMapClickPlaceOnly) return false
     if (hasPlaceDetails) return true
     if (!latestReport) return false
     if (latestReport.reportKind === 'map-selection') return true
@@ -1013,7 +1015,7 @@ export default function CommunitySummaryPanel() {
     if (reportHasPlaceLookupContext(latestReport)) return true
     if (latestReport.reportKind === 'analysis') return true
     return false
-  }, [hasPlaceDetails, latestReport, resolvedLookupPoint])
+  }, [hasPlaceDetails, isMapClickPlaceOnly, latestReport, resolvedLookupPoint])
   const placeHeaderLines = useMemo(() => {
     if (!placeCardShouldRender) return null
     const formatField = (field) => {
@@ -1030,6 +1032,7 @@ export default function CommunitySummaryPanel() {
     }
   }, [placeCardShouldRender, placeDetails, placeDetailsLoading, resolvedLookupPoint, placeDetailsFromSnapshot])
   const assemblyCardShouldRender = useMemo(() => {
+    if (isMapClickPlaceOnly) return false
     if (hasAssemblyDetails) return true
     if (!latestReport) return false
     if (latestReport.reportKind === 'map-selection') return true
@@ -1037,7 +1040,7 @@ export default function CommunitySummaryPanel() {
     if (reportHasPlaceLookupContext(latestReport)) return true
     if (latestReport.reportKind === 'analysis') return true
     return false
-  }, [hasAssemblyDetails, latestReport, resolvedLookupPoint])
+  }, [hasAssemblyDetails, isMapClickPlaceOnly, latestReport, resolvedLookupPoint])
 
   useEffect(() => {
     if (!assemblyDetails) return
@@ -1049,12 +1052,13 @@ export default function CommunitySummaryPanel() {
   }, [assemblyDetails])
 
   const shouldShowPanelShell =
-    !!displaySummary ||
-    waitingForCounts ||
-    hasPlaceDetails ||
-    hasAssemblyDetails ||
-    placeCardShouldRender ||
-    assemblyCardShouldRender
+    !isMapClickPlaceOnly &&
+    (!!displaySummary ||
+      waitingForCounts ||
+      hasPlaceDetails ||
+      hasAssemblyDetails ||
+      placeCardShouldRender ||
+      assemblyCardShouldRender)
 
   useEffect(() => {
     if (!open || !shouldShowPanelShell) return undefined

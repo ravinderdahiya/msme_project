@@ -4,7 +4,10 @@ import BasemapGalleryViewModel from "@arcgis/core/widgets/BasemapGallery/Basemap
 import { watch } from "@arcgis/core/core/reactiveUtils.js";
 import { getBasemapThumbnailUrl } from "@arcgis/core/support/basemapUtils.js";
 import { getAssetUrl } from "@arcgis/core/assets.js";
-import { useHeaderToolbarHost } from "../gis/msme/msmeGisHeaderToolbarMount.js";
+import {
+  MSME_GIS_TOOLBAR_DOCK_BP,
+  useHeaderToolbarHost,
+} from "../gis/msme/msmeGisHeaderToolbarMount.js";
 
 function fallbackThumbnailUrl() {
   try {
@@ -40,7 +43,26 @@ export default function BasemapButton({ t }) {
     const r = el.getBoundingClientRect();
     const vw = typeof window !== "undefined" ? window.innerWidth : 400;
     const vh = typeof window !== "undefined" ? window.innerHeight : 600;
-    const margin = 10;
+    const margin = 12;
+    const isDockedToolbar = vw < MSME_GIS_TOOLBAR_DOCK_BP;
+
+    if (isDockedToolbar) {
+      const dock =
+        typeof document !== "undefined"
+          ? document.getElementById("msmeGisMapToolbarDock")
+          : null;
+      const anchorBottom = dock ? dock.getBoundingClientRect().bottom : r.bottom;
+      const top = anchorBottom + 8;
+      const width = Math.max(220, vw - margin * 2);
+      setMenuPos({
+        top,
+        left: margin,
+        width,
+        maxHeight: Math.min(360, Math.max(120, vh - top - margin)),
+      });
+      return;
+    }
+
     const width = Math.min(320, Math.max(220, vw - margin * 2));
     let left = r.right - width;
     left = Math.max(margin, Math.min(left, vw - width - margin));

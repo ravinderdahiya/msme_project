@@ -363,10 +363,10 @@ html:not([data-theme='black'])
   }
 }
 
-/* Laptop — compact toolbar pills so search + actions fit without crowding */
-@media (max-width: 1920px) and (min-width: 1025px) {
-  #msmeGisRoot.msme-gis-page.nm-shell-dmp #appHeader .msme-gis-header-toolbar {
-    justify-content: flex-start !important;
+/* Laptop docked toolbar (1025–1399) — compact pills; ≥1400 header toolbar stays centered */
+@media (max-width: 1399px) and (min-width: 1025px) {
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp .msme-gis-map-toolbar-dock .msme-gis-header-toolbar {
+    justify-content: center !important;
   }
 
   #msmeGisRoot.msme-gis-page :is(#appHeader, .msme-gis-map-toolbar-dock) .msme-gis-header-toolbar {
