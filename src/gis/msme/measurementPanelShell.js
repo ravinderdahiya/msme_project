@@ -51,6 +51,21 @@ export function closeAoiPanel() {
   notifyLayout()
 }
 
+export function closeSpatialPanel() {
+  closeGisRailPanel('spatialPanel', 'btnOpenSpatial')
+  notifyLayout()
+}
+
+export function closeToolsPanel() {
+  closeGisRailPanel('toolsPanel', 'btnTogglePanel')
+  notifyLayout()
+}
+
+export function closeSelectToolsPanel() {
+  closeGisRailPanel('selectToolsPanel', 'btnSelectTool')
+  notifyLayout()
+}
+
 /** Collapse AOI rail panel only after the user clicks Plan Route. */
 export function bindAoiPanelCloseOnPlanRoute() {
   if (typeof window === 'undefined' || window.__msmeAoiCloseOnPlanRouteBound) return

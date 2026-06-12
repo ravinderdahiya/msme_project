@@ -5,7 +5,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { POI_LAYERS } from "../../gis/msme/serviceUrlsAndLayers.js";
 import { haversineMeters } from "../../gis/msme/geometryUtils.js";
-import { closeMeasurementPanel } from "../../gis/msme/measurementPanelShell.js";
+import {
+  closeAoiPanel,
+  closeMeasurementPanel,
+  closeSelectToolsPanel,
+  closeSpatialPanel,
+  closeToolsPanel,
+} from "../../gis/msme/measurementPanelShell.js";
 import GisPanelHeader from "./GisPanelHeader.jsx";
 import "../../css/MeasurementDistancePanel.css";
 
@@ -295,6 +301,7 @@ export default function GisLegacyPanelsHidden({ t }) {
           title={t("spatialTitle")}
           closeId="btnSpatialClose"
           closeTitle={t("closePanel")}
+          onClose={closeSpatialPanel}
         />
         <div className="sp-scroll">
           <div id="spatialToolbar" aria-label={t("spatialToolbarAria")}>
@@ -464,6 +471,7 @@ export default function GisLegacyPanelsHidden({ t }) {
           title={t("layersTitle")}
           closeId="btnToolsPanelClose"
           closeTitle={t("closePanel")}
+          onClose={closeToolsPanel}
         />
         <div className="gis-tools-layer-search">
           <span className="gis-tools-layer-search-ico" aria-hidden>
@@ -503,6 +511,7 @@ export default function GisLegacyPanelsHidden({ t }) {
           title={t("aoiLandTitle")}
           closeId="btnNavClose"
           closeTitle={t("closePanel")}
+          onClose={closeAoiPanel}
         />
 
         <div className="ap-scroll">
@@ -748,6 +757,7 @@ export default function GisLegacyPanelsHidden({ t }) {
           title={t("selectToolsLabel")}
           closeId="btnSelectToolsClose"
           closeTitle={t("closePanel")}
+          onClose={closeSelectToolsPanel}
         />
         <p className="msme-gis-panel-intro stools-intro">{t("selectToolsIntro")}</p>
 

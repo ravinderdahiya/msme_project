@@ -12,6 +12,12 @@
   z-index: 180;
 }
 
+/* Mobile search dock — hidden by default; MSMEGisMobileShell.css shows it ≤1024px */
+#msmeGisRoot.msme-gis-page .msme-gis-map-search-dock {
+  display: none;
+  pointer-events: none;
+}
+
 #msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock .msme-gis-toolbar-scroll-wrap {
   position: relative;
   display: flex;
@@ -294,9 +300,12 @@
 /* ---- Below 1400px: dock map toolbar + flex header ---- */
 @media (max-width: 1399px) {
   #msmeGisRoot.msme-gis-page.nm-shell-dmp {
-    --msme-gis-panel-top: calc(var(--header-h, var(--nm-dmp-header-h)) + var(--msme-gis-panel-top-gap));
+    --msme-gis-toolbar-dock-row-h: 62px;
+    --msme-gis-panel-top: calc(
+      var(--header-h, var(--nm-dmp-header-h)) + var(--msme-gis-toolbar-dock-row-h, 62px)
+    );
     --msme-gis-panel-max-h: calc(
-      100dvh - var(--header-h, var(--nm-dmp-header-h)) - var(--msme-gis-panel-top-gap) -
+      100dvh - var(--header-h, var(--nm-dmp-header-h)) - var(--msme-gis-toolbar-dock-row-h, 62px) -
         var(--nm-dmp-map-footer-chrome) - var(--msme-gis-panel-bottom-gap)
     );
   }
@@ -396,6 +405,20 @@
 @media (max-width: 1399px) and (min-width: 1025px) {
   #msmeGisRoot.msme-gis-page {
     --msme-gis-toolbar-dock-panel-top: calc(var(--nm-dmp-header-h, 52px) + 62px);
+  }
+
+  /* Rail panels sit above docked map toolbar so close (×) receives clicks */
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail:has(#spatialPanel:not(.collapsed)) .nm-sidebar-gis-panels,
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail:has(#aoiPanel:not(.collapsed)) .nm-sidebar-gis-panels,
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail:has(#toolsPanel:not(.collapsed)) .nm-sidebar-gis-panels,
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail:has(#selectToolsPanel:not(.collapsed)) .nm-sidebar-gis-panels,
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail:has(#measurementPanel:not(.collapsed)) .nm-sidebar-gis-panels {
+    z-index: 190 !important;
+  }
+
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .msme-gis-panel-head__close,
+  #msmeGisRoot.msme-gis-page.nm-shell-dmp #rail .ap-close {
+    pointer-events: auto !important;
   }
 
   #msmeGisRoot.msme-gis-page .msme-gis-map-toolbar-dock {
